@@ -17,8 +17,19 @@ class BASEINVENTORYSYSTEM_API UInvSys_BaseEquipmentObject : public UInvSys_BaseI
 
 public:
 	UInvSys_BaseEquipmentObject();
+
+	virtual void InitInventoryObject(UInvSys_InventoryComponent* NewInventoryComponent, UObject* PreEditPayLoad) override;
 	
-	virtual void AddInventoryItemToEquipSlot(const FInvSys_InventoryItem& NewItem, FName TargetSlotName);
+	virtual void AddInventoryItemToEquipSlot(const FInvSys_InventoryItem& NewItem);
+
+protected:
+	/**	刷新显示效果 */
+	virtual void TryRefreshOccupant(const FString& Reason = "");
+
+public:
+	/**
+	 * Getter Or Setter
+	 **/
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
@@ -42,6 +53,4 @@ class BASEINVENTORYSYSTEM_API UInvSys_PreEditEquipmentObject : public UInvSys_Pr
 public:
 	/** 容器构建函数 */
 	CONSTRUCT_INVENTORY_OBJECT(UInvSys_BaseEquipmentObject);
-	
-protected:
 };

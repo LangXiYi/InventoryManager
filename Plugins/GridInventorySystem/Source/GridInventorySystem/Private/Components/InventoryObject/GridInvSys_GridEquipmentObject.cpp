@@ -10,8 +10,13 @@
 #include "Widgets/GridInvSys_EquipmentSlotWidget.h"
 
 
-void UGridInvSys_GridEquipmentObject::TryRefreshOccupant()
+UGridInvSys_GridEquipmentObject::UGridInvSys_GridEquipmentObject()
 {
+}
+
+void UGridInvSys_GridEquipmentObject::TryRefreshOccupant(const FString& Reason)
+{
+	Super::TryRefreshOccupant(Reason);
 	if (EquipmentSlotWidget)
 	{
 		UE_LOG(LogInventorySystem, Log, TEXT("[%s] 接收到新的装备 [%s]"),
@@ -34,8 +39,7 @@ void UGridInvSys_GridEquipmentObject::CopyPropertyFromPreEdit(UInvSys_InventoryC
 	COPY_INVENTORY_OBJECT_PROPERTY(UGridInvSys_PreEditGridEquipmentObject, EquipmentSupportType);
 }
 
-void UGridInvSys_GridEquipmentObject::AddInventoryItemToEquipSlot(const FInvSys_InventoryItem& NewItem,
-                                                                  FName TargetSlotName)
+void UGridInvSys_GridEquipmentObject::AddInventoryItemToEquipSlot(const FInvSys_InventoryItem& NewItem)
 {
 	// 检查类型是否一致
 	if (EquipmentSupportType == EGridInvSys_InventoryItemType::Weapon_Primary)
@@ -43,7 +47,7 @@ void UGridInvSys_GridEquipmentObject::AddInventoryItemToEquipSlot(const FInvSys_
 		// 根据 NewItem.ItemID 判断物品类型
 		// GetItemType(ItemID)
 	}
-	Super::AddInventoryItemToEquipSlot(NewItem, TargetSlotName);
+	Super::AddInventoryItemToEquipSlot(NewItem);
 }
 
 void UGridInvSys_GridEquipmentObject::CreateDisplayWidget(APlayerController* PC)
@@ -83,7 +87,7 @@ void UGridInvSys_GridEquipmentObject::CreateDisplayWidget(APlayerController* PC)
 #endif
 
 	NamedSlot->AddChild(EquipmentSlotWidget);
-	TryRefreshOccupant();
+	// TryRefreshOccupant();
 }
 
 void UGridInvSys_GridEquipmentObject::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

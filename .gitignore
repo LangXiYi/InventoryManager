@@ -76,5 +76,4 @@ Plugins/**/Intermediate/*
 DerivedDataCache/*
 
 # Custom Ignore Files
-Plugins/InventorySystem/*
 /Plugins/InventorySystem

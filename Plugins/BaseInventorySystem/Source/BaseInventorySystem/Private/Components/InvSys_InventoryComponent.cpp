@@ -8,7 +8,6 @@
 #include "Components/InventoryObject/InvSys_BaseEquipmentObject.h"
 #include "Components/InventoryObject/InvSys_BaseInventoryObject.h"
 #include "Data/InvSys_InventoryContentMapping.h"
-#include "Iris/ReplicationSystem/ReplicationSystem.h"
 #include "Net/UnrealNetwork.h"
 
 
@@ -26,65 +25,49 @@ UInvSys_InventoryComponent::UInvSys_InventoryComponent()
 	// ...
 }
 
-void UInvSys_InventoryComponent::AddInventoryItemToEquipSlot(const FInvSys_InventoryItem& NewItem, FName TargetSlotName)
+void UInvSys_InventoryComponent::AddInventoryItemToEquipSlot(const FInvSys_InventoryItem& NewItem)
 {
-	if (InventoryObjectMap.Contains(TargetSlotName) == false)
+	if (InventoryObjectMap.Contains(NewItem.SlotName) == false)
 	{
-		UE_LOG(LogInventorySystem, Log, TEXT("%s 必须在 InventoryObjectMap 中存在的。"), *TargetSlotName.ToString());
+		UE_LOG(LogInventorySystem, Log, TEXT("%s 必须在 InventoryObjectMap 中存在的。"), *NewItem.SlotName.ToString());
 		return;
 	}
-	ensureMsgf(InventoryObjectMap[TargetSlotName]->IsA(UInvSys_BaseEquipmentObject::StaticClass()),
-		TEXT("目标位置的库存对象必须是 UInvSys_BaseEquipmentObject 的子类。"));
 
-	if (UInvSys_BaseEquipmentObject* EquipmentObj = Cast<UInvSys_BaseEquipmentObject>(InventoryObjectMap[TargetSlotName]))
+	if (InventoryObjectMap[NewItem.SlotName]->IsA(UInvSys_BaseEquipmentObject::StaticClass()))
 	{
-		EquipmentObj->AddInventoryItemToEquipSlot(NewItem, TargetSlotName);
+		UInvSys_BaseEquipmentObject* EquipmentObj = Cast<UInvSys_BaseEquipmentObject>(InventoryObjectMap[NewItem.SlotName]);
+		EquipmentObj->AddInventoryItemToEquipSlot(NewItem);
 	}
+	// UE_LOG(LogInventorySystem, Log, TEXT("%s 必须在 UInvSys_BaseEquipmentObject 中存在的。"), *NewItem.SlotName.ToString());
 }
 
-void UInvSys_InventoryComponent::AddInventoryItemToContainer(const FInvSys_InventoryItem& NewItem,
-	UObject* ContainerObj)
+void UInvSys_InventoryComponent::AddInventoryItemToContainer(const FInvSys_InventoryItem& NewItem, UObject* ContainerObj)
 {
 	ensureMsgf(ContainerObj->IsA(UInvSys_BaseContainerObject::StaticClass()),
 		TEXT("ContainerObj 必须是 UInvSys_BaseContainerObject 的子类。"));
 }
 
-void UInvSys_InventoryComponent::PreReplication(IRepChangedPropertyTracker& ChangedPropertyTracker)
-{
-	Super::PreReplication(ChangedPropertyTracker);
-	/*for (UInvSys_BaseInventoryObject* InventoryObject : InventoryObjectList)
-	{
-		InventoryObject->PreReplication(ChangedPropertyTracker);
-	}*/
-}
-
-void UInvSys_InventoryComponent::PostRepNotifies()
-{
-	Super::PostRepNotifies();
-	
-}
-
 bool UInvSys_InventoryComponent::HasAuthority() const
 {
-	AActor* Owner = GetOwner();
-	check(Owner);
-	return Owner->HasAuthority();
+	ensure(GetOwner());
+	return GetOwner() ? GetOwner()->HasAuthority() : false;
 }
 
 APlayerController* UInvSys_InventoryComponent::GetPlayerController() const
 {
+	ensure(OwningPlayer);
 	return OwningPlayer;
 }
 
 FTimerManager& UInvSys_InventoryComponent::GetWorldTimerManager() const
 {
-	AActor* Owner = GetOwner();
-	check(Owner);
-	return Owner->GetWorldTimerManager();
+	ensure(GetWorld());
+	return GetWorld()->GetTimerManager();
 }
 
 bool UInvSys_InventoryComponent::IsLocalController() const
 {
+	ensure(OwningPlayer);
 	return OwningPlayer ? OwningPlayer->IsLocalController() : false;
 }
 
@@ -98,6 +81,12 @@ void UInvSys_InventoryComponent::BeginPlay()
 	{
 		ConstructInventoryList();
 	}
+}
+
+void UInvSys_InventoryComponent::NativeOnInitInventoryObjects(APlayerController* InController)
+{
+	OwningPlayer = InController;
+	OnInitInventoryObjects(InController);
 }
 
 void UInvSys_InventoryComponent::ConstructInventoryList()
@@ -128,14 +117,11 @@ void UInvSys_InventoryComponent::ConstructInventoryList()
 					HasAuthority() ? TEXT("Server") : TEXT("Client"), *PreEditInventoryObject->GetName());
 				continue;
 			}
-			// 拷贝预设数据至新建对象中
-			// InventoryObject->CopyPropertyFromPreEdit(this, PreEditInventoryObject);
 							
 			InventoryObjectList.Add(InventoryObject);
 			InventoryObjectMap.Add(InventoryObject->GetSlotName(), InventoryObject);
 			AddReplicatedSubObject(InventoryObject, COND_None);
 		}
-		// UE_LOG(LogInventorySystem, Log, TEXT("== 构建库存对象完成 =="))
 	}
 }
 
@@ -154,7 +140,6 @@ void UInvSys_InventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProp
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME_CONDITION(UInvSys_InventoryComponent, InventoryObjectList, COND_None);
-	// DOREPLIFETIME_CONDITION(UInvSys_InventoryComponent, OwningPlayer, COND_OwnerOnly);
 }
 
 void UInvSys_InventoryComponent::InitInventoryObj(APlayerController* NewPlayerController)
@@ -166,10 +151,12 @@ void UInvSys_InventoryComponent::InitInventoryObj(APlayerController* NewPlayerCo
 	if (NewPlayerController && NewPlayerController->IsLocalController())
 	{
 		bIsInitInventoryObjects = true;
-		OwningPlayer = NewPlayerController;
 		InventoryObjectMap.Empty(InventoryObjectList.Num());
 
-		OnInitInventoryObjects(NewPlayerController);
+		NativeOnInitInventoryObjects(NewPlayerController);
+		
+		// OwningPlayer = NewPlayerController;
+		// OnInitInventoryObjects(NewPlayerController);
 		
 		UE_LOG(LogInventorySystem, Log, TEXT("== 正在初始化库存对象 [%s:%s] =="),
 			HasAuthority() ? TEXT("Server") : TEXT("Client"), *GetOwner()->GetName())
@@ -179,11 +166,6 @@ void UInvSys_InventoryComponent::InitInventoryObj(APlayerController* NewPlayerCo
 			InventoryObjectList[i]->InitInventoryObject(this, GetPreEditInventoryObject(i));
 			InventoryObjectMap.Add(InventoryObjectList[i]->GetSlotName(), InventoryObjectList[i]);
 		}
-		// UE_LOG(LogInventorySystem, Log, TEXT("== 初始化库存对象完成 [%s] =="), HasAuthority() ? TEXT("Server") : TEXT("Client"))
 	}
-}
-
-void UInvSys_InventoryComponent::OnInitInventoryObjects_Implementation(APlayerController* NewPlayerController)
-{
 }
 

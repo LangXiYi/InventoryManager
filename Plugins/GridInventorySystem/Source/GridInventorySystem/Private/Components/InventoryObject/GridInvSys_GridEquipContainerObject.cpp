@@ -10,25 +10,32 @@
 #include "Widgets/GridInvSys_EquipContainerSlotWidget.h"
 
 
-void UGridInvSys_GridEquipContainerObject::TryRefreshOccupant()
+
+UGridInvSys_GridEquipContainerObject::UGridInvSys_GridEquipContainerObject()
 {
+}
+
+void UGridInvSys_GridEquipContainerObject::TryRefreshOccupant(const FString& Reason)
+{
+	Super::TryRefreshOccupant(Reason);
 	if (EquipmentSlotWidget)
 	{
 		// 刷新装备槽
-		UE_LOG(LogInventorySystem, Log, TEXT("[%s:%s] 接收到新的装备 [%s]"),
-			HasAuthority() ? TEXT("Server") : TEXT("Client"), *InventoryComponent->GetOwner()->GetName(),	*Occupant.ItemID.ToString())
+		UE_LOG(LogInventorySystem, Log, TEXT("[%s] 接收到新的装备 [%s]"),
+			HasAuthority() ? TEXT("Server") : TEXT("Client"), *Occupant.ItemID.ToString())
 
 		// todo:: Use interface?
 		if (UGridInvSys_EquipmentSlotWidget* GridInvSys_EquipmentSlotWidget = Cast<UGridInvSys_EquipmentSlotWidget>(EquipmentSlotWidget))
 		{
 			GridInvSys_EquipmentSlotWidget->UpdateOccupant(Occupant);
 		}
-		TryRefreshContainerItems();
+		TryRefreshContainerItems("TryRefreshOccupant() ===> TryRefreshContainerItems()");
 	}
 }
 
-void UGridInvSys_GridEquipContainerObject::TryRefreshContainerItems()
+void UGridInvSys_GridEquipContainerObject::TryRefreshContainerItems(const FString& Reason)
 {
+	Super::TryRefreshContainerItems(Reason);
 	UE_LOG(LogInventorySystem, Log, TEXT("刷新容器所有内容，ContainerItems 的长度为：%s"), *FString::FromInt(ContainerItems.Num()))
 	if (EquipmentSlotWidget)
 	{
@@ -91,11 +98,10 @@ void UGridInvSys_GridEquipContainerObject::CreateDisplayWidget(APlayerController
 #endif
 
 	NamedSlot->AddChild(EquipmentSlotWidget);
-	TryRefreshOccupant();
+	// TryRefreshOccupant();
 }
 
-void UGridInvSys_GridEquipContainerObject::AddInventoryItemToEquipSlot(const FInvSys_InventoryItem& NewItem,
-	FName TargetSlotName)
+void UGridInvSys_GridEquipContainerObject::AddInventoryItemToEquipSlot(const FInvSys_InventoryItem& NewItem)
 {
 	// 检查类型是否一致
 	if (EquipmentSupportType == EGridInvSys_InventoryItemType::Weapon_Primary)
@@ -103,7 +109,7 @@ void UGridInvSys_GridEquipContainerObject::AddInventoryItemToEquipSlot(const FIn
 		// 根据 NewItem.ItemID 判断物品类型
 		// GetItemType(ItemID)
 	}
-	Super::AddInventoryItemToEquipSlot(NewItem, TargetSlotName);
+	Super::AddInventoryItemToEquipSlot(NewItem);
 }
 
 void UGridInvSys_GridEquipContainerObject::AddInventoryItemToContainer(const FGridInvSys_InventoryItem& InventoryItem)

@@ -44,32 +44,17 @@ void UGridInvSys_InventoryComponent::AddInventoryItemToGridContainer(FGridInvSys
 	}
 }
 
-void UGridInvSys_InventoryComponent::OnInitInventoryObjects_Implementation(APlayerController* NewPlayerController)
-{
-	/*if (NewPlayerController && NewPlayerController->IsLocalController())
-	{
-
-	}*/
-	
-	InventoryLayoutWidget = CreateWidget(NewPlayerController, InventoryLayoutWidgetClass);
-}
-
-void UGridInvSys_InventoryComponent::AddInventoryItemToEquipSlot(const FInvSys_InventoryItem& NewItem,
-	FName TargetSlotName)
-{
-	Super::AddInventoryItemToEquipSlot(NewItem, TargetSlotName);
-	/*UGridInvSys_GridEquipmentObject* GridEquipmentObj = Cast<UGridInvSys_GridEquipmentObject>(InventoryObjectMap[TargetSlotName]);
-	ensureMsgf(GridEquipmentObj, TEXT("目标槽位 [%s] 的类型不是 UGridInvSys_GridEquipmentObject"), *TargetSlotName.ToString());
-	if (GridEquipmentObj)
-	{
-		GridEquipmentObj->AddInventoryItemToEquipSlot(NewItem, TargetSlotName);
-	}*/
-}
-
 // Called when the game starts
 void UGridInvSys_InventoryComponent::BeginPlay()
 {
 	Super::BeginPlay();
+}
+
+void UGridInvSys_InventoryComponent::NativeOnInitInventoryObjects(APlayerController* InController)
+{
+	Super::NativeOnInitInventoryObjects(InController);
+	check(InController)
+	InventoryLayoutWidget = CreateWidget(InController, InventoryLayoutWidgetClass);
 }
 
 

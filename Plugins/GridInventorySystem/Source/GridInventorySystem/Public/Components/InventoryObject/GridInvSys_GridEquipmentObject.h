@@ -19,17 +19,25 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_GridEquipmentObject : public UInvSys_B
 	GENERATED_BODY()
 
 public:
-	virtual void TryRefreshOccupant() override;
+	UGridInvSys_GridEquipmentObject();
 	
-	virtual void AddInventoryItemToEquipSlot(const FInvSys_InventoryItem& NewItem, FName TargetSlotName) override;
+	virtual void AddInventoryItemToEquipSlot(const FInvSys_InventoryItem& NewItem) override;
+
+protected:
+	virtual void TryRefreshOccupant(const FString& Reason) override;
 
 	virtual void CreateDisplayWidget(APlayerController* PC) override;
+	
+public:
+	/**
+	 * Getter Or Setter
+	 **/
+
+	virtual void CopyPropertyFromPreEdit(UInvSys_InventoryComponent* NewInventoryComponent, UObject* PreEditPayLoad) override;
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
-	virtual void CopyPropertyFromPreEdit(UInvSys_InventoryComponent* NewInventoryComponent, UObject* PreEditPayLoad) override;
-	
-public:
+protected:
 	/** 装备控件类型 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Equipment Object")
 	TSubclassOf<UGridInvSys_EquipmentSlotWidget> EquipmentSlotWidgetClass;

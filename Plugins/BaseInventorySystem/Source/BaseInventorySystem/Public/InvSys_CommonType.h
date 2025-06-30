@@ -31,6 +31,9 @@ struct FInvSys_InventoryItem
 	// 物品ID，用以区分物品种类
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
 	FName ItemID;
+	// 物品是否被装备
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
+	bool bIsEquipped = false;
 	// 物品是否可以堆叠存放
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
 	bool bIsStack = false;

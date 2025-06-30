@@ -10,10 +10,16 @@ class UGridInvSys_DraggingWidget;
 /**
  * 
  */
-UCLASS(DefaultConfig, Config = "InventorySystemConfig")
-class GRIDINVENTORYSYSTEM_API UGridInvSys_InventorySystemConfig : public UInvSys_InventorySystemConfig
+UCLASS(DefaultConfig, Config = "GridInventorySystemConfig")
+class GRIDINVENTORYSYSTEM_API UGridInvSys_InventorySystemConfig : public UDeveloperSettings
 {
 	GENERATED_BODY()
+
+public:
+	// UDeveloperSettings Begin =====
+	virtual FName GetContainerName() const override { return "Project"; }
+	virtual FName GetCategoryName() const override { return "InventorySystem"; }
+	virtual FName GetSectionName() const override { return "InventorySystemConfig"; }
 
 public:
 	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category = "Inventory System Config")

@@ -20,13 +20,11 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_GridContainerObject : public UInvSys_B
 	GENERATED_BODY()
 	
 public:
+	UGridInvSys_GridContainerObject();
+	
 	virtual void InitInventoryObject(UInvSys_InventoryComponent* NewInventoryComponent, UObject* PreEditPayLoad) override;
 
 	virtual void AddInventoryItemToContainer(const FGridInvSys_InventoryItem& NewItem);
-	
-	virtual void CopyPropertyFromPreEdit(UInvSys_InventoryComponent* NewInventoryComponent, UObject* PreEditPayLoad) override;
-
-	virtual void CreateDisplayWidget(APlayerController* PC) override;
 	
 	/**
 	 * 什么情况下 AddInventoryItemTo 会被调用？
@@ -38,14 +36,27 @@ public:
 	 * @param NewItem 
 	 */
 	virtual void AddInventoryItemToContainer(FName ItemUniqueID, FGridInvSys_InventoryItem NewItem);
-
 	virtual void RemoveInventoryItemFromContainer(FName ItemUniqueID);
+
+protected:
+	virtual void CreateDisplayWidget(APlayerController* PC) override;
+
+	virtual void OnAddedContainerItems(const TArray<FName>& InAddedItems) override {}
+	virtual void OnRemovedContainerItems(const TArray<FName>& InRemovedItems) override {}
+	virtual void OnUpdatedContainerItems(const TArray<FName>& InChangedItems) override {}
+	
+public:
+	/**
+	 * Getter Or Setter
+	 **/
 
 	FORCEINLINE UUserWidget* GetContainerGridLayout() const
 	{
 		return ContainerGridLayoutWidget;
 	}
 
+	virtual void CopyPropertyFromPreEdit(UInvSys_InventoryComponent* NewInventoryComponent, UObject* PreEditPayLoad) override;
+	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 

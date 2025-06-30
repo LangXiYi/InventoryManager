@@ -3,18 +3,20 @@
 
 #include "Components/InventoryObject/InvSys_BaseInventoryObject.h"
 
-#include "TransactionCommon.h"
+#include "InvSys_InventorySystemConfig.h"
 #include "Components/InvSys_InventoryComponent.h"
-#include "Iris/ReplicationSystem/ReplicationSystem.h"
-#include "Net/UnrealNetwork.h"
 
 UInvSys_BaseInventoryObject::UInvSys_BaseInventoryObject()
 {
-	
+	if (const UInvSys_InventorySystemConfig* InventorySystemConfig = GetDefault<UInvSys_InventorySystemConfig>())
+	{
+		ServerWaitBatchTime = InventorySystemConfig->ServerWaitBatchTime;
+		// UE_LOG(LogInventorySystem, Log, TEXT("初始化ServerWaitBatchTime = %f"), ServerWaitBatchTime)
+	}
 }
 
 void UInvSys_BaseInventoryObject::InitInventoryObject(UInvSys_InventoryComponent* NewInventoryComponent,
-	UObject* PreEditPayLoad)
+                                                      UObject* PreEditPayLoad)
 {
 	if (bIsInitInventoryObject)
 	{
@@ -27,14 +29,10 @@ void UInvSys_BaseInventoryObject::InitInventoryObject(UInvSys_InventoryComponent
 		CopyPropertyFromPreEdit(NewInventoryComponent, PreEditPayLoad);
 	}
 	// 仅本地控制器创建显示效果
-	if (IsLocalController())
+	if (IsLocallyControlled())
 	{
 		CreateDisplayWidget(NewInventoryComponent->GetPlayerController());
 	}
-}
-
-void UInvSys_BaseInventoryObject::TryRefreshOccupant()
-{
 }
 
 void UInvSys_BaseInventoryObject::CreateDisplayWidget(APlayerController* PC)
@@ -52,18 +50,18 @@ void UInvSys_BaseInventoryObject::CopyPropertyFromPreEdit(UInvSys_InventoryCompo
 	bIsCopyPreEditData = true;
 	InventoryComponent = NewInventoryComponent;
 
+	// todo:: 读取config file 文件?
+	// ServerWaitBatchTime = 0.1f;
+
+
 	UE_LOG(LogInventorySystem, Log, TEXT("[%s] 正在复制预设数据: From [%s] ===> To [%s]。"),
 			HasAuthority() ? TEXT("Server") : TEXT("Client"),
 			*PreEditPayLoad->GetName(), *this->GetName());
 
 	COPY_INVENTORY_OBJECT_PROPERTY(UInvSys_PreEditInventoryObject, SlotName);
-}
 
-void UInvSys_BaseInventoryObject::PostRepNotifies()
-{
-	UObject::PostRepNotifies();
+	// todo:: 复制完成后是否考虑移除该对象？移除后 DataAsset 中保存的对象是否也会被一起移除？
 }
-
 
 FName UInvSys_BaseInventoryObject::GetSlotName() const
 {
@@ -77,33 +75,35 @@ UInvSys_InventoryComponent* UInvSys_BaseInventoryObject::GetInventoryComponent()
 
 bool UInvSys_BaseInventoryObject::HasAuthority() const
 {
-	// check(InventoryComponent)
-	return InventoryComponent ? InventoryComponent->HasAuthority() : false;
+	const AActor* Actor = GetOwner();
+	check(Actor);
+	return Actor->HasAuthority();
 }
 
 ENetMode UInvSys_BaseInventoryObject::GetNetMode() const
 {
-	check(InventoryComponent)
-	return InventoryComponent ? InventoryComponent->GetNetMode() : NM_Standalone;
+	const AActor* Actor = GetOwner();
+	check(Actor);
+	return Actor->GetNetMode();
 }
 
-bool UInvSys_BaseInventoryObject::IsLocalController() const
+bool UInvSys_BaseInventoryObject::IsLocallyControlled() const
 {
-	return InventoryComponent? InventoryComponent->IsLocalController() : false;
+	// HasLocalNetOwner 会循环到最顶层的Owner然后判断 IsLocallyControlled
+	return GetOwner()->HasLocalNetOwner();
 }
 
-AActor* UInvSys_BaseInventoryObject::GetOwningActor() const
+AActor* UInvSys_BaseInventoryObject::GetOwner() const
 {
-	if (GetInventoryComponent())
-	{
-		return GetInventoryComponent()->GetOwner();
-	}
-	return nullptr;
+	return Cast<AActor>(GetOuter());
+}
+
+float UInvSys_BaseInventoryObject::GetServerWaitBatchTime() const
+{
+	return ServerWaitBatchTime;
 }
 
 void UInvSys_BaseInventoryObject::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	UObject::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	// DOREPLIFETIME_CONDITION(UInvSys_BaseInventoryObject, InventoryComponent, COND_None);
 }

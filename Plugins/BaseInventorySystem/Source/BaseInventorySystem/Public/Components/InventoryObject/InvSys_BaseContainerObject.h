@@ -15,16 +15,20 @@ class BASEINVENTORYSYSTEM_API UInvSys_BaseContainerObject : public UInvSys_BaseI
 	GENERATED_BODY()
 
 public:
+	UInvSys_BaseContainerObject();
+
+	virtual void InitInventoryObject(UInvSys_InventoryComponent* NewInventoryComponent, UObject* PreEditPayLoad) override;
+	
 	/** [Server] 添加物品，并将操作记录至复制列表，等待一段时间后，将所有操作批量发送给客户端并清除操作列表。 */
 	void AddDataToRep_AddedInventoryItems(FName ItemUniqueID);
 	/** [Server] 删除物品，并将操作记录至复制列表，等待一段时间后，将所有操作批量发送给客户端并清除操作列表。 */
 	void AddDataToRep_RemovedInventoryItems(FName ItemUniqueID);
 	/** [Server] 修改物品，并将操作记录至操作列表，等待一段时间后，将所有操作批量发送给客户端并清除操作列表。 */
 	void AddDataToRep_ChangedInventoryItems(FName OldItemUniqueID);
-	
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 protected:
+	virtual void TryRefreshContainerItems(const FString& Reason);
+	
 	/** [Client] 处理服务器批量返回的操作记录 */
 	virtual void OnAddedContainerItems(const TArray<FName>& InAddedItems) {}
 	/** [Client] 处理服务器批量返回的操作记录 */
@@ -36,6 +40,13 @@ private:
 	void TryRepInventoryItems_Add();
 	void TryRepInventoryItems_Remove();
 	void TryRepInventoryItems_Change();
+
+public:
+	/**
+	 * Getter Or Setter
+	 **/
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 private:
 	UPROPERTY(ReplicatedUsing = OnRep_AddedInventoryItems)

@@ -22,31 +22,35 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_GridEquipContainerObject : public UInv
 	GENERATED_BODY()
 
 public:
-	virtual void TryRefreshOccupant() override;
-
-	virtual void TryRefreshContainerItems();
-
-	virtual void CreateDisplayWidget(APlayerController* PC) override;
-
-	virtual void AddInventoryItemToEquipSlot(const FInvSys_InventoryItem& NewItem, FName TargetSlotName) override;
+	UGridInvSys_GridEquipContainerObject();
+	
+	virtual void AddInventoryItemToEquipSlot(const FInvSys_InventoryItem& NewItem) override;
 
 	virtual void AddInventoryItemToContainer(const FGridInvSys_InventoryItem& InventoryItem);
-
 	virtual void RemoveInventoryItemFromContainer(FGridInvSys_InventoryItem InventoryItem);
-
 	virtual void UpdateInventoryItemFromContainer(FGridInvSys_InventoryItem NewItem, FGridInvSys_InventoryItem OldItem);
-
-	virtual void CopyPropertyFromPreEdit(UInvSys_InventoryComponent* NewInventoryComponent, UObject* PreEditPayLoad) override;
-	
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 protected:
+	virtual void CreateDisplayWidget(APlayerController* PC) override;
+	
+	virtual void TryRefreshOccupant(const FString& Reason = "") override;
+	virtual void TryRefreshContainerItems(const FString& Reason = "") override;
+	
 	virtual void OnAddedContainerItems(const TArray<FName>& InAddedItems) override;
 	virtual void OnRemovedContainerItems(const TArray<FName>& InRemovedItems) override;
 	virtual void OnUpdatedContainerItems(const TArray<FName>& InChangedItems) override;
 
 private:
 	int32 FindContainerItemIndex(FName ItemUniqueID);
+
+public:
+	/**
+	 * Getter Or Setter
+	 **/
+
+	virtual void CopyPropertyFromPreEdit(UInvSys_InventoryComponent* NewInventoryComponent, UObject* PreEditPayLoad) override;
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 protected:
 	/** 装备控件类型 */
@@ -59,7 +63,7 @@ protected:
 
 	/** 该装备槽支持装备的类型 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Equipment Object")
-	EGridInvSys_InventoryItemType EquipmentSupportType;
+	EGridInvSys_InventoryItemType EquipmentSupportType = EGridInvSys_InventoryItemType::None;
 
 	/** 当前容器内的所有物品 */
 	UPROPERTY(BlueprintReadWrite, Replicated, Category = "Inventory Component")

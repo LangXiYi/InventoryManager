@@ -10,12 +10,14 @@
 #include "Components/NamedSlot.h"
 #include "Net/UnrealNetwork.h"
 
+UGridInvSys_GridContainerObject::UGridInvSys_GridContainerObject()
+{
+}
+
 void UGridInvSys_GridContainerObject::InitInventoryObject(UInvSys_InventoryComponent* NewInventoryComponent,
-	UObject* PreEditPayLoad)
+                                                          UObject* PreEditPayLoad)
 {
 	Super::InitInventoryObject(NewInventoryComponent, PreEditPayLoad);
-
-
 }
 
 void UGridInvSys_GridContainerObject::AddInventoryItemToContainer(const FGridInvSys_InventoryItem& NewItem)

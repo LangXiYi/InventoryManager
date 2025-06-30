@@ -16,33 +16,30 @@ class UInvSys_InventoryComponent;
 /**
  * 
  */
-UCLASS(EditInlineNew, Blueprintable)
+UCLASS()
 class BASEINVENTORYSYSTEM_API UInvSys_BaseInventoryObject : public UObject
 {
 	GENERATED_BODY()
 
 	friend class UInvSys_PreEditInventoryObject;
-
-public:
-	UInvSys_BaseInventoryObject();
-
-protected:
+	
 #define COPY_INVENTORY_OBJECT_PROPERTY(c, v)\
 	v = static_cast<c*>(PreEditPayLoad)->v;
 
 public:
-	/** 容器构建函数 */
+	UInvSys_BaseInventoryObject();
+	
+	/** 初始化库存对象 */
 	virtual void InitInventoryObject(UInvSys_InventoryComponent* NewInventoryComponent, UObject* PreEditPayLoad);
 
-	/**	刷新显示效果 */
-	virtual void TryRefreshOccupant();
-
-	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) {}
-
-	virtual void CopyPropertyFromPreEdit(UInvSys_InventoryComponent* NewInventoryComponent,UObject* PreEditPayLoad);
-
-	virtual void PostRepNotifies() override;
+protected:
+	virtual void CreateDisplayWidget(APlayerController* PC);
 	
+public:
+	/**
+	 * Getter Or Setter
+	 **/
+
 	FORCEINLINE FName GetSlotName() const;
 
 	FORCEINLINE UInvSys_InventoryComponent* GetInventoryComponent() const;
@@ -51,15 +48,16 @@ public:
 
 	FORCEINLINE ENetMode GetNetMode() const;
 
-	FORCEINLINE bool IsLocalController() const;
+	FORCEINLINE bool IsLocallyControlled() const;
 
-	FORCEINLINE AActor* GetOwningActor() const;
-	
-protected:
-	virtual void CreateDisplayWidget(APlayerController* PC);
+	FORCEINLINE AActor* GetOwner() const;
 
-public:
-	virtual bool IsSupportedForNetworking() const override { return true; }
+	FORCEINLINE float GetServerWaitBatchTime() const;
+
+	FORCEINLINE virtual bool IsSupportedForNetworking() const override { return true; }
+
+	/** 从预设对象中复制属性 */
+	virtual void CopyPropertyFromPreEdit(UInvSys_InventoryComponent* NewInventoryComponent,UObject* PreEditPayLoad);
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
@@ -69,12 +67,14 @@ protected:
 	FName SlotName;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Object")
-	UInvSys_InventoryComponent* InventoryComponent;
+	UInvSys_InventoryComponent* InventoryComponent = nullptr;
 
 	bool bIsCopyPreEditData = false;
 
 private:
 	bool bIsInitInventoryObject = false;
+
+	float ServerWaitBatchTime = 0.f;
 };
 
 /**

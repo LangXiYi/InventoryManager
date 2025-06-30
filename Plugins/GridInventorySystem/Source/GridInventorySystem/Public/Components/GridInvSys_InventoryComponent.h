@@ -14,7 +14,7 @@
  * Item --------> Grid--------------> Container -------------> Inventory
  * 库存组件可以由单个或多个容器组成，每个容器包含单个或多个网格系统，网格系统则是由网格单元组成
  */
-UCLASS(ClassGroup=(InventorySystem), meta=(BlueprintSpawnableComponent), Blueprintable)
+UCLASS(Blueprintable, meta=(BlueprintSpawnableComponent))
 class GRIDINVENTORYSYSTEM_API UGridInvSys_InventoryComponent : public UInvSys_InventoryComponent
 {
 	GENERATED_BODY()
@@ -25,20 +25,23 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	virtual void AddInventoryItemToGridContainer(FGridInvSys_InventoryItem GridContainerItem);
-
-	virtual void AddInventoryItemToEquipSlot(const FInvSys_InventoryItem& NewItem, FName TargetSlotName) override;
-	
-	UUserWidget* GetInventoryLayoutWidget() const
-	{
-		return InventoryLayoutWidget;
-	}
 	
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
-	virtual void OnInitInventoryObjects_Implementation(APlayerController* NewPlayerController) override;
+	virtual void NativeOnInitInventoryObjects(APlayerController* InController) override;
+
+public:
+	/**
+	 * Getter Or Setter
+	 **/
 	
+	UUserWidget* GetInventoryLayoutWidget() const
+	{
+		return InventoryLayoutWidget;
+	}
+
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 protected:
