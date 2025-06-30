@@ -6,7 +6,7 @@
 #include "InvSys_InventorySystemConfig.h"
 #include "GridInvSys_InventorySystemConfig.generated.h"
 
-class UGridInvSys_DraggingWidget;
+class UGridInvSys_DragItemWidget;
 /**
  * 
  */
@@ -23,7 +23,7 @@ public:
 
 public:
 	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category = "Inventory System Config")
-	TSubclassOf<UGridInvSys_DraggingWidget> DraggingWidgetClass;
+	TSubclassOf<UGridInvSys_DragItemWidget> DraggingWidgetClass = nullptr;
 
 	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category = "Inventory System Config")
 	int32 ItemDrawSize = 128;

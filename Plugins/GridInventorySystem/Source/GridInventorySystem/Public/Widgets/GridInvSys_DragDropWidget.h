@@ -8,7 +8,7 @@
 
 class UInvSys_InventoryItemInfo;
 enum class EDragPivot : uint8;
-class UGridInvSys_DraggingWidget;
+class UGridInvSys_DragItemWidget;
 /**
  * 
  */
@@ -20,7 +20,10 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_DragDropWidget : public UGridInvSys_In
 public:
 	UGridInvSys_DragDropWidget(const FObjectInitializer& ObjectInitializer);
 
+	UFUNCTION(BlueprintCallable)
 	void UpdateItemInfo(UInvSys_InventoryItemInfo* NewItemInfo);
+
+	void SetDraggingWidgetClass(TSubclassOf<UGridInvSys_DragItemWidget> NewDraggingWidgetClass);
 	
 protected:
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
@@ -35,7 +38,7 @@ protected:
 	bool bIsOverrideDraggingWidgetClass = false;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Drag Drop Widget", meta = (EditCondition = "OverrideDraggingWidgetClass"))
-	TSubclassOf<UGridInvSys_DraggingWidget> DraggingWidgetClass;
+	TSubclassOf<UGridInvSys_DragItemWidget> DraggingWidgetClass;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Drag Drop Widget")
 	EDragPivot DragPivot;

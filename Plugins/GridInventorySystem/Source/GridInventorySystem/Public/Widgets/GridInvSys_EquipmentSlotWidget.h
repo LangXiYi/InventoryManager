@@ -17,9 +17,10 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_EquipmentSlotWidget : public UGridInvS
 	GENERATED_BODY()
 
 public:
+	UFUNCTION(BlueprintCallable)
 	virtual void UpdateOccupant(const FInvSys_InventoryItem& NewOccupant);
 	
-	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
+	UFUNCTION(BlueprintImplementableEvent)
 	void OnUpdateOccupant(const FInvSys_InventoryItem& NewOccupant);
 
 public:	

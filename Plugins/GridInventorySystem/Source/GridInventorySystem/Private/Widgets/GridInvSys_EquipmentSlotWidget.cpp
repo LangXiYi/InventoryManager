@@ -6,5 +6,6 @@
 
 void UGridInvSys_EquipmentSlotWidget::UpdateOccupant(const FInvSys_InventoryItem& NewOccupant)
 {
+	
 	OnUpdateOccupant(NewOccupant);
 }

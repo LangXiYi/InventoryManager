@@ -6,7 +6,7 @@
 #include "GridInvSys_InventorySystemConfig.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Framework/Notifications/NotificationManager.h"
-#include "Widgets/GridInvSys_DraggingWidget.h"
+#include "Widgets/GridInvSys_DragItemWidget.h"
 #include "Data/InvSys_InventoryItemInfo.h"
 
 
@@ -17,18 +17,13 @@
 UGridInvSys_DragDropWidget::UGridInvSys_DragDropWidget(const FObjectInitializer& ObjectInitializer)
 : Super(ObjectInitializer)
 {
-	if (bOverrideAccessibleDefaults == false)
+	if (bIsOverrideDraggingWidgetClass == false)
 	{
-		const UGridInvSys_InventorySystemConfig* InventorySystemConfig = GetDefault<UGridInvSys_InventorySystemConfig>();
-#if WITH_EDITOR
-		if (IsValid(InventorySystemConfig->DraggingWidgetClass) == false)
+		if (const UGridInvSys_InventorySystemConfig* InventorySystemConfig = GetDefault<UGridInvSys_InventorySystemConfig>())
 		{
-			FNotificationInfo Info(FText::FromString(TEXT("DraggingWidgetClass is nullptr, 请在前往更新项目设置->库存系统->DraggingWidgetClass")));	
-			Info.ExpireDuration = 4.f;
-			FSlateNotificationManager::Get().AddNotification(Info);
+			check(InventorySystemConfig->DraggingWidgetClass)
+			DraggingWidgetClass = InventorySystemConfig->DraggingWidgetClass;
 		}
-#endif
-		DraggingWidgetClass = InventorySystemConfig->DraggingWidgetClass;
 	}
 	DragPivot = EDragPivot::CenterCenter;
 	DragOffset = FVector2D(0.f, 0.f);
@@ -38,6 +33,11 @@ UGridInvSys_DragDropWidget::UGridInvSys_DragDropWidget(const FObjectInitializer&
 void UGridInvSys_DragDropWidget::UpdateItemInfo(UInvSys_InventoryItemInfo* NewItemInfo)
 {
 	ItemInfo = NewItemInfo;
+}
+
+void UGridInvSys_DragDropWidget::SetDraggingWidgetClass(TSubclassOf<UGridInvSys_DragItemWidget> NewDraggingWidgetClass)
+{
+	DraggingWidgetClass = NewDraggingWidgetClass;
 }
 
 FReply UGridInvSys_DragDropWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
@@ -57,7 +57,7 @@ void UGridInvSys_DragDropWidget::NativeOnDragDetected(const FGeometry& InGeometr
 	// TODO: 创建拖拽对象。
 
 	// 创建 Dragging 控件
-	UGridInvSys_DraggingWidget* DraggingWidget = CreateWidget<UGridInvSys_DraggingWidget>(GetOwningPlayer(), DraggingWidgetClass);
+	UGridInvSys_DragItemWidget* DraggingWidget = CreateWidget<UGridInvSys_DragItemWidget>(GetOwningPlayer(), DraggingWidgetClass);
 	DraggingWidget->UpdateItemInfo(ItemInfo);
 	
 	UDragDropOperation* DragDropOperation = NewObject<UDragDropOperation>();
