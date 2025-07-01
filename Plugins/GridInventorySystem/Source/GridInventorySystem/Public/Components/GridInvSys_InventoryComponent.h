@@ -25,6 +25,24 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	virtual void AddInventoryItemToGridContainer(FGridInvSys_InventoryItem GridContainerItem);
+
+	/**
+	 * 仅适用于同容器组件下的物品转移
+	 * @param ChangedItems 旧物品的唯一ID
+	 * @param NewItemData 
+	 */
+	UFUNCTION(BlueprintCallable)
+	virtual void UpdateContainerItemsPosition(TArray<FName> ChangedItems, TArray<FGridInvSys_InventoryItem> NewItemData);
+
+	/**
+	 * 使用与不同容器组件下的物品转移
+	 * @param ToInvCom 目标的库存组件
+	 * @param FromItemData 本组件需要传给目标组件的数据
+	 * @param ToItemData 目标组件需要传给本组件的数据
+	 */
+	UFUNCTION(BlueprintCallable)
+	virtual void UpdateOtherContainerItemsPosition(UGridInvSys_InventoryComponent* ToInvCom,
+		TArray<FGridInvSys_InventoryItem> FromItemData, TArray<FGridInvSys_InventoryItem> ToItemData);
 	
 protected:
 	// Called when the game starts
@@ -36,6 +54,11 @@ public:
 	/**
 	 * Getter Or Setter
 	 **/
+
+	/** 根据位置查找物品信息。 */
+	bool FindInventoryItem(FName SlotName, const FIntPoint& ItemPosition, FGridInvSys_InventoryItem& OutItem);
+
+	bool FindContainerGridItem(FName ItemUniqueID,  FGridInvSys_InventoryItem& OutItem);
 	
 	UUserWidget* GetInventoryLayoutWidget() const
 	{

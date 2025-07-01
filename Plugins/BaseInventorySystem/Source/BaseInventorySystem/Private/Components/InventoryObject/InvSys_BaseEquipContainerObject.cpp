@@ -11,12 +11,19 @@ UInvSys_BaseEquipContainerObject::UInvSys_BaseEquipContainerObject()
 
 }
 
+void UInvSys_BaseEquipContainerObject::RefreshInventoryObject()
+{
+	Super::RefreshInventoryObject();
+	TryRefreshContainerItems("RefreshInventoryObject() ===> TryRefreshContainerItems()");
+}
+
 void UInvSys_BaseEquipContainerObject::AddDataToRep_AddedInventoryItems(FName ItemUniqueID)
 {
 	if (HasAuthority())
 	{
 		bIsWait_Pending_AddedInventoryItems = true;
 		Pending_AddedInventoryItems.Add(ItemUniqueID);
+		ItemUniqueIDSet.Add(ItemUniqueID);
 		UE_LOG(LogInventorySystem, Log, TEXT("[%s]Added Inventory Items."), *GetOwner()->GetName())
 		TryRepInventoryItems_Add();
 	}
@@ -28,6 +35,8 @@ void UInvSys_BaseEquipContainerObject::AddDataToRep_RemovedInventoryItems(FName 
 	{
 		bIsWait_Pending_RemovedInventoryItems = true;
 		Pending_RemovedInventoryItems.Add(ItemUniqueID);
+		ItemUniqueIDSet.Remove(ItemUniqueID);
+		UE_LOG(LogInventorySystem, Log, TEXT("[%s] Removed Inventory Items."), *GetOwner()->GetName())
 		TryRepInventoryItems_Remove();
 	}
 }
@@ -38,6 +47,7 @@ void UInvSys_BaseEquipContainerObject::AddDataToRep_ChangedInventoryItems(FName 
 	{
 		bIsWait_Pending_ChangedInventoryItems = true;
 		Pending_ChangedInventoryItems.Add(ItemUniqueID);
+		UE_LOG(LogInventorySystem, Log, TEXT("[%s] Changed Inventory Items."), *GetOwner()->GetName())
 		TryRepInventoryItems_Change();
 	}
 }
@@ -152,6 +162,11 @@ void UInvSys_BaseEquipContainerObject::TryRepInventoryItems_Change()
 			TryRepInventoryItems_Change(); // 存在新的需要更新的数据，强制继续更新。
 		}
 	}, GetServerWaitBatchTime(), false);
+}
+
+bool UInvSys_BaseEquipContainerObject::ContainsItem(FName UniqueID)
+{
+	return Super::ContainsItem(UniqueID) || ItemUniqueIDSet.Contains(UniqueID);
 }
 
 void UInvSys_BaseEquipContainerObject::OnRep_AddedInventoryItems()

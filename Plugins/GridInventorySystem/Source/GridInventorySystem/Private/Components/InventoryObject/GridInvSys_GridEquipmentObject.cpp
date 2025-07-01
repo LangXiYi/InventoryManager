@@ -69,6 +69,7 @@ void UGridInvSys_GridEquipmentObject::CreateDisplayWidget(APlayerController* PC)
 		EquipmentSlotWidget = CreateWidget<UGridInvSys_EquipmentSlotWidget>(GetWorld(), EquipmentSlotWidgetClass);
 
 	EquipmentSlotWidget->SetSlotName(GetSlotName());
+	EquipmentSlotWidget->SetInventoryComponent(GetInventoryComponent());
 
 	// 获取库存布局控件，并将装备槽插入指定位置
 	UUserWidget* InventoryMenuWidget = GridInventoryComponent->GetInventoryLayoutWidget();

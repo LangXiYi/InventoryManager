@@ -9,8 +9,14 @@ UInvSys_BaseEquipmentObject::UInvSys_BaseEquipmentObject()
 {
 }
 
+void UInvSys_BaseEquipmentObject::RefreshInventoryObject()
+{
+	Super::RefreshInventoryObject();
+	TryRefreshOccupant("RefreshInventoryObject() ===> TryRefreshOccupant");
+}
+
 void UInvSys_BaseEquipmentObject::InitInventoryObject(UInvSys_InventoryComponent* NewInventoryComponent,
-	UObject* PreEditPayLoad)
+                                                      UObject* PreEditPayLoad)
 {
 	Super::InitInventoryObject(NewInventoryComponent, PreEditPayLoad);
 	TryRefreshOccupant();
@@ -45,6 +51,16 @@ void UInvSys_BaseEquipmentObject::GetLifetimeReplicatedProps(TArray<FLifetimePro
 void UInvSys_BaseEquipmentObject::TryRefreshOccupant(const FString& Reason)
 {
 	if (Reason != "") UE_LOG(LogInventorySystem, Log, TEXT("[%s]"), *Reason);
+}
+
+bool UInvSys_BaseEquipmentObject::ContainsItem(FName UniqueID)
+{
+	return GetOccupantData().UniqueID == UniqueID;
+}
+
+FInvSys_InventoryItem UInvSys_BaseEquipmentObject::GetOccupantData() const
+{
+	return Occupant;
 }
 
 void UInvSys_BaseEquipmentObject::OnRep_Occupant(FInvSys_InventoryItem OldOccupant)

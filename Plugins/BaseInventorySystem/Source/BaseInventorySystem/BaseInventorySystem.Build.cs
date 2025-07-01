@@ -39,6 +39,7 @@ public class BaseInventorySystem : ModuleRules
 				"Slate",
 				"NetCore",
 				"SlateCore",
+				"UMG",
 				"DeveloperSettings"
 				// ... add private dependencies that you statically link with here ...	
 			}

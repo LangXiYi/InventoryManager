@@ -5,6 +5,7 @@
 
 #include "BaseInventorySystem.h"
 #include "Components/InventoryObject/InvSys_BaseContainerObject.h"
+#include "Components/InventoryObject/InvSys_BaseEquipContainerObject.h"
 #include "Components/InventoryObject/InvSys_BaseEquipmentObject.h"
 #include "Components/InventoryObject/InvSys_BaseInventoryObject.h"
 #include "Data/InvSys_InventoryContentMapping.h"
@@ -63,6 +64,18 @@ FTimerManager& UInvSys_InventoryComponent::GetWorldTimerManager() const
 {
 	ensure(GetWorld());
 	return GetWorld()->GetTimerManager();
+}
+
+bool UInvSys_InventoryComponent::IsContainsInventoryItem(const FName ItemUniqueID)
+{
+	for (UInvSys_BaseInventoryObject* InventoryObject : InventoryObjectList)
+	{
+		if (InventoryObject->ContainsItem(ItemUniqueID))
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 bool UInvSys_InventoryComponent::IsLocalController() const
@@ -166,6 +179,14 @@ void UInvSys_InventoryComponent::InitInventoryObj(APlayerController* NewPlayerCo
 			InventoryObjectList[i]->InitInventoryObject(this, GetPreEditInventoryObject(i));
 			InventoryObjectMap.Add(InventoryObjectList[i]->GetSlotName(), InventoryObjectList[i]);
 		}
+	}
+}
+
+void UInvSys_InventoryComponent::Client_TryRefreshInventoryObject_Implementation()
+{
+	for (UInvSys_BaseInventoryObject* InvObj : InventoryObjectList)
+	{
+		InvObj->RefreshInventoryObject();
 	}
 }
 

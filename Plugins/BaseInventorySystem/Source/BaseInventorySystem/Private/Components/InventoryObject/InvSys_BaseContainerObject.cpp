@@ -18,12 +18,19 @@ void UInvSys_BaseContainerObject::InitInventoryObject(UInvSys_InventoryComponent
 	TryRefreshContainerItems("InitInventoryObjects() ===> TryRefreshContainerItems()");
 }
 
+void UInvSys_BaseContainerObject::RefreshInventoryObject()
+{
+	Super::RefreshInventoryObject();
+	TryRefreshContainerItems("RefreshInventoryObject() ===> TryRefreshContainerItems()");
+}
+
 void UInvSys_BaseContainerObject::AddDataToRep_AddedInventoryItems(FName ItemUniqueID)
 {
 	if (HasAuthority())
 	{
 		bIsWait_Pending_AddedInventoryItems = true;
 		Pending_AddedInventoryItems.Add(ItemUniqueID);
+		ItemUniqueIDSet.Add(ItemUniqueID);
 		UE_LOG(LogInventorySystem, Log, TEXT("[%s]Added Inventory Items."), *GetOwner()->GetName())
 		TryRepInventoryItems_Add();
 	}
@@ -35,6 +42,7 @@ void UInvSys_BaseContainerObject::AddDataToRep_RemovedInventoryItems(FName ItemU
 	{
 		bIsWait_Pending_RemovedInventoryItems = true;
 		Pending_RemovedInventoryItems.Add(ItemUniqueID);
+		ItemUniqueIDSet.Remove(ItemUniqueID);
 		TryRepInventoryItems_Remove();
 	}
 }
@@ -153,6 +161,11 @@ void UInvSys_BaseContainerObject::TryRepInventoryItems_Change()
 			TryRepInventoryItems_Change(); // 存在新的需要更新的数据，强制继续更新。
 		}
 	}, GetServerWaitBatchTime(), false);
+}
+
+bool UInvSys_BaseContainerObject::ContainsItem(FName UniqueID)
+{
+	return Super::ContainsItem(UniqueID) || ItemUniqueIDSet.Contains(UniqueID);
 }
 
 void UInvSys_BaseContainerObject::OnRep_ChangedInventoryItems()

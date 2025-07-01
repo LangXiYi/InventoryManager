@@ -20,6 +20,7 @@ void UGridInvSys_ContainerGridLayoutWidget::ConstructContainerGrid(FName SlotNam
 	for (int i = 0; i < ContainerGridWidgets.Num(); ++i)
 	{
 		ContainerGridWidgets[i]->SetContainerGridID(*FString::FromInt(i));
+		ContainerGridWidgets[i]->SetInventoryComponent(GetInventoryComponent());
 		ContainerGridWidgets[i]->ConstructGridItems(SlotName);
 		ContainerGridMap.Add(ContainerGridWidgets[i]->GetContainerGridID(), ContainerGridWidgets[i]);
 	}

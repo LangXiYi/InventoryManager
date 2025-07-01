@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/InventoryObject/InvSys_BaseInventoryObject.h"
+#include "InvSys_CommonType.h"
 #include "InvSys_BaseContainerObject.generated.h"
 
 /**
@@ -18,6 +19,8 @@ public:
 	UInvSys_BaseContainerObject();
 
 	virtual void InitInventoryObject(UInvSys_InventoryComponent* NewInventoryComponent, UObject* PreEditPayLoad) override;
+
+	virtual void RefreshInventoryObject() override;
 	
 	/** [Server] 添加物品，并将操作记录至复制列表，等待一段时间后，将所有操作批量发送给客户端并清除操作列表。 */
 	void AddDataToRep_AddedInventoryItems(FName ItemUniqueID);
@@ -27,7 +30,7 @@ public:
 	void AddDataToRep_ChangedInventoryItems(FName OldItemUniqueID);
 
 protected:
-	virtual void TryRefreshContainerItems(const FString& Reason);
+	virtual void TryRefreshContainerItems(const FString& Reason = "");
 	
 	/** [Client] 处理服务器批量返回的操作记录 */
 	virtual void OnAddedContainerItems(const TArray<FName>& InAddedItems) {}
@@ -46,7 +49,13 @@ public:
 	 * Getter Or Setter
 	 **/
 
+	virtual bool ContainsItem(FName UniqueID) override;
+
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+protected:
+	// 用于记录容器内保存的对象
+	TSet<FName> ItemUniqueIDSet;
 	
 private:
 	UPROPERTY(ReplicatedUsing = OnRep_AddedInventoryItems)

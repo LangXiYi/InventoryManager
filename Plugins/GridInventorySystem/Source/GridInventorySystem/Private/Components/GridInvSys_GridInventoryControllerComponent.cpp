@@ -3,6 +3,8 @@
 
 #include "Components/GridInvSys_GridInventoryControllerComponent.h"
 
+#include "Components/GridInvSys_InventoryComponent.h"
+
 
 // Sets default values for this component's properties
 UGridInvSys_GridInventoryControllerComponent::UGridInvSys_GridInventoryControllerComponent()
@@ -14,6 +16,14 @@ UGridInvSys_GridInventoryControllerComponent::UGridInvSys_GridInventoryControlle
 	// ...
 }
 
+void UGridInvSys_GridInventoryControllerComponent::Server_UpdateInventoryItems_Implementation(const TArray<FName>& ChangedItems,
+	const TArray<FGridInvSys_InventoryItem>& NewItemData)
+{
+	if (UGridInvSys_InventoryComponent* GridInvComp = GetInventoryComponent<UGridInvSys_InventoryComponent>())
+	{
+		GridInvComp->UpdateContainerItemsPosition(ChangedItems, NewItemData);
+	} 
+}
 
 // Called when the game starts
 void UGridInvSys_GridInventoryControllerComponent::BeginPlay()
@@ -32,5 +42,12 @@ void UGridInvSys_GridInventoryControllerComponent::TickComponent(float DeltaTime
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	// ...
+}
+
+UInvSys_InventoryComponent* UGridInvSys_GridInventoryControllerComponent::GetInventoryComponent_Implementation() const
+{
+	// todo::本案例的 InventoryComponent 与 ControllerInventoryComponent 都在 Controller下，若位置发送改变需要在这里重写。
+	// todo::是否考虑使用Interface？与 GAS 类似的方案？
+	return GetOwner()->GetComponentByClass<UGridInvSys_InventoryComponent>();
 }
 

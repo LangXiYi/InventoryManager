@@ -35,10 +35,19 @@ void UInvSys_BaseInventoryObject::InitInventoryObject(UInvSys_InventoryComponent
 	}
 }
 
+void UInvSys_BaseInventoryObject::RefreshInventoryObject()
+{
+}
+
 void UInvSys_BaseInventoryObject::CreateDisplayWidget(APlayerController* PC)
 {
 	UE_LOG(LogInventorySystem, Log, TEXT("[%s] 正在创建显示效果。"),
 		PC->HasAuthority() ? TEXT("Server") : TEXT("Client"));
+}
+
+bool UInvSys_BaseInventoryObject::ContainsItem(FName UniqueID)
+{
+	return false;
 }
 
 void UInvSys_BaseInventoryObject::CopyPropertyFromPreEdit(UInvSys_InventoryComponent* NewInventoryComponent,

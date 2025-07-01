@@ -23,6 +23,8 @@ class BASEINVENTORYSYSTEM_API UInvSys_BaseEquipContainerObject : public UInvSys_
 
 public:
 	UInvSys_BaseEquipContainerObject();
+
+	virtual void RefreshInventoryObject() override;
 	
 	/** [Server] 添加物品，并将操作记录至复制列表，等待一段时间后，将所有操作批量发送给客户端并清除操作列表。 */
 	void AddDataToRep_AddedInventoryItems(FName ItemUniqueID);
@@ -52,7 +54,13 @@ public:
 	 * Getter Or Setter
 	 **/
 
+	virtual bool ContainsItem(FName UniqueID) override;
+
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+protected:
+	// 用于记录容器内保存的对象
+	TSet<FName> ItemUniqueIDSet;
 	
 private:
 	UPROPERTY(ReplicatedUsing = OnRep_AddedInventoryItems)
@@ -79,5 +87,4 @@ private:
 	FTimerHandle AddTimerHandle;
 	FTimerHandle RemoveTimerHandle;
 	FTimerHandle ChangeTimerHandle;
-
 };

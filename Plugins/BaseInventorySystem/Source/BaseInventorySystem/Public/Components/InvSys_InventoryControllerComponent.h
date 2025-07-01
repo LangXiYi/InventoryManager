@@ -7,7 +7,9 @@
 #include "InvSys_InventoryControllerComponent.generated.h"
 
 
-UCLASS(ClassGroup=(InventorySystem), meta=(BlueprintSpawnableComponent), Blueprintable)
+class UInvSys_InventoryComponent;
+
+UCLASS(Blueprintable, meta=(BlueprintSpawnableComponent))
 class BASEINVENTORYSYSTEM_API UInvSys_InventoryControllerComponent : public UActorComponent
 {
 	GENERATED_BODY()
@@ -15,6 +17,11 @@ class BASEINVENTORYSYSTEM_API UInvSys_InventoryControllerComponent : public UAct
 public:
 	// Sets default values for this component's properties
 	UInvSys_InventoryControllerComponent();
+
+
+public:
+	UFUNCTION(BlueprintNativeEvent)
+	UInvSys_InventoryComponent* GetInventoryComponent() const;
 	
 	/** Gets the game instance this component is a part of, this will return null if not called during normal gameplay */
 	template <class T>
@@ -34,6 +41,14 @@ public:
 		T* GameInstance = Owner->GetGameInstance<T>();
 		check(GameInstance);
 		return GameInstance;
+	}
+
+	template <class T>
+	T* GetInventoryComponent() const
+	{
+		UInvSys_InventoryComponent* InvComp = GetInventoryComponent();
+		check(InvComp)
+		return Cast<T>(InvComp);
 	}
 
 	/** Returns true if the owner's role is ROLE_Authority */

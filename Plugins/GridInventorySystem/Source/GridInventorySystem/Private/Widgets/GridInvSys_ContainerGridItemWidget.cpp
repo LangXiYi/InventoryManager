@@ -13,51 +13,39 @@
 #include "Widgets/GridInvSys_DragDropWidget.h"
 #include "Widgets/Notifications/SNotificationList.h"
 
-void UGridInvSys_ContainerGridItemWidget::InitContainerGridItem(UGridInvSys_ContainerGridWidget* InContainerGridWidget, FIntPoint InPosition)
+void UGridInvSys_ContainerGridItemWidget::SetContainerGridWidget(UGridInvSys_ContainerGridWidget* InContainerGridWidget)
 {
 	ContainerGridWidget = InContainerGridWidget;
-	Position = InPosition;
-
-	/*SlotName = InContainerGridWidget->ContainerName;
-	GridID = InContainerGridWidget->ContainerGridID;*/
-
 }
 
-void UGridInvSys_ContainerGridItemWidget::UpdateItemInfo(UInvSys_InventoryItemInfo* NewItemInfo)
+void UGridInvSys_ContainerGridItemWidget::UpdateItemInfo(const FGridInvSys_InventoryItem& NewInventoryItem)
 {
-	if (NewItemInfo == nullptr)
-	{
-		UE_LOG(LogInventorySystem, Warning, TEXT("更新 ItemInfo 失败，传入的 NewItemInfo 为空。"));
-		return;
-	}
-	
-	UE_LOG(LogInventorySystem, Log, TEXT("正在执行 UpdateItemInfo 函数, 在位置 [%d, %d] 处添加新物品."), Position.X, Position.Y);
-	
 	UGridSlot* GridSlot = Cast<UGridSlot>(Slot);
 	if (GridSlot == nullptr)
 	{
 		UE_LOG(LogInventorySystem, Warning, TEXT("更新 ItemInfo 失败 InventoryItemWidget 父级类型不是 GridPanel 。"));
 		return;
 	}
-
+	UInvSys_InventoryItemInfo* NewItemInfo = NewInventoryItem.BaseItemData.ItemInfo;
 	const UGridInvSys_InventoryItemInfo* GridItemInfo = Cast<UGridInvSys_InventoryItemInfo>(NewItemInfo);
+	check(GridItemInfo);
 
 	DragDropWidget->UpdateItemInfo(NewItemInfo);
 
-	ItemInfo = NewItemInfo;
+	InventoryItem = NewInventoryItem;
 	bIsOccupied = true;
 	OriginGridItemWidget = this;
 
-	GridSlot->SetRowSpan(GridItemInfo->ItemSize.X);
-	GridSlot->SetColumnSpan(GridItemInfo->ItemSize.Y);
+	GridSlot->SetRowSpan(GetItemSize().X);
+	GridSlot->SetColumnSpan(GetItemSize().Y);
 	GridSlot->SetLayer(100);
 	
 	TArray<UGridInvSys_ContainerGridItemWidget*> OutArray;
-	ContainerGridWidget->FindContainerGridItems(OutArray, Position, GridItemInfo->ItemSize, {this});
+	ContainerGridWidget->GetContainerGridItems<UGridInvSys_ContainerGridItemWidget>(OutArray, GetPosition(), GetItemSize(), {this});
 	for (UGridInvSys_ContainerGridItemWidget* GridItemWidget : OutArray)
 	{
 		GridItemWidget->bIsOccupied = true;
-		GridItemWidget->ItemInfo = ItemInfo;
+		GridItemWidget->InventoryItem = NewInventoryItem;
 		GridItemWidget->OriginGridItemWidget = this;
 	}
 	OnItemInfoChanged(NewItemInfo);
@@ -65,35 +53,31 @@ void UGridInvSys_ContainerGridItemWidget::UpdateItemInfo(UInvSys_InventoryItemIn
 
 void UGridInvSys_ContainerGridItemWidget::RemoveItemInfo()
 {
-	// TODO:: From To 调用 Inventory Component 删除
-	UE_LOG(LogInventorySystem, Log, TEXT("正在执行 RemoveItemInfo 函数, 移除 GridItem 位于 [%d, %d] 的物品."), Position.X, Position.Y);
-	
 	UGridSlot* GridSlot = Cast<UGridSlot>(Slot);
 	if (GridSlot == nullptr)
 	{
 		UE_LOG(LogInventorySystem, Warning, TEXT("更新 ItemInfo 失败 InventoryItemWidget 父级类型不是 GridPanel 。"));
 		return;
 	}
-	
-	const UGridInvSys_InventoryItemInfo* GridItemInfo = Cast<UGridInvSys_InventoryItemInfo>(ItemInfo);
+	// 先临时缓存，避免清除数据后数据丢失。
+	const FIntPoint ItemSize = GetItemSize();
 
 	DragDropWidget->UpdateItemInfo(nullptr);
-
-	ItemInfo = nullptr;
+	InventoryItem = FGridInvSys_InventoryItem();
 	bIsOccupied = false;
-	OriginGridItemWidget = nullptr;
+	OriginGridItemWidget = this;
 
 	GridSlot->SetRowSpan(0);
 	GridSlot->SetColumnSpan(0);
 	GridSlot->SetLayer(0);
 
 	TArray<UGridInvSys_ContainerGridItemWidget*> OutArray;
-	ContainerGridWidget->FindContainerGridItems(OutArray, Position, GridItemInfo->ItemSize, {this});
+	ContainerGridWidget->FindContainerGridItems(OutArray, GetPosition(), ItemSize, {this});
 	for (UGridInvSys_ContainerGridItemWidget* GridItemWidget : OutArray)
 	{
 		GridItemWidget->bIsOccupied = false;
-		GridItemWidget->ItemInfo = nullptr;
-		GridItemWidget->OriginGridItemWidget = nullptr;
+		GridItemWidget->InventoryItem = FGridInvSys_InventoryItem();
+		GridItemWidget->OriginGridItemWidget = GridItemWidget;
 	}
 	OnItemInfoChanged(nullptr);
 }
@@ -103,14 +87,26 @@ UGridInvSys_ContainerGridWidget* UGridInvSys_ContainerGridItemWidget::GetContain
 	return ContainerGridWidget;
 }
 
-UObject* UGridInvSys_ContainerGridItemWidget::GetItemInfo() const
+UInvSys_InventoryItemInfo* UGridInvSys_ContainerGridItemWidget::GetItemInfo() const
 {
-	return ItemInfo;
+	return InventoryItem.BaseItemData.ItemInfo;
 }
 
 FIntPoint UGridInvSys_ContainerGridItemWidget::GetPosition() const
 {
-	return Position;
+	UGridSlot* GridSlot = Cast<UGridSlot>(Slot);
+	check(GridSlot)
+	return FIntPoint(GridSlot->GetRow(), GridSlot->GetColumn());
+}
+
+FIntPoint UGridInvSys_ContainerGridItemWidget::GetOriginPosition() const
+{
+	return OriginGridItemWidget ? OriginGridItemWidget->GetPosition() : Position;
+}
+
+UGridInvSys_ContainerGridItemWidget* UGridInvSys_ContainerGridItemWidget::GetOriginGridItemWidget() const
+{
+	return OriginGridItemWidget;
 }
 
 bool UGridInvSys_ContainerGridItemWidget::IsOccupied() const
@@ -128,21 +124,38 @@ void UGridInvSys_ContainerGridItemWidget::SetGridID(FName NewGridID)
 	GridID = NewGridID;
 }
 
-FIntPoint UGridInvSys_ContainerGridItemWidget::CalculateRelativePosition(UGridInvSys_ContainerGridItemWidget* Parent) const
+FIntPoint UGridInvSys_ContainerGridItemWidget::GetItemSize() const
 {
-	if (Parent == nullptr)
-	{
-		UE_LOG(LogInventorySystem, Log, TEXT("无法计算相对位置，传入的 Parent 为空。"))
-		return FIntPoint(-1, -1);
-	}
-	
-	if (Parent->GetParent() != GetParent())
-	{
-		UE_LOG(LogInventorySystem, Log, TEXT("无法计算相对位置，因为两个 GridItem 的 Parent 不同。"))
-		return FIntPoint(-1, -1);
-	}
+	return InventoryItem.ItemPosition.Size;
+}
 
-	return FIntPoint(Position.X - Parent->Position.X, Position.Y - Parent->Position.Y);
+FName UGridInvSys_ContainerGridItemWidget::GetItemUniqueID() const
+{
+	return InventoryItem.BaseItemData.UniqueID;
+}
+
+TArray<UWidget*> UGridInvSys_ContainerGridItemWidget::GetOccupiedGridItems()
+{
+	TArray<UWidget*> GridItems = {this};
+	if (IsOccupied())
+	{
+		ContainerGridWidget->GetContainerGridItems(GridItems, GetOriginPosition(), GetItemSize());
+	}
+	return GridItems;
+}
+
+FIntPoint UGridInvSys_ContainerGridItemWidget::CalculateRelativePosition(const UGridInvSys_ContainerGridItemWidget* Parent) const
+{
+	check(Parent);
+	if (Parent->GetContainerGridWidget() != this->GetContainerGridWidget())
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("无法计算相对位置，因为两个物品格所处容器不同。"))
+		return false;
+	}
+	FIntPoint OutRelativePosition;
+	OutRelativePosition.X = GetPosition().X - Parent->GetPosition().X;
+	OutRelativePosition.Y = GetPosition().Y - Parent->GetPosition().Y;
+	return OutRelativePosition;
 }
 
 void UGridInvSys_ContainerGridItemWidget::NativePreConstruct()
@@ -165,10 +178,12 @@ void UGridInvSys_ContainerGridItemWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	int32 ItemDrawSize = GetDefault<UGridInvSys_InventorySystemConfig>()->ItemDrawSize;
+	const int32 ItemDrawSize = GetDefault<UGridInvSys_InventorySystemConfig>()->ItemDrawSize;
 	if (SizeBox)
 	{
 		SizeBox->SetWidthOverride(ItemDrawSize);
 		SizeBox->SetHeightOverride(ItemDrawSize);
 	}
+	DragDropWidget->SetInventoryComponent(GetInventoryComponent());
+	DragDropWidget->SetGridItemWidget(this);
 }

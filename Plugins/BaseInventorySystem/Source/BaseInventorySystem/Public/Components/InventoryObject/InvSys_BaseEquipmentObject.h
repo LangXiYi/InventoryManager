@@ -18,6 +18,8 @@ class BASEINVENTORYSYSTEM_API UInvSys_BaseEquipmentObject : public UInvSys_BaseI
 public:
 	UInvSys_BaseEquipmentObject();
 
+	virtual void RefreshInventoryObject() override;
+
 	virtual void InitInventoryObject(UInvSys_InventoryComponent* NewInventoryComponent, UObject* PreEditPayLoad) override;
 	
 	virtual void AddInventoryItemToEquipSlot(const FInvSys_InventoryItem& NewItem);
@@ -31,6 +33,10 @@ public:
 	 * Getter Or Setter
 	 **/
 
+	virtual bool ContainsItem(FName UniqueID) override;
+
+	FInvSys_InventoryItem GetOccupantData() const;
+	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 protected:

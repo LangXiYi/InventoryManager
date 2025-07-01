@@ -3,9 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GridInvSys_CommonType.h"
 #include "GridInvSys_InventoryWidget.h"
 #include "GridInvSys_ContainerGridItemWidget.generated.h"
 
+struct FGridInvSys_InventoryItem;
 class UGridPanel;
 class UGridInvSys_ContainerGridWidget;
 class UGridInvSys_InventoryComponent;
@@ -21,17 +23,27 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_ContainerGridItemWidget : public UGrid
 	GENERATED_BODY()
 
 public:
-	void InitContainerGridItem(UGridInvSys_ContainerGridWidget* InContainerGridWidget, FIntPoint InPosition);
+	void SetContainerGridWidget(UGridInvSys_ContainerGridWidget* InContainerGridWidget);
 
-	virtual void UpdateItemInfo(UInvSys_InventoryItemInfo* NewItemInfo);
+	virtual void UpdateItemInfo(const FGridInvSys_InventoryItem&);
 
 	virtual void RemoveItemInfo();
 
 	FORCEINLINE UGridInvSys_ContainerGridWidget* GetContainerGridWidget() const;
 
-	FORCEINLINE UObject* GetItemInfo() const;
+	FORCEINLINE UInvSys_InventoryItemInfo* GetItemInfo() const;
+
+	template<class T>
+	T* GetItemInfo()
+	{
+		return Cast<T>(InventoryItem.BaseItemData.ItemInfo);
+	}
 
 	FORCEINLINE FIntPoint GetPosition() const;
+	
+	FORCEINLINE FIntPoint GetOriginPosition() const;
+
+	FORCEINLINE UGridInvSys_ContainerGridItemWidget* GetOriginGridItemWidget() const;
 
 	FORCEINLINE bool IsOccupied() const;
 
@@ -39,11 +51,19 @@ public:
 
 	FORCEINLINE void SetGridID(FName NewGridID);
 
-	/**
-	 * 计算当前网格单元相对另一个网格单元的位置
-	 */
-	FIntPoint CalculateRelativePosition(UGridInvSys_ContainerGridItemWidget* Parent) const;
+	FIntPoint GetItemSize() const;
+
+	FName GetItemUniqueID() const;
+
+	const FGridInvSys_InventoryItem& GetInventoryItemData() const
+	{
+		return InventoryItem;
+	}
 	
+	TArray<UWidget*> GetOccupiedGridItems();
+
+	FIntPoint CalculateRelativePosition(const UGridInvSys_ContainerGridItemWidget* Parent) const;
+
 protected:
 	virtual void NativePreConstruct() override;
 
@@ -77,11 +97,7 @@ protected:
 	FIntPoint Position;
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item")
 	bool bIsOccupied = false;
-	
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item")
-	TObjectPtr<UInvSys_InventoryItemInfo> ItemInfo;
-	
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item")
-	TObjectPtr<UGridInvSys_InventoryComponent> InventoryComponent;
 
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item")
+	FGridInvSys_InventoryItem InventoryItem;
 };

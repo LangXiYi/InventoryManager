@@ -36,7 +36,7 @@ void UGridInvSys_GridEquipContainerObject::TryRefreshOccupant(const FString& Rea
 void UGridInvSys_GridEquipContainerObject::TryRefreshContainerItems(const FString& Reason)
 {
 	Super::TryRefreshContainerItems(Reason);
-	UE_LOG(LogInventorySystem, Log, TEXT("刷新容器所有内容，ContainerItems 的长度为：%s"), *FString::FromInt(ContainerItems.Num()))
+	UE_LOG(LogInventorySystem, Log, TEXT("刷新容器所有内容，ContainerItems 的长度为：%s"), *FString::FromInt(RepNotify_ContainerItems.Num()))
 	if (EquipmentSlotWidget)
 	{
 		// 刷新网格容器
@@ -46,18 +46,18 @@ void UGridInvSys_GridEquipContainerObject::TryRefreshContainerItems(const FStrin
 			// 本地缓存容器网格映射，方便通过 GridID 直接获取 ContainerGrid 对象
 			TArray<UGridInvSys_ContainerGridWidget*> ContainerGrids;
 			EquipContainerSlotWidget->GetAllContainerGrid(ContainerGrids);
-			ContainerGridMap.Empty();
-			ContainerGridMap.Reserve(ContainerGrids.Num());
+			ContainerGridWidgets.Empty();
+			ContainerGridWidgets.Reserve(ContainerGrids.Num());
 			for (UGridInvSys_ContainerGridWidget* ContainerGrid : ContainerGrids)
 			{
-				ContainerGridMap.Add(ContainerGrid->GetContainerGridID(), ContainerGrid);
+				ContainerGridWidgets.Add(ContainerGrid->GetContainerGridID(), ContainerGrid);
 			}
 		}
 		
 		if (UGridInvSys_EquipContainerSlotWidget* EquipContainerSlotWidget =
 			Cast<UGridInvSys_EquipContainerSlotWidget>(EquipmentSlotWidget))
 		{
-			EquipContainerSlotWidget->UpdateContainerGrid(ContainerItems);
+			EquipContainerSlotWidget->UpdateContainerGrid(RepNotify_ContainerItems);
 		}
 	}
 }
@@ -80,6 +80,7 @@ void UGridInvSys_GridEquipContainerObject::CreateDisplayWidget(APlayerController
 		EquipmentSlotWidget = CreateWidget<UGridInvSys_EquipmentSlotWidget>(GetWorld(), EquipmentSlotWidgetClass);
 
 	EquipmentSlotWidget->SetSlotName(GetSlotName());
+	EquipmentSlotWidget->SetInventoryComponent(GetInventoryComponent());
 
 	// 获取库存布局控件，并将装备槽插入指定位置
 	UUserWidget* InventoryMenuWidget = GridInventoryComponent->GetInventoryLayoutWidget();
@@ -116,8 +117,9 @@ void UGridInvSys_GridEquipContainerObject::AddInventoryItemToContainer(const FGr
 {
 	if (HasAuthority())
 	{
-		ContainerItems.Add(InventoryItem);
-		ContainerItemMap.Add(InventoryItem.BaseItemData.UniqueID, InventoryItem);
+		RepNotify_ContainerItems.Add(InventoryItem);
+		ContainerGridItems.Add(InventoryItem.BaseItemData.UniqueID, InventoryItem);
+		ItemPositionMap.Add(InventoryItem.ItemPosition.Position, InventoryItem.BaseItemData.UniqueID);
 		AddDataToRep_AddedInventoryItems(InventoryItem.BaseItemData.UniqueID);
 	}
 }
@@ -127,25 +129,28 @@ void UGridInvSys_GridEquipContainerObject::RemoveInventoryItemFromContainer(FGri
 	// todo::
 	if (HasAuthority())
 	{
-		ContainerItems.Remove(InventoryItem);
-		ContainerItemMap.Remove(InventoryItem.BaseItemData.UniqueID);
+		RepNotify_ContainerItems.Remove(InventoryItem);
+		ContainerGridItems.Remove(InventoryItem.BaseItemData.UniqueID);
+		ItemPositionMap.Remove(InventoryItem.ItemPosition.Position);
 		AddDataToRep_RemovedInventoryItems(InventoryItem.BaseItemData.UniqueID);
 	}
 }
 
-void UGridInvSys_GridEquipContainerObject::UpdateInventoryItemFromContainer(FGridInvSys_InventoryItem NewItem,
-	FGridInvSys_InventoryItem OldItem)
+void UGridInvSys_GridEquipContainerObject::UpdateInventoryItemFromContainer(FName ItemUniqueID, FGridInvSys_InventoryItemPosition NewPosition)
 {
-	// todo::
 	if (HasAuthority())
 	{
-		if (ContainerItemMap.Contains(OldItem.BaseItemData.UniqueID))
+		if (ContainerGridItems.Contains(ItemUniqueID))
 		{
-			// todo:: 优化为 Update
-			ContainerItems.Remove(OldItem);
-			ContainerItems.Add(NewItem);
-			ContainerItemMap[OldItem.BaseItemData.UniqueID] = NewItem;
-			AddDataToRep_ChangedInventoryItems(OldItem.BaseItemData.UniqueID);
+			FGridInvSys_InventoryItem TempGridItem = ContainerGridItems[ItemUniqueID];
+			ItemPositionMap.Remove(TempGridItem.ItemPosition.Position);
+			ItemPositionMap.Add(NewPosition.Position, ItemUniqueID);
+
+			const int32 Index = RepNotify_ContainerItems.Find(TempGridItem);
+			TempGridItem.ItemPosition = NewPosition;
+			RepNotify_ContainerItems[Index] = TempGridItem;
+			ContainerGridItems[ItemUniqueID] = TempGridItem;
+			AddDataToRep_ChangedInventoryItems(ItemUniqueID);
 		}
 	}
 }
@@ -163,7 +168,7 @@ void UGridInvSys_GridEquipContainerObject::GetLifetimeReplicatedProps(TArray<FLi
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UGridInvSys_GridEquipContainerObject, ContainerItems);
+	DOREPLIFETIME(UGridInvSys_GridEquipContainerObject, RepNotify_ContainerItems);
 }
 
 void UGridInvSys_GridEquipContainerObject::OnAddedContainerItems(const TArray<FName>& InAddedItems)
@@ -174,10 +179,12 @@ void UGridInvSys_GridEquipContainerObject::OnAddedContainerItems(const TArray<FN
 		{
 			// ContainerItems 是服务器同步过来的，所以在正常情况下，其内部应该会存在
 			int32 Index = FindContainerItemIndex(ItemUniqueID);
-			if (ContainerItems.IsValidIndex(Index))
+			if (RepNotify_ContainerItems.IsValidIndex(Index))
 			{
-				UGridInvSys_ContainerGridWidget* GridWidget = ContainerGridMap[ContainerItems[Index].ItemPosition.GridID];
-				GridWidget->AddInventoryItemTo(ContainerItems[Index]);
+				FGridInvSys_InventoryItem TempInvItem = RepNotify_ContainerItems[Index];
+				ContainerGridItems.Add(ItemUniqueID, TempInvItem);
+				UGridInvSys_ContainerGridWidget* GridWidget = ContainerGridWidgets[TempInvItem.ItemPosition.GridID];
+				GridWidget->AddInventoryItemTo(RepNotify_ContainerItems[Index]);
 			}
 		}
 	}
@@ -191,9 +198,9 @@ void UGridInvSys_GridEquipContainerObject::OnRemovedContainerItems(const TArray<
 		{
 			// ContainerItems 是服务器同步过来的，所以在正常情况下，其内部应该会存在
 			int32 Index = FindContainerItemIndex(ItemUniqueID);
-			if (ContainerItems.IsValidIndex(Index))
+			if (RepNotify_ContainerItems.IsValidIndex(Index))
 			{
-				UGridInvSys_ContainerGridWidget* GridWidget = ContainerGridMap[ContainerItems[Index].ItemPosition.GridID];
+				UGridInvSys_ContainerGridWidget* GridWidget = ContainerGridWidgets[RepNotify_ContainerItems[Index].ItemPosition.GridID];
 				// GridWidget->AddInventoryItemTo(ContainerItems[Index]);
 				// RemoveInventoryItem
 			}
@@ -203,18 +210,63 @@ void UGridInvSys_GridEquipContainerObject::OnRemovedContainerItems(const TArray<
 
 void UGridInvSys_GridEquipContainerObject::OnUpdatedContainerItems(const TArray<FName>& InChangedItems)
 {
+	if (EquipmentSlotWidget)
+	{
+		for (FName ItemUniqueID : InChangedItems)
+		{
+			// ContainerItems 是服务器同步过来的，所以在正常情况下，其内部应该会存在
+			int32 Index = FindContainerItemIndex(ItemUniqueID);
+			if (RepNotify_ContainerItems.IsValidIndex(Index))
+			{
+				const FGridInvSys_InventoryItem& NewInvItem = RepNotify_ContainerItems[Index];
+				if (UGridInvSys_ContainerGridWidget* GridWidget = ContainerGridWidgets[NewInvItem.ItemPosition.GridID])
+				{
+					// 移除旧数据
+					FGridInvSys_InventoryItem OldInvItem = ContainerGridItems[NewInvItem.BaseItemData.UniqueID];
+					ContainerGridItems[NewInvItem.BaseItemData.UniqueID] = NewInvItem;
+					GridWidget->RemoveInventoryItem(OldInvItem);
+					GridWidget->AddInventoryItemTo(NewInvItem);
+				}
+				UE_LOG(LogInventorySystem, Log, TEXT("更新容器中的内容。"))
+			}
+		}
+	}
 	Super::OnUpdatedContainerItems(InChangedItems);
 }
 
 int32 UGridInvSys_GridEquipContainerObject::FindContainerItemIndex(FName ItemUniqueID)
 {
 	// todo:: 优化查询速度
-	for (int i = 0; i < ContainerItems.Num(); ++i)
+	for (int i = 0; i < RepNotify_ContainerItems.Num(); ++i)
 	{
-		if (ContainerItems[i].BaseItemData.UniqueID == ItemUniqueID)
+		if (RepNotify_ContainerItems[i].BaseItemData.UniqueID == ItemUniqueID)
 		{
 			return i;
 		}
 	}
 	return INDEX_NONE;
+}
+
+bool UGridInvSys_GridEquipContainerObject::FindContainerGridItem(const FIntPoint& ItemPosition, FGridInvSys_InventoryItem& OutItem) const
+{
+	if (ItemPositionMap.Contains(ItemPosition))
+	{
+		const FName ItemUniqueID = ItemPositionMap[ItemPosition];
+		if (ContainerGridItems.Contains(ItemUniqueID))
+		{
+			OutItem = ContainerGridItems[ItemUniqueID];
+			return true;
+		}
+	}
+	return false;
+}
+
+bool UGridInvSys_GridEquipContainerObject::FindContainerGridItem(FName ItemUniqueID, FGridInvSys_InventoryItem& OutItem) const
+{
+	if (ContainerGridItems.Contains(ItemUniqueID))
+	{
+		OutItem = ContainerGridItems[ItemUniqueID];
+		return true;
+	}
+	return false;
 }

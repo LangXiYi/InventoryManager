@@ -20,10 +20,48 @@ void UGridInvSys_GridContainerObject::InitInventoryObject(UInvSys_InventoryCompo
 	Super::InitInventoryObject(NewInventoryComponent, PreEditPayLoad);
 }
 
-void UGridInvSys_GridContainerObject::AddInventoryItemToContainer(const FGridInvSys_InventoryItem& NewItem)
+void UGridInvSys_GridContainerObject::AddInventoryItemToContainer(const FGridInvSys_InventoryItem& InventoryItem)
 {
-	// ContainerItems.Add(InventoryItem);
+	/*if (HasAuthority())
+	{
+		ContainerItems.Add(InventoryItem);
+		ContainerItemMap.Add(InventoryItem.BaseItemData.UniqueID, InventoryItem);
+		AddDataToRep_AddedInventoryItems(InventoryItem.BaseItemData.UniqueID);
+	}*/
 }
+
+void UGridInvSys_GridContainerObject::RemoveInventoryItemFromContainer(FGridInvSys_InventoryItem InventoryItem)
+{
+}
+
+void UGridInvSys_GridContainerObject::UpdateInventoryItemFromContainer(FGridInvSys_InventoryItem NewItem)
+{
+}
+
+bool UGridInvSys_GridContainerObject::FindContainerGridItem(const FIntPoint& ItemPosition, FGridInvSys_InventoryItem& OutItem) const
+{
+	if (ItemPositionMap.Contains(ItemPosition))
+	{
+		const FName ItemUniqueID = ItemPositionMap[ItemPosition];
+		if (ContainerGridItems.Contains(ItemUniqueID))
+		{
+			OutItem = ContainerGridItems[ItemUniqueID];
+			return true;
+		}
+	}
+	return false;
+}
+
+bool UGridInvSys_GridContainerObject::FindContainerGridItem(FName ItemUniqueID, FGridInvSys_InventoryItem& OutItem) const
+{
+	if (ContainerGridItems.Contains(ItemUniqueID))
+	{
+		OutItem = ContainerGridItems[ItemUniqueID];
+		return true;
+	}
+	return false;
+}
+
 
 void UGridInvSys_GridContainerObject::CopyPropertyFromPreEdit(UInvSys_InventoryComponent* NewInventoryComponent,
                                                               UObject* PreEditPayLoad)
@@ -66,17 +104,6 @@ void UGridInvSys_GridContainerObject::CreateDisplayWidget(APlayerController* PC)
 #endif
 		NamedSlot->AddChild(ContainerGridLayoutWidget);
 	}
-}
-
-void UGridInvSys_GridContainerObject::AddInventoryItemToContainer(FName ItemUniqueID, FGridInvSys_InventoryItem NewItem)
-{
-	// InventoryItems.Add(NewItem);
-	// Server_XXX->Add(Key, Value);
-}
-
-void UGridInvSys_GridContainerObject::RemoveInventoryItemFromContainer(FName ItemUniqueID)
-{
-	
 }
 
 void UGridInvSys_GridContainerObject::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

@@ -6,6 +6,7 @@
 #include "Widgets/GridInvSys_InventoryWidget.h"
 #include "GridInvSys_EquipmentSlotWidget.generated.h"
 
+class UGridInvSys_DragDropWidget;
 class UGridInvSys_ContainerGridLayoutWidget;
 struct FInvSys_InventoryItem;
 /**
@@ -17,13 +18,15 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_EquipmentSlotWidget : public UGridInvS
 	GENERATED_BODY()
 
 public:
-	UFUNCTION(BlueprintCallable)
 	virtual void UpdateOccupant(const FInvSys_InventoryItem& NewOccupant);
-	
+
+protected:
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnUpdateOccupant(const FInvSys_InventoryItem& NewOccupant);
 
-public:	
+public:
+	virtual void SetInventoryComponent(UInvSys_InventoryComponent* NewInvComp) override;
+	
 	void SetSlotName(FName NewSlotName)
 	{
 		SlotName = NewSlotName;
@@ -36,4 +39,7 @@ public:
 
 protected:
 	FName SlotName;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
+	TObjectPtr<UGridInvSys_DragDropWidget> DragDropWidget;
 };

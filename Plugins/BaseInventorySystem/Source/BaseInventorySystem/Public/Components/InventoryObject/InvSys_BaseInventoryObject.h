@@ -32,6 +32,8 @@ public:
 	/** 初始化库存对象 */
 	virtual void InitInventoryObject(UInvSys_InventoryComponent* NewInventoryComponent, UObject* PreEditPayLoad);
 
+	virtual void RefreshInventoryObject();
+
 protected:
 	virtual void CreateDisplayWidget(APlayerController* PC);
 	
@@ -55,6 +57,9 @@ public:
 	FORCEINLINE float GetServerWaitBatchTime() const;
 
 	FORCEINLINE virtual bool IsSupportedForNetworking() const override { return true; }
+
+	/** 传入 Item Unique ID 判断其在库存对象中是否存在 */
+	virtual bool ContainsItem(FName UniqueID);
 
 	/** 从预设对象中复制属性 */
 	virtual void CopyPropertyFromPreEdit(UInvSys_InventoryComponent* NewInventoryComponent,UObject* PreEditPayLoad);

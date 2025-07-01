@@ -6,6 +6,28 @@
 #include "GridInvSys_InventoryWidget.h"
 #include "GridInvSys_DragDropWidget.generated.h"
 
+class UGridInvSys_ContainerGridItemWidget;
+
+UENUM()
+enum class EDragDropType : uint8
+{
+	None = 0,
+	Container,
+	Equipment,
+};
+
+static TMap<EDragDropType, FString> DragDropTypeString = {
+	{EDragDropType::None, "None"},
+	{EDragDropType::Container, "Container"},
+	{EDragDropType::Equipment, "Equipment"},
+};
+static TMap<FString, EDragDropType> DragDropTypeEnum = {
+	{"None", EDragDropType::None},
+	{"Container", EDragDropType::Container},
+	{"Equipment", EDragDropType::Equipment},
+};
+
+class UInvSys_InventoryComponent;
 class UInvSys_InventoryItemInfo;
 enum class EDragPivot : uint8;
 class UGridInvSys_DragItemWidget;
@@ -20,9 +42,6 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_DragDropWidget : public UGridInvSys_In
 public:
 	UGridInvSys_DragDropWidget(const FObjectInitializer& ObjectInitializer);
 
-	UFUNCTION(BlueprintCallable)
-	void UpdateItemInfo(UInvSys_InventoryItemInfo* NewItemInfo);
-
 	void SetDraggingWidgetClass(TSubclassOf<UGridInvSys_DragItemWidget> NewDraggingWidgetClass);
 	
 protected:
@@ -30,9 +49,31 @@ protected:
 
 	virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
 
+public:
+	template<class T>
+	T* GetItemInfo() const
+	{
+		return Cast<T>(ItemInfo);		
+	}
+	
+	UFUNCTION(BlueprintCallable)
+	void UpdateItemInfo(UInvSys_InventoryItemInfo* NewItemInfo);
+
+	void SetGridItemWidget(UGridInvSys_ContainerGridItemWidget* NewGridItemWidget);
+
+	UGridInvSys_ContainerGridItemWidget* GetGridItemWidget() const;
+
+	EDragDropType GetDragDropType() const;
+	
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Drag Drop Widget")
 	TObjectPtr<UInvSys_InventoryItemInfo> ItemInfo;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Drag Drop Widget")
+	TObjectPtr<UGridInvSys_ContainerGridItemWidget> GridItemWidget;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Drag Drop Widget")
+	EDragDropType DragDropType = EDragDropType::Container;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Drag Drop Widget")
 	bool bIsOverrideDraggingWidgetClass = false;

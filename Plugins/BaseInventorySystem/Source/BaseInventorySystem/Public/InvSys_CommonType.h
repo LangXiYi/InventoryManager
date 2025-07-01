@@ -47,5 +47,10 @@ struct FInvSys_InventoryItem
 	// 物品信息的AssetID
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
 	FPrimaryAssetId ItemInfoAssetID;
+
+	bool operator==(const FInvSys_InventoryItem& Item) const
+	{
+		return UniqueID == Item.UniqueID;
+	}
 	
 };

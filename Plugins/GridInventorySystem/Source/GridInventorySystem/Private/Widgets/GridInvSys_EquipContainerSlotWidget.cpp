@@ -25,6 +25,7 @@ void UGridInvSys_EquipContainerSlotWidget::UpdateOccupant(const FInvSys_Inventor
 			ContainerLayoutWidget = CreateWidget<UGridInvSys_ContainerGridLayoutWidget>(
 				GetOwningPlayer(), ContainerInfo->ContainerGridLayoutWidgetClass);
 			// 构建容器网格
+			ContainerLayoutWidget->SetInventoryComponent(GetInventoryComponent());
 			ContainerLayoutWidget->ConstructContainerGrid(GetSlotName());
 			NS_ContainerGridLayout->AddChild(ContainerLayoutWidget);
 		}

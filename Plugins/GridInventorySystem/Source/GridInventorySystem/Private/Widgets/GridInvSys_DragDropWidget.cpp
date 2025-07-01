@@ -5,6 +5,8 @@
 
 #include "GridInvSys_InventorySystemConfig.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
+#include"Components/GridInvSys_InventoryComponent.h"
+#include "Components/GridInvSys_GridInventoryControllerComponent.h"
 #include "Framework/Notifications/NotificationManager.h"
 #include "Widgets/GridInvSys_DragItemWidget.h"
 #include "Data/InvSys_InventoryItemInfo.h"
@@ -25,6 +27,7 @@ UGridInvSys_DragDropWidget::UGridInvSys_DragDropWidget(const FObjectInitializer&
 			DraggingWidgetClass = InventorySystemConfig->DraggingWidgetClass;
 		}
 	}
+	
 	DragPivot = EDragPivot::CenterCenter;
 	DragOffset = FVector2D(0.f, 0.f);
 	SetVisibilityInternal(ESlateVisibility::Visible);
@@ -33,6 +36,21 @@ UGridInvSys_DragDropWidget::UGridInvSys_DragDropWidget(const FObjectInitializer&
 void UGridInvSys_DragDropWidget::UpdateItemInfo(UInvSys_InventoryItemInfo* NewItemInfo)
 {
 	ItemInfo = NewItemInfo;
+}
+
+void UGridInvSys_DragDropWidget::SetGridItemWidget(UGridInvSys_ContainerGridItemWidget* NewGridItemWidget)
+{
+	GridItemWidget = NewGridItemWidget;
+}
+
+UGridInvSys_ContainerGridItemWidget* UGridInvSys_DragDropWidget::GetGridItemWidget() const
+{
+	return GridItemWidget;
+}
+
+EDragDropType UGridInvSys_DragDropWidget::GetDragDropType() const
+{
+	return DragDropType;
 }
 
 void UGridInvSys_DragDropWidget::SetDraggingWidgetClass(TSubclassOf<UGridInvSys_DragItemWidget> NewDraggingWidgetClass)
@@ -61,7 +79,8 @@ void UGridInvSys_DragDropWidget::NativeOnDragDetected(const FGeometry& InGeometr
 	DraggingWidget->UpdateItemInfo(ItemInfo);
 	
 	UDragDropOperation* DragDropOperation = NewObject<UDragDropOperation>();
-	DragDropOperation->Payload = ItemInfo;
+	DragDropOperation->Tag = DragDropTypeString[DragDropType];
+	DragDropOperation->Payload = this;
 	DragDropOperation->DefaultDragVisual = DraggingWidget;
 	DragDropOperation->Pivot = DragPivot;
 	DragDropOperation->Offset = DragOffset;

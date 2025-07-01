@@ -8,6 +8,7 @@
 #include "GridInvSys_GridContainerObject.generated.h"
 
 
+class UGridInvSys_ContainerGridWidget;
 /**
  * 会为库存组件添加固定样式的容器
  * ============
@@ -24,19 +25,9 @@ public:
 	
 	virtual void InitInventoryObject(UInvSys_InventoryComponent* NewInventoryComponent, UObject* PreEditPayLoad) override;
 
-	virtual void AddInventoryItemToContainer(const FGridInvSys_InventoryItem& NewItem);
-	
-	/**
-	 * 什么情况下 AddInventoryItemTo 会被调用？
-	 * 1、程序直接调用
-	 * 2、从其他库存组件添加物品到该库存组件
-	 *		单个
-	 *		多个
-	 * @param ItemUniqueID 
-	 * @param NewItem 
-	 */
-	virtual void AddInventoryItemToContainer(FName ItemUniqueID, FGridInvSys_InventoryItem NewItem);
-	virtual void RemoveInventoryItemFromContainer(FName ItemUniqueID);
+	virtual void AddInventoryItemToContainer(const FGridInvSys_InventoryItem& InventoryItem);
+	virtual void RemoveInventoryItemFromContainer(FGridInvSys_InventoryItem InventoryItem);
+	virtual void UpdateInventoryItemFromContainer(FGridInvSys_InventoryItem NewItem);
 
 protected:
 	virtual void CreateDisplayWidget(APlayerController* PC) override;
@@ -50,6 +41,10 @@ public:
 	 * Getter Or Setter
 	 **/
 
+	bool FindContainerGridItem(const FIntPoint& ItemPosition, FGridInvSys_InventoryItem& OutItem) const;
+
+	bool FindContainerGridItem(FName ItemUniqueID, FGridInvSys_InventoryItem& OutItem) const;
+	
 	FORCEINLINE UUserWidget* GetContainerGridLayout() const
 	{
 		return ContainerGridLayoutWidget;
@@ -79,8 +74,12 @@ protected:
 	void OnRep_InventoryItems();
 
 private:
-	/** 加快物品的查询速度。 Key ===> ItemUniqueID */
-	TMap<FName, FGridInvSys_InventoryItem> InventoryItemMap;
+	/** Server: 优化物品查询速度  Key ===> Position : Value ===> ItemUniqueId */
+	TMap<FIntPoint, FName> ItemPositionMap;
+	/** Server & Client: 加快物品的查询速度。 Key ===> ItemUniqueID */
+	TMap<FName, FGridInvSys_InventoryItem> ContainerGridItems;
+	// Client: <GridID, ContainerGridWidgets> 供客户端使用，会在创建控件之后自动填充。
+	TMap<FName, UGridInvSys_ContainerGridWidget*> ContainerGridWidgets;
 };
 
 /**

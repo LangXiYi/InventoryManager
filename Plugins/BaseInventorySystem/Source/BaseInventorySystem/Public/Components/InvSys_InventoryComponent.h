@@ -34,6 +34,9 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintCosmetic)
 	virtual void InitInventoryObj(APlayerController* NewPlayerController);
 
+	UFUNCTION(Client, Reliable)
+	virtual void Client_TryRefreshInventoryObject();
+
 	/**
 	 * 将物品添加到装备槽
 	 * @param NewItem 
@@ -79,6 +82,8 @@ public:
 	/** Returns the world's timer manager */
 	FORCEINLINE FTimerManager& GetWorldTimerManager() const;
 
+	virtual bool IsContainsInventoryItem(const FName ItemUniqueID);
+	
 	UInvSys_PreEditInventoryObject* GetPreEditInventoryObject(int32 Index) const;
 
 	/** Gets the game instance this component is a part of, this will return null if not called during normal gameplay */

@@ -28,8 +28,8 @@ public:
 
 	virtual void AddInventoryItemToContainer(const FGridInvSys_InventoryItem& InventoryItem);
 	virtual void RemoveInventoryItemFromContainer(FGridInvSys_InventoryItem InventoryItem);
-	virtual void UpdateInventoryItemFromContainer(FGridInvSys_InventoryItem NewItem, FGridInvSys_InventoryItem OldItem);
-	
+	virtual void UpdateInventoryItemFromContainer(FName ItemUniqueID, FGridInvSys_InventoryItemPosition NewPosition);
+
 protected:
 	virtual void CreateDisplayWidget(APlayerController* PC) override;
 	
@@ -48,6 +48,10 @@ public:
 	 * Getter Or Setter
 	 **/
 
+	bool FindContainerGridItem(const FIntPoint& ItemPosition, FGridInvSys_InventoryItem& OutItem) const;
+	
+	 bool FindContainerGridItem(FName ItemUniqueID, FGridInvSys_InventoryItem& OutItem) const;
+	
 	virtual void CopyPropertyFromPreEdit(UInvSys_InventoryComponent* NewInventoryComponent, UObject* PreEditPayLoad) override;
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -67,14 +71,15 @@ protected:
 
 	/** 当前容器内的所有物品 */
 	UPROPERTY(BlueprintReadWrite, Replicated, Category = "Inventory Component")
-	TArray<FGridInvSys_InventoryItem> ContainerItems;
+	TArray<FGridInvSys_InventoryItem> RepNotify_ContainerItems;
 
 private:
-	/** 加快物品的查询速度。 Key ===> ItemUniqueID */
-	TMap<FName, FGridInvSys_InventoryItem> ContainerItemMap;
-	
-	// <GridID, ContainerGridWidgets> 供客户端使用
-	TMap<FName, UGridInvSys_ContainerGridWidget*> ContainerGridMap;
+	/** Server: 优化物品查询速度  Key ===> Position : Value ===> ItemUniqueId */
+	TMap<FIntPoint, FName> ItemPositionMap;
+	/** Server & Client: 加快物品的查询速度。 Key ===> ItemUniqueID */
+	TMap<FName, FGridInvSys_InventoryItem> ContainerGridItems;
+	// Client: <GridID, ContainerGridWidgets> 供客户端使用，会在创建控件之后自动填充。
+	TMap<FName, UGridInvSys_ContainerGridWidget*> ContainerGridWidgets;
 };
 
 /**

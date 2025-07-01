@@ -77,6 +77,6 @@ struct FGridInvSys_InventoryItem
 
 	bool operator==(const FGridInvSys_InventoryItem& Item) const
 	{
-		return BaseItemData.UniqueID == Item.BaseItemData.UniqueID;
+		return BaseItemData == Item.BaseItemData;
 	}
 };
