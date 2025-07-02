@@ -78,7 +78,8 @@ void UGridInvSys_ContainerGridLayoutWidget::NativePreConstruct()
 void UGridInvSys_ContainerGridLayoutWidget::GetAllContainerGridWidgets(TArray<UGridInvSys_ContainerGridWidget*>& OutArray)
 {
 	OutArray.Empty();
-	Private_GetAllContainerGridWidgets(OutArray, GetRootWidget());
+	UWidget* RootWidget = GetRootWidget();
+	Private_GetAllContainerGridWidgets(OutArray, RootWidget);
 }
 
 void UGridInvSys_ContainerGridLayoutWidget::Private_GetAllContainerGridWidgets(TArray<UGridInvSys_ContainerGridWidget*>& OutArray, UWidget* Parent)

@@ -3,13 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GridInvSys_CommonType.h"
 #include "GridInvSys_InventoryWidget.h"
 #include "Components/GridPanel.h"
 #include "Components/UniformGridPanel.h"
 #include "GridInvSys_ContainerGridWidget.generated.h"
 
 class UGridInvSys_DragItemWidget;
-struct FGridInvSys_InventoryItem;
 class UGridInvSys_ContainerGridDropWidget;
 class UGridInvSys_ContainerGridItemWidget;
 /**
@@ -23,9 +23,10 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_ContainerGridWidget : public UGridInvS
 public:
 	void ConstructGridItems(FName NewSlotName);
 
-	void AddInventoryItemTo(const FGridInvSys_InventoryItem& InventoryItem);
+	void UpdateInventoryItem(const FGridInvSys_InventoryItem& InventoryItem);
 
 	void RemoveInventoryItem(const FGridInvSys_InventoryItem& InventoryItem);
+	void RemoveAllInventoryItem();
 
 	bool HasEnoughFreeSpace(FIntPoint IntPoint, FIntPoint ItemSize, const TArray<UWidget*>& Ignores = {}) const;
 
@@ -43,7 +44,9 @@ protected:
 	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 	virtual void ResetDragDropData();
 
-	void OnDropItemFromContainer(UGridInvSys_ContainerGridItemWidget* FromGridItemWidget, FIntPoint ToPosition);
+	/** 放下物品至容器的目标位置，From必须是来自容器对象而非装备槽，仅在同容器组件下有效！！ */
+	bool TryDropItemFromContainer(UGridInvSys_ContainerGridItemWidget* FromGridItemWidget,
+		FGridInvSys_InventoryItemPosition ItemPositionData) const;
 	
 	/**
 	 * Getter Or Setter
@@ -54,7 +57,7 @@ public:
 	UGridInvSys_ContainerGridItemWidget* GetContainerGridItem(FIntPoint Position) const;
 	UGridInvSys_ContainerGridDropWidget* GetContainerGridDropItem(FIntPoint Position) const;
 
-	bool FindValidPosition(FIntPoint ItemSize, FIntPoint& OutPosition, TArray<UWidget*> Ignores = {}) const;
+	bool FindValidPosition(FIntPoint ItemSize, FIntPoint& OutPosition, const TArray<UWidget*>& Ignores = {}) const;
 
 	/**
 	 * 根据鼠标所在的屏幕位置为中点，计算目标左上角的网格坐标
@@ -62,6 +65,8 @@ public:
 	 * @param ItemSize 物品占据的网格大小
 	 */
 	FIntPoint CalculateGridOriginPoint(const FVector2D LocalPosition, const FIntPoint ItemSize) const;
+
+	TArray<UGridInvSys_ContainerGridItemWidget*> GetAllContainerGridItems() const;
 
 	template<class T = UWidget>
 	void GetContainerGridItems(TArray<T*>& OutArray, FIntPoint Position, FIntPoint Size, const TArray<UWidget*>& Ignores = {}) const
@@ -106,9 +111,11 @@ public:
 	void GetOccupiedGridItems(TArray<UGridInvSys_ContainerGridItemWidget*>& OutArray,
 		FIntPoint Position, FIntPoint Size, const TArray<UWidget*>& Ignores = {}) const;
 
-	void FindAllFreeGridItems(TArray<UGridInvSys_ContainerGridItemWidget*>& OutArray) const;
+	void FindAllFreeGridItems(TArray<UGridInvSys_ContainerGridItemWidget*>& OutArray, const TArray<UWidget*>& Ignores = {}) const;
 	
 	FORCEINLINE FName GetContainerGridID() const;
+
+	FORCEINLINE FName GetSlotName() const;
 
 	FORCEINLINE void SetContainerGridID(FName NewContainerGridID);
 
@@ -120,9 +127,11 @@ public:
 
 	bool IsInRange(FIntPoint TargetPos, FIntPoint TargetSize, FIntPoint OriginPos, FIntPoint Size) const;
 
+	bool IsInContainer(FIntPoint TargetPos, FIntPoint TargetSize) const;
+
 protected:
 	// 判断目标位置能否放置物品，注意：使用此方法时From必须是来自其他容器
-	bool IsCanDropItemFromContainer(const UDragDropOperation* InOperation, FIntPoint ToPosition) const;
+	bool IsCanDropItemFromContainer(UGridInvSys_ContainerGridItemWidget* FromGridItemWidget, FIntPoint ToPosition) const;
 
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Container Grid", meta = (BindWidget))

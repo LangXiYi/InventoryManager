@@ -14,12 +14,6 @@ UInvSys_InventoryControllerComponent::UInvSys_InventoryControllerComponent()
 	// ...
 }
 
-UInvSys_InventoryComponent* UInvSys_InventoryControllerComponent::GetInventoryComponent_Implementation() const
-{
-	checkNoEntry();
-	return nullptr;
-}
-
 bool UInvSys_InventoryControllerComponent::HasAuthority() const
 {
 	AActor* Owner = GetOwner();

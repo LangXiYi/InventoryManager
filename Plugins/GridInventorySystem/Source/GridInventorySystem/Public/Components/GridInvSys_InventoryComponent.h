@@ -32,7 +32,7 @@ public:
 	 * @param NewItemData 
 	 */
 	UFUNCTION(BlueprintCallable)
-	virtual void UpdateContainerItemsPosition(TArray<FName> ChangedItems, TArray<FGridInvSys_InventoryItem> NewItemData);
+	virtual void UpdateContainerItemsPosition(TArray<FName> ChangedItems, TArray<FGridInvSys_InventoryItemPosition> NewItemData);
 
 	/**
 	 * 使用与不同容器组件下的物品转移

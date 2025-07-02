@@ -44,6 +44,7 @@ void UGridInvSys_ContainerGridItemWidget::UpdateItemInfo(const FGridInvSys_Inven
 	ContainerGridWidget->GetContainerGridItems<UGridInvSys_ContainerGridItemWidget>(OutArray, GetPosition(), GetItemSize(), {this});
 	for (UGridInvSys_ContainerGridItemWidget* GridItemWidget : OutArray)
 	{
+		GridItemWidget->RemoveItemInfo();
 		GridItemWidget->bIsOccupied = true;
 		GridItemWidget->InventoryItem = NewInventoryItem;
 		GridItemWidget->OriginGridItemWidget = this;
@@ -75,9 +76,11 @@ void UGridInvSys_ContainerGridItemWidget::RemoveItemInfo()
 	ContainerGridWidget->FindContainerGridItems(OutArray, GetPosition(), ItemSize, {this});
 	for (UGridInvSys_ContainerGridItemWidget* GridItemWidget : OutArray)
 	{
-		GridItemWidget->bIsOccupied = false;
-		GridItemWidget->InventoryItem = FGridInvSys_InventoryItem();
-		GridItemWidget->OriginGridItemWidget = GridItemWidget;
+		// 确保被删除的网格的拥有者是自己而不是其他物品
+		if (GridItemWidget->GetOriginGridItemWidget() == this)
+		{
+			GridItemWidget->RemoveItemInfo();
+		}
 	}
 	OnItemInfoChanged(nullptr);
 }
@@ -101,7 +104,7 @@ FIntPoint UGridInvSys_ContainerGridItemWidget::GetPosition() const
 
 FIntPoint UGridInvSys_ContainerGridItemWidget::GetOriginPosition() const
 {
-	return OriginGridItemWidget ? OriginGridItemWidget->GetPosition() : Position;
+	return OriginGridItemWidget ? OriginGridItemWidget->GetPosition() : GetPosition();
 }
 
 UGridInvSys_ContainerGridItemWidget* UGridInvSys_ContainerGridItemWidget::GetOriginGridItemWidget() const
@@ -124,14 +127,25 @@ void UGridInvSys_ContainerGridItemWidget::SetGridID(FName NewGridID)
 	GridID = NewGridID;
 }
 
+EGridInvSys_ItemDirection UGridInvSys_ContainerGridItemWidget::GetItemDirection() const
+{
+	return InventoryItem.ItemPosition.Direction;
+}
+
 FIntPoint UGridInvSys_ContainerGridItemWidget::GetItemSize() const
 {
-	return InventoryItem.ItemPosition.Size;
+	const UGridInvSys_InventoryItemInfo* TempInfo = GetItemInfo<UGridInvSys_InventoryItemInfo>();
+	return TempInfo ? TempInfo->ItemSize : FIntPoint(1, 1);
 }
 
 FName UGridInvSys_ContainerGridItemWidget::GetItemUniqueID() const
 {
 	return InventoryItem.BaseItemData.UniqueID;
+}
+
+FName UGridInvSys_ContainerGridItemWidget::GetSlotName() const
+{
+	return SlotName;
 }
 
 TArray<UWidget*> UGridInvSys_ContainerGridItemWidget::GetOccupiedGridItems()
@@ -156,6 +170,13 @@ FIntPoint UGridInvSys_ContainerGridItemWidget::CalculateRelativePosition(const U
 	OutRelativePosition.X = GetPosition().X - Parent->GetPosition().X;
 	OutRelativePosition.Y = GetPosition().Y - Parent->GetPosition().Y;
 	return OutRelativePosition;
+}
+
+FName UGridInvSys_ContainerGridItemWidget::GetGridID() const
+{
+	UGridInvSys_ContainerGridWidget* TempWidget = GetContainerGridWidget();
+	check(TempWidget)
+	return TempWidget->GetContainerGridID();
 }
 
 void UGridInvSys_ContainerGridItemWidget::NativePreConstruct()

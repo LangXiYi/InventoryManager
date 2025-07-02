@@ -64,6 +64,8 @@ public:
 	UGridInvSys_ContainerGridItemWidget* GetGridItemWidget() const;
 
 	EDragDropType GetDragDropType() const;
+
+	void SetDragDropType(EDragDropType NewDragType);
 	
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Drag Drop Widget")
@@ -72,7 +74,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Drag Drop Widget")
 	TObjectPtr<UGridInvSys_ContainerGridItemWidget> GridItemWidget;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Drag Drop Widget")
+	UPROPERTY(BlueprintReadOnly, Category = "Drag Drop Widget")
 	EDragDropType DragDropType = EDragDropType::Container;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Drag Drop Widget")

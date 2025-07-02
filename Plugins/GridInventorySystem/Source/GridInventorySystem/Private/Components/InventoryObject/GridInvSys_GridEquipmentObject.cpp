@@ -17,7 +17,7 @@ UGridInvSys_GridEquipmentObject::UGridInvSys_GridEquipmentObject()
 void UGridInvSys_GridEquipmentObject::TryRefreshOccupant(const FString& Reason)
 {
 	Super::TryRefreshOccupant(Reason);
-	if (EquipmentSlotWidget)
+	if (EquipmentSlotWidget && IsEquipped())
 	{
 		UE_LOG(LogInventorySystem, Log, TEXT("[%s] 接收到新的装备 [%s]"),
 			HasAuthority() ? TEXT("Server") : TEXT("Client"), *Occupant.ItemID.ToString())

@@ -24,7 +24,7 @@ class BASEINVENTORYSYSTEM_API UInvSys_BaseEquipContainerObject : public UInvSys_
 public:
 	UInvSys_BaseEquipContainerObject();
 
-	virtual void RefreshInventoryObject() override;
+	virtual void RefreshInventoryObject(const FString& Reason = "") override;
 	
 	/** [Server] 添加物品，并将操作记录至复制列表，等待一段时间后，将所有操作批量发送给客户端并清除操作列表。 */
 	void AddDataToRep_AddedInventoryItems(FName ItemUniqueID);

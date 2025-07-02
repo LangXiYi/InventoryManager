@@ -26,6 +26,11 @@ void UGridInvSys_InventoryComponent::AddInventoryItemToGridContainer(FGridInvSys
 		UE_LOG(LogInventorySystem, Log, TEXT("%s 必须在 InventoryObjectMap 中存在的。"), *GridContainerItem.BaseItemData.SlotName.ToString());
 		return;
 	}
+	
+	UE_LOG(LogInventorySystem, Log, TEXT("[%s:%s] Container add item [%s] to [%s]."),
+		HasAuthority() ? TEXT("Server") : TEXT("Client"), *GetOwner()->GetName(),
+		*GridContainerItem.BaseItemData.ItemID.ToString(), *SlotName.ToString());
+	
 	if (InventoryObjectMap[SlotName]->IsA(UGridInvSys_GridContainerObject::StaticClass()))
 	{
 		// 网格容器对象
@@ -44,7 +49,7 @@ void UGridInvSys_InventoryComponent::AddInventoryItemToGridContainer(FGridInvSys
 	}
 }
 
-void UGridInvSys_InventoryComponent::UpdateContainerItemsPosition(TArray<FName> ChangedItems, TArray<FGridInvSys_InventoryItem> NewItemData)
+void UGridInvSys_InventoryComponent::UpdateContainerItemsPosition(TArray<FName> ChangedItems, TArray<FGridInvSys_InventoryItemPosition> NewItemData)
 {
 	if (HasAuthority() == false)
 	{
@@ -64,10 +69,10 @@ void UGridInvSys_InventoryComponent::UpdateContainerItemsPosition(TArray<FName> 
 	}
 
 	// 验证目标位置的数据在已修改列表中
-	for (FGridInvSys_InventoryItem ItemData : NewItemData)
+	for (FGridInvSys_InventoryItemPosition ItemData : NewItemData)
 	{
 		FGridInvSys_InventoryItem TempItem;
-		bool bIsFind = FindInventoryItem(ItemData.BaseItemData.SlotName, ItemData.ItemPosition.Position, TempItem);
+		bool bIsFind = FindInventoryItem(ItemData.SlotName, ItemData.Position, TempItem);
 		// 判断目标位置的数据是否为待修改的对象，或目标位置为空
 		if (bIsFind && ChangedItems.Contains(TempItem.BaseItemData.UniqueID) == false)
 		{
@@ -78,30 +83,62 @@ void UGridInvSys_InventoryComponent::UpdateContainerItemsPosition(TArray<FName> 
 		}
 	}
 
-	for (FGridInvSys_InventoryItem ItemData : NewItemData)
+	// 服务器开始更新数据，执行前请确保数据的正确性。
+	for (int i = 0; i < NewItemData.Num(); ++i)
 	{
 		FGridInvSys_InventoryItem OldItemData;
-		bool bIsFind = FindContainerGridItem(ItemData.BaseItemData.UniqueID, OldItemData);
-		if (bIsFind && InventoryObjectMap.Contains(ItemData.BaseItemData.SlotName))
+		FindContainerGridItem(ChangedItems[i], OldItemData);
+
+		UE_LOG(LogInventorySystem, Log, TEXT("[Server:%s]: Position [%s:%s]:(%d,%d) ===> [%s:%-s]:(%d,%d)"),
+			*ChangedItems[i].ToString(),
+			*OldItemData.ItemPosition.SlotName.ToString(), *OldItemData.ItemPosition.GridID.ToString(),
+			OldItemData.ItemPosition.Position.X, OldItemData.ItemPosition.Position.Y,
+			*NewItemData[i].SlotName.ToString(), *NewItemData[i].GridID.ToString(),
+			NewItemData[i].Position.X, NewItemData[i].Position.Y);
+		
+		// 判断物品最新的位置与之前的位置在同一容器内
+		if (OldItemData.ItemPosition.SlotName == NewItemData[i].SlotName)
 		{
-			UInvSys_BaseInventoryObject* InventoryObject = InventoryObjectMap[ItemData.BaseItemData.SlotName];
+			UInvSys_BaseInventoryObject* InventoryObject = InventoryObjectMap[NewItemData[i].SlotName];
 			if (InventoryObject->IsA(UGridInvSys_GridContainerObject::StaticClass()))
 			{
 				UGridInvSys_GridContainerObject* ContainerObj = Cast<UGridInvSys_GridContainerObject>(InventoryObject);
-				ContainerObj->UpdateInventoryItemFromContainer(ItemData);
+				// ContainerObj->UpdateInventoryItemFromContainer(ItemData);
 			}
 			if(InventoryObject->IsA(UGridInvSys_GridEquipContainerObject::StaticClass()))
 			{
 				UGridInvSys_GridEquipContainerObject* EquipContainerObj = Cast<UGridInvSys_GridEquipContainerObject>(InventoryObject);
-				EquipContainerObj->UpdateInventoryItemFromContainer(ItemData.BaseItemData.UniqueID, ItemData.ItemPosition);
+				EquipContainerObj->UpdateInventoryItemFromContainer(ChangedItems[i], NewItemData[i]);
 			}
 		}
 		else
 		{
-			check(false)
-			UE_LOG(LogInventorySystem, Error, TEXT("用户可能存在作弊行为，传入数据与服务器数据不匹配。"))
-			Client_TryRefreshInventoryObject();
-			return;
+			// 删除旧物品
+			UInvSys_BaseInventoryObject* OldInvObject = InventoryObjectMap[OldItemData.ItemPosition.SlotName];
+			if (OldInvObject->IsA(UGridInvSys_GridContainerObject::StaticClass()))
+			{
+				UGridInvSys_GridContainerObject* ContainerObj = Cast<UGridInvSys_GridContainerObject>(OldInvObject);
+				// ContainerObj->UpdateInventoryItemFromContainer(ItemData);
+			}
+			if(OldInvObject->IsA(UGridInvSys_GridEquipContainerObject::StaticClass()))
+			{
+				UGridInvSys_GridEquipContainerObject* EquipContainerObj = Cast<UGridInvSys_GridEquipContainerObject>(OldInvObject);
+				EquipContainerObj->RemoveInventoryItemFromContainer(OldItemData);
+			}
+			// 添加新物品
+			UInvSys_BaseInventoryObject* NewInvObject = InventoryObjectMap[NewItemData[i].SlotName];
+			if (NewInvObject->IsA(UGridInvSys_GridContainerObject::StaticClass()))
+			{
+				UGridInvSys_GridContainerObject* ContainerObj = Cast<UGridInvSys_GridContainerObject>(NewInvObject);
+				// ContainerObj->UpdateInventoryItemFromContainer(ItemData);
+			}
+			if(NewInvObject->IsA(UGridInvSys_GridEquipContainerObject::StaticClass()))
+			{
+				UGridInvSys_GridEquipContainerObject* EquipContainerObj = Cast<UGridInvSys_GridEquipContainerObject>(NewInvObject);
+				FGridInvSys_InventoryItem NewInventoryItemData = OldItemData;
+				NewInventoryItemData.ItemPosition = NewItemData[i];
+				EquipContainerObj->AddInventoryItemToContainer(NewInventoryItemData);
+			}
 		}
 	}
 }

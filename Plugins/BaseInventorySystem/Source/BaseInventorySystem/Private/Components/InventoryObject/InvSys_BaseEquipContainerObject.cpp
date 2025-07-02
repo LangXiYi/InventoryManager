@@ -11,10 +11,10 @@ UInvSys_BaseEquipContainerObject::UInvSys_BaseEquipContainerObject()
 
 }
 
-void UInvSys_BaseEquipContainerObject::RefreshInventoryObject()
+void UInvSys_BaseEquipContainerObject::RefreshInventoryObject(const FString& Reason)
 {
-	Super::RefreshInventoryObject();
-	TryRefreshContainerItems("RefreshInventoryObject() ===> TryRefreshContainerItems()");
+	Super::RefreshInventoryObject(Reason);
+	TryRefreshContainerItems();
 }
 
 void UInvSys_BaseEquipContainerObject::AddDataToRep_AddedInventoryItems(FName ItemUniqueID)
@@ -24,7 +24,6 @@ void UInvSys_BaseEquipContainerObject::AddDataToRep_AddedInventoryItems(FName It
 		bIsWait_Pending_AddedInventoryItems = true;
 		Pending_AddedInventoryItems.Add(ItemUniqueID);
 		ItemUniqueIDSet.Add(ItemUniqueID);
-		UE_LOG(LogInventorySystem, Log, TEXT("[%s]Added Inventory Items."), *GetOwner()->GetName())
 		TryRepInventoryItems_Add();
 	}
 }
@@ -36,7 +35,6 @@ void UInvSys_BaseEquipContainerObject::AddDataToRep_RemovedInventoryItems(FName 
 		bIsWait_Pending_RemovedInventoryItems = true;
 		Pending_RemovedInventoryItems.Add(ItemUniqueID);
 		ItemUniqueIDSet.Remove(ItemUniqueID);
-		UE_LOG(LogInventorySystem, Log, TEXT("[%s] Removed Inventory Items."), *GetOwner()->GetName())
 		TryRepInventoryItems_Remove();
 	}
 }
@@ -47,7 +45,6 @@ void UInvSys_BaseEquipContainerObject::AddDataToRep_ChangedInventoryItems(FName 
 	{
 		bIsWait_Pending_ChangedInventoryItems = true;
 		Pending_ChangedInventoryItems.Add(ItemUniqueID);
-		UE_LOG(LogInventorySystem, Log, TEXT("[%s] Changed Inventory Items."), *GetOwner()->GetName())
 		TryRepInventoryItems_Change();
 	}
 }
@@ -96,7 +93,7 @@ void UInvSys_BaseEquipContainerObject::TryRepInventoryItems_Add()
 		AddTimerHandle.Invalidate();
 		if (!Pending_AddedInventoryItems.IsEmpty())
 		{
-			UE_LOG(LogInventorySystem, Log, TEXT("Pending_AddedInventoryItems 中存在新的数据，需要先进行强制更新。"))
+			// UE_LOG(LogInventorySystem, Log, TEXT("Pending_AddedInventoryItems 中存在新的数据，需要先进行强制更新。"))
 			TryRepInventoryItems_Add(); // 存在新的需要更新的数据，强制继续更新。
 		}
 	}, GetServerWaitBatchTime(), false);

@@ -18,6 +18,7 @@ UInvSys_BaseInventoryObject::UInvSys_BaseInventoryObject()
 void UInvSys_BaseInventoryObject::InitInventoryObject(UInvSys_InventoryComponent* NewInventoryComponent,
                                                       UObject* PreEditPayLoad)
 {
+	check(NewInventoryComponent);
 	if (bIsInitInventoryObject)
 	{
 		return;
@@ -28,15 +29,20 @@ void UInvSys_BaseInventoryObject::InitInventoryObject(UInvSys_InventoryComponent
 	{
 		CopyPropertyFromPreEdit(NewInventoryComponent, PreEditPayLoad);
 	}
-	// 仅本地控制器创建显示效果
-	if (IsLocallyControlled())
-	{
+	// 创建显示效果
+	/*if (NewInventoryComponent->GetPlayerController())
+	{*/
 		CreateDisplayWidget(NewInventoryComponent->GetPlayerController());
-	}
+	/*}*/
 }
 
-void UInvSys_BaseInventoryObject::RefreshInventoryObject()
+void UInvSys_BaseInventoryObject::RefreshInventoryObject(const FString& Reason)
 {
+	if (Reason.IsEmpty())
+	{
+		return;
+	}
+	UE_LOG(LogInventorySystem, Warning, TEXT("正在执行 RefreshInventoryObject() 操作。\n\tREASON: %s"), *Reason);
 }
 
 void UInvSys_BaseInventoryObject::CreateDisplayWidget(APlayerController* PC)

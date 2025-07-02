@@ -36,16 +36,12 @@ void UInvSys_InventoryComponent::AddInventoryItemToEquipSlot(const FInvSys_Inven
 
 	if (InventoryObjectMap[NewItem.SlotName]->IsA(UInvSys_BaseEquipmentObject::StaticClass()))
 	{
+		UE_LOG(LogInventorySystem, Log, TEXT("[%s:%s] EquipSlot add item [%s] to [%s]."),
+			HasAuthority() ? TEXT("Server") : TEXT("Client"), *GetOwner()->GetName(),
+			*NewItem.ItemID.ToString(), *NewItem.SlotName.ToString());
 		UInvSys_BaseEquipmentObject* EquipmentObj = Cast<UInvSys_BaseEquipmentObject>(InventoryObjectMap[NewItem.SlotName]);
 		EquipmentObj->AddInventoryItemToEquipSlot(NewItem);
 	}
-	// UE_LOG(LogInventorySystem, Log, TEXT("%s 必须在 UInvSys_BaseEquipmentObject 中存在的。"), *NewItem.SlotName.ToString());
-}
-
-void UInvSys_InventoryComponent::AddInventoryItemToContainer(const FInvSys_InventoryItem& NewItem, UObject* ContainerObj)
-{
-	ensureMsgf(ContainerObj->IsA(UInvSys_BaseContainerObject::StaticClass()),
-		TEXT("ContainerObj 必须是 UInvSys_BaseContainerObject 的子类。"));
 }
 
 bool UInvSys_InventoryComponent::HasAuthority() const
@@ -186,7 +182,7 @@ void UInvSys_InventoryComponent::Client_TryRefreshInventoryObject_Implementation
 {
 	for (UInvSys_BaseInventoryObject* InvObj : InventoryObjectList)
 	{
-		InvObj->RefreshInventoryObject();
+		InvObj->RefreshInventoryObject("客户端数据与服务器数据不匹配，请求刷新客户端显示效果。");
 	}
 }
 

@@ -18,18 +18,18 @@ UGridInvSys_GridEquipContainerObject::UGridInvSys_GridEquipContainerObject()
 void UGridInvSys_GridEquipContainerObject::TryRefreshOccupant(const FString& Reason)
 {
 	Super::TryRefreshOccupant(Reason);
-	if (EquipmentSlotWidget)
+	if (EquipmentSlotWidget && IsEquipped())
 	{
 		// 刷新装备槽
-		UE_LOG(LogInventorySystem, Log, TEXT("[%s] 接收到新的装备 [%s]"),
-			HasAuthority() ? TEXT("Server") : TEXT("Client"), *Occupant.ItemID.ToString())
+		UE_LOG(LogInventorySystem, Log, TEXT("[%s] 刷新装备槽 [%s]"),
+			HasAuthority() ? TEXT("Server") : TEXT("Client"), *SlotName.ToString())
 
 		// todo:: Use interface?
 		if (UGridInvSys_EquipmentSlotWidget* GridInvSys_EquipmentSlotWidget = Cast<UGridInvSys_EquipmentSlotWidget>(EquipmentSlotWidget))
 		{
 			GridInvSys_EquipmentSlotWidget->UpdateOccupant(Occupant);
 		}
-		TryRefreshContainerItems("TryRefreshOccupant() ===> TryRefreshContainerItems()");
+		TryRefreshContainerItems(Reason);
 	}
 }
 
@@ -52,11 +52,6 @@ void UGridInvSys_GridEquipContainerObject::TryRefreshContainerItems(const FStrin
 			{
 				ContainerGridWidgets.Add(ContainerGrid->GetContainerGridID(), ContainerGrid);
 			}
-		}
-		
-		if (UGridInvSys_EquipContainerSlotWidget* EquipContainerSlotWidget =
-			Cast<UGridInvSys_EquipContainerSlotWidget>(EquipmentSlotWidget))
-		{
 			EquipContainerSlotWidget->UpdateContainerGrid(RepNotify_ContainerItems);
 		}
 	}
@@ -148,6 +143,7 @@ void UGridInvSys_GridEquipContainerObject::UpdateInventoryItemFromContainer(FNam
 
 			const int32 Index = RepNotify_ContainerItems.Find(TempGridItem);
 			TempGridItem.ItemPosition = NewPosition;
+			TempGridItem.BaseItemData.SlotName = NewPosition.SlotName;
 			RepNotify_ContainerItems[Index] = TempGridItem;
 			ContainerGridItems[ItemUniqueID] = TempGridItem;
 			AddDataToRep_ChangedInventoryItems(ItemUniqueID);
@@ -173,18 +169,20 @@ void UGridInvSys_GridEquipContainerObject::GetLifetimeReplicatedProps(TArray<FLi
 
 void UGridInvSys_GridEquipContainerObject::OnAddedContainerItems(const TArray<FName>& InAddedItems)
 {
-	if (EquipmentSlotWidget)
+	for (FName ItemUniqueID : InAddedItems)
 	{
-		for (FName ItemUniqueID : InAddedItems)
+		// ContainerItems 是服务器同步过来的，所以在正常情况下，其内部应该会存在
+		int32 Index = FindContainerItemIndex(ItemUniqueID);
+		if (RepNotify_ContainerItems.IsValidIndex(Index))
 		{
-			// ContainerItems 是服务器同步过来的，所以在正常情况下，其内部应该会存在
-			int32 Index = FindContainerItemIndex(ItemUniqueID);
-			if (RepNotify_ContainerItems.IsValidIndex(Index))
+			// 确保未显示控件时，物品信息任然存在
+			FGridInvSys_InventoryItem TempInvItem = RepNotify_ContainerItems[Index];
+			ContainerGridItems.Add(ItemUniqueID, TempInvItem);
+
+			if (EquipmentSlotWidget)
 			{
-				FGridInvSys_InventoryItem TempInvItem = RepNotify_ContainerItems[Index];
-				ContainerGridItems.Add(ItemUniqueID, TempInvItem);
 				UGridInvSys_ContainerGridWidget* GridWidget = ContainerGridWidgets[TempInvItem.ItemPosition.GridID];
-				GridWidget->AddInventoryItemTo(RepNotify_ContainerItems[Index]);
+				GridWidget->UpdateInventoryItem(RepNotify_ContainerItems[Index]);
 			}
 		}
 	}
@@ -192,17 +190,18 @@ void UGridInvSys_GridEquipContainerObject::OnAddedContainerItems(const TArray<FN
 
 void UGridInvSys_GridEquipContainerObject::OnRemovedContainerItems(const TArray<FName>& InRemovedItems)
 {
-	if (EquipmentSlotWidget)
+
+	for (FName ItemUniqueID : InRemovedItems)
 	{
-		for (FName ItemUniqueID : InRemovedItems)
+		if (ContainerGridItems.Contains(ItemUniqueID))
 		{
-			// ContainerItems 是服务器同步过来的，所以在正常情况下，其内部应该会存在
-			int32 Index = FindContainerItemIndex(ItemUniqueID);
-			if (RepNotify_ContainerItems.IsValidIndex(Index))
+			FGridInvSys_InventoryItem TempItemData = ContainerGridItems[ItemUniqueID];
+			ContainerGridItems.Remove(ItemUniqueID);
+
+			if (EquipmentSlotWidget == nullptr)
 			{
-				UGridInvSys_ContainerGridWidget* GridWidget = ContainerGridWidgets[RepNotify_ContainerItems[Index].ItemPosition.GridID];
-				// GridWidget->AddInventoryItemTo(ContainerItems[Index]);
-				// RemoveInventoryItem
+				UGridInvSys_ContainerGridWidget* GridWidget = ContainerGridWidgets[TempItemData.ItemPosition.GridID];
+				GridWidget->RemoveInventoryItem(TempItemData);
 			}
 		}
 	}
@@ -210,26 +209,36 @@ void UGridInvSys_GridEquipContainerObject::OnRemovedContainerItems(const TArray<
 
 void UGridInvSys_GridEquipContainerObject::OnUpdatedContainerItems(const TArray<FName>& InChangedItems)
 {
-	if (EquipmentSlotWidget)
+
+	for (FName ItemUniqueID : InChangedItems)
 	{
-		for (FName ItemUniqueID : InChangedItems)
+		int32 Index = FindContainerItemIndex(ItemUniqueID);
+		if (!RepNotify_ContainerItems.IsValidIndex(Index))
 		{
-			// ContainerItems 是服务器同步过来的，所以在正常情况下，其内部应该会存在
-			int32 Index = FindContainerItemIndex(ItemUniqueID);
-			if (RepNotify_ContainerItems.IsValidIndex(Index))
+			check(false);
+			continue;
+		}
+		const FGridInvSys_InventoryItem& NewInvItem = RepNotify_ContainerItems[Index];
+
+		if (EquipmentSlotWidget)
+		{
+			check(ContainerGridWidgets.Contains(NewInvItem.ItemPosition.GridID))
+			if (UGridInvSys_ContainerGridWidget* GridWidget = ContainerGridWidgets[NewInvItem.ItemPosition.GridID])
 			{
-				const FGridInvSys_InventoryItem& NewInvItem = RepNotify_ContainerItems[Index];
-				if (UGridInvSys_ContainerGridWidget* GridWidget = ContainerGridWidgets[NewInvItem.ItemPosition.GridID])
+				if (ContainerGridItems.Contains(ItemUniqueID))
 				{
-					// 移除旧数据
-					FGridInvSys_InventoryItem OldInvItem = ContainerGridItems[NewInvItem.BaseItemData.UniqueID];
-					ContainerGridItems[NewInvItem.BaseItemData.UniqueID] = NewInvItem;
-					GridWidget->RemoveInventoryItem(OldInvItem);
-					GridWidget->AddInventoryItemTo(NewInvItem);
+					FGridInvSys_InventoryItem OldInvItem = ContainerGridItems[ItemUniqueID];
+					GridWidget->RemoveInventoryItem(OldInvItem); // 移除旧数据
+					GridWidget->UpdateInventoryItem(NewInvItem); // 添加新数据
 				}
-				UE_LOG(LogInventorySystem, Log, TEXT("更新容器中的内容。"))
+				else
+				{
+					UE_LOG(LogInventorySystem, Warning, TEXT("%s 在 ContainerGridItems[%d] 中不存在。"), *ItemUniqueID.ToString(), ContainerGridItems.Num())
+				}
 			}
 		}
+		// 更新容器保存的物品信息
+		ContainerGridItems[ItemUniqueID] = NewInvItem;
 	}
 	Super::OnUpdatedContainerItems(InChangedItems);
 }

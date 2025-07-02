@@ -29,10 +29,10 @@ class BASEINVENTORYSYSTEM_API UInvSys_BaseInventoryObject : public UObject
 public:
 	UInvSys_BaseInventoryObject();
 	
-	/** 初始化库存对象 */
+	/** 初始化库存对象，仅由客户端调用 */
 	virtual void InitInventoryObject(UInvSys_InventoryComponent* NewInventoryComponent, UObject* PreEditPayLoad);
 
-	virtual void RefreshInventoryObject();
+	virtual void RefreshInventoryObject(const FString& Reason = "");
 
 protected:
 	virtual void CreateDisplayWidget(APlayerController* PC);

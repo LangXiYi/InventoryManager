@@ -12,34 +12,35 @@
 
 void UGridInvSys_EquipContainerSlotWidget::UpdateOccupant(const FInvSys_InventoryItem& NewOccupant)
 {
-	if (NewOccupant.ItemInfo.IsA(UGridInvSys_InventoryContainerInfo::StaticClass()) == false)
-	{
-		return;
-	}
+	Super::UpdateOccupant(NewOccupant);
 	// 根据Occupant创建容器布局控件
 	if (UGridInvSys_InventoryContainerInfo* ContainerInfo = Cast<UGridInvSys_InventoryContainerInfo>(NewOccupant.ItemInfo))
 	{
-		if (ContainerInfo->ContainerGridLayoutWidgetClass)
+		if (ContainerInfo->ContainerGridLayoutWidgetClass == nullptr)
 		{
-			// todo:: remove old widget.
-			ContainerLayoutWidget = CreateWidget<UGridInvSys_ContainerGridLayoutWidget>(
-				GetOwningPlayer(), ContainerInfo->ContainerGridLayoutWidgetClass);
-			// 构建容器网格
-			ContainerLayoutWidget->SetInventoryComponent(GetInventoryComponent());
-			ContainerLayoutWidget->ConstructContainerGrid(GetSlotName());
-			NS_ContainerGridLayout->AddChild(ContainerLayoutWidget);
+			return;
 		}
+		// todo:: remove old widget.
+		ContainerLayoutWidget = CreateWidget<UGridInvSys_ContainerGridLayoutWidget>(
+			GetOwningPlayer(), ContainerInfo->ContainerGridLayoutWidgetClass);
+		// 构建容器网格
+		ContainerLayoutWidget->SetInventoryComponent(GetInventoryComponent());
+		ContainerLayoutWidget->ConstructContainerGrid(GetSlotName());
+		NS_ContainerGridLayout->AddChild(ContainerLayoutWidget);
 	}
-	Super::UpdateOccupant(NewOccupant);
 }
 
 void UGridInvSys_EquipContainerSlotWidget::UpdateContainerGrid(const TArray<FGridInvSys_InventoryItem>& AllItems)
 {
-	TArray<UGridInvSys_ContainerGridWidget*> ContainerGridWidgets;
-	ContainerLayoutWidget->GetAllContainerGridWidgets(ContainerGridWidgets);
+	check(ContainerLayoutWidget)
+	if (ContainerLayoutWidget == nullptr)
+	{
+		return;
+	}
+	TArray<UGridInvSys_ContainerGridWidget*> ContainerGridWidgets = ContainerLayoutWidget->GetContainerGridWidgets();
 	for (UGridInvSys_ContainerGridWidget* ContainerGridWidget : ContainerGridWidgets)
 	{
-		// ContainerGridWidget->ClearAll();
+		ContainerGridWidget->RemoveAllInventoryItem();
 	}
 	
 	//获取Layout下
@@ -48,7 +49,7 @@ void UGridInvSys_EquipContainerSlotWidget::UpdateContainerGrid(const TArray<FGri
 		UGridInvSys_ContainerGridWidget* GridWidget = ContainerLayoutWidget->FindContainerGrid(Item.ItemPosition.GridID);
 		if (GridWidget)
 		{
-			GridWidget->AddInventoryItemTo(Item);
+			GridWidget->UpdateInventoryItem(Item);
 		}
 	}
 }
@@ -61,5 +62,9 @@ UGridInvSys_ContainerGridLayoutWidget* UGridInvSys_EquipContainerSlotWidget::Get
 void UGridInvSys_EquipContainerSlotWidget::GetAllContainerGrid(
 	TArray<UGridInvSys_ContainerGridWidget*>& OutContainerGrids)
 {
-	 ContainerLayoutWidget->GetAllContainerGridWidgets(OutContainerGrids);
+	check(ContainerLayoutWidget);
+	if (ContainerLayoutWidget)
+	{
+		OutContainerGrids = ContainerLayoutWidget->GetContainerGridWidgets();
+	}
 }

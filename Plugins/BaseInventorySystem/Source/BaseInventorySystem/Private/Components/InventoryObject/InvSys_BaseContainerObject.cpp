@@ -18,10 +18,10 @@ void UInvSys_BaseContainerObject::InitInventoryObject(UInvSys_InventoryComponent
 	TryRefreshContainerItems("InitInventoryObjects() ===> TryRefreshContainerItems()");
 }
 
-void UInvSys_BaseContainerObject::RefreshInventoryObject()
+void UInvSys_BaseContainerObject::RefreshInventoryObject(const FString& Reason)
 {
-	Super::RefreshInventoryObject();
-	TryRefreshContainerItems("RefreshInventoryObject() ===> TryRefreshContainerItems()");
+	Super::RefreshInventoryObject(Reason);
+	TryRefreshContainerItems();
 }
 
 void UInvSys_BaseContainerObject::AddDataToRep_AddedInventoryItems(FName ItemUniqueID)

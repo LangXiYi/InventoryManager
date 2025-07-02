@@ -44,14 +44,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Inventory Component")
 	virtual void AddInventoryItemToEquipSlot(const FInvSys_InventoryItem& NewItem);
 	
-	/**
-	 * 将物品添加到容器内
-	 * @param NewItem 
-	 * @param ContainerObj 
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Inventory Component")
-	virtual void AddInventoryItemToContainer(const FInvSys_InventoryItem& NewItem, UObject* ContainerObj);
-
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;

@@ -53,6 +53,11 @@ EDragDropType UGridInvSys_DragDropWidget::GetDragDropType() const
 	return DragDropType;
 }
 
+void UGridInvSys_DragDropWidget::SetDragDropType(EDragDropType NewDragType)
+{
+	DragDropType = NewDragType;
+}
+
 void UGridInvSys_DragDropWidget::SetDraggingWidgetClass(TSubclassOf<UGridInvSys_DragItemWidget> NewDraggingWidgetClass)
 {
 	DraggingWidgetClass = NewDraggingWidgetClass;
@@ -79,7 +84,6 @@ void UGridInvSys_DragDropWidget::NativeOnDragDetected(const FGeometry& InGeometr
 	DraggingWidget->UpdateItemInfo(ItemInfo);
 	
 	UDragDropOperation* DragDropOperation = NewObject<UDragDropOperation>();
-	DragDropOperation->Tag = DragDropTypeString[DragDropType];
 	DragDropOperation->Payload = this;
 	DragDropOperation->DefaultDragVisual = DraggingWidget;
 	DragDropOperation->Pivot = DragPivot;

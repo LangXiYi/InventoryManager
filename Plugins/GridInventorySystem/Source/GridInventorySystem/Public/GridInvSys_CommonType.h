@@ -46,6 +46,9 @@ struct FGridInvSys_InventoryItemPosition
 {
 	GENERATED_BODY()
 
+	// 槽位名称
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
+	FName SlotName;
 	// 网格ID
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
 	FName GridID;
@@ -56,8 +59,8 @@ struct FGridInvSys_InventoryItemPosition
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
 	EGridInvSys_ItemDirection Direction = EGridInvSys_ItemDirection::Horizontal;
 	// 物品大小
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
-	FIntPoint Size = FIntPoint(1, 1);
+	/*UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
+	FIntPoint Size = FIntPoint(1, 1);*/
 };
 
 USTRUCT(BlueprintType)

@@ -16,13 +16,15 @@ UGridInvSys_GridInventoryControllerComponent::UGridInvSys_GridInventoryControlle
 	// ...
 }
 
-void UGridInvSys_GridInventoryControllerComponent::Server_UpdateInventoryItems_Implementation(const TArray<FName>& ChangedItems,
-	const TArray<FGridInvSys_InventoryItem>& NewItemData)
+void UGridInvSys_GridInventoryControllerComponent::Server_UpdateInventoryItems_Implementation(
+	UInvSys_InventoryComponent* TargetInvComp, const TArray<FName>& ChangedItems,
+	const TArray<FGridInvSys_InventoryItemPosition>& NewItemData)
 {
-	if (UGridInvSys_InventoryComponent* GridInvComp = GetInventoryComponent<UGridInvSys_InventoryComponent>())
+	if (TargetInvComp && TargetInvComp->IsA(UGridInvSys_InventoryComponent::StaticClass()))
 	{
+		UGridInvSys_InventoryComponent* GridInvComp = Cast<UGridInvSys_InventoryComponent>(TargetInvComp);
 		GridInvComp->UpdateContainerItemsPosition(ChangedItems, NewItemData);
-	} 
+	}
 }
 
 // Called when the game starts
@@ -43,11 +45,3 @@ void UGridInvSys_GridInventoryControllerComponent::TickComponent(float DeltaTime
 
 	// ...
 }
-
-UInvSys_InventoryComponent* UGridInvSys_GridInventoryControllerComponent::GetInventoryComponent_Implementation() const
-{
-	// todo::本案例的 InventoryComponent 与 ControllerInventoryComponent 都在 Controller下，若位置发送改变需要在这里重写。
-	// todo::是否考虑使用Interface？与 GAS 类似的方案？
-	return GetOwner()->GetComponentByClass<UGridInvSys_InventoryComponent>();
-}
-

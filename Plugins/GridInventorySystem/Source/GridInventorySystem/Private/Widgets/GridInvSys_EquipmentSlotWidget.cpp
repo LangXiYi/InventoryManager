@@ -10,6 +10,7 @@
 void UGridInvSys_EquipmentSlotWidget::UpdateOccupant(const FInvSys_InventoryItem& NewOccupant)
 {
 	DragDropWidget->UpdateItemInfo(NewOccupant.ItemInfo);
+	DragDropWidget->SetDragDropType(EDragDropType::Equipment);
 	OnUpdateOccupant(NewOccupant);
 }
 

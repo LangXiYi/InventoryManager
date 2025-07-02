@@ -28,7 +28,13 @@ public:
 protected:
 	virtual void NativeConstruct() override;
 	virtual void NativePreConstruct() override;
-	
+
+
+public:
+	TArray<UGridInvSys_ContainerGridWidget*> GetContainerGridWidgets() const
+	{
+		return ContainerGridWidgets;
+	}
 
 private:
 	void Private_GetAllContainerGridWidgets(TArray<UGridInvSys_ContainerGridWidget*>& OutArray, UWidget* Parent);

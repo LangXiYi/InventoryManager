@@ -34,7 +34,7 @@ public:
 	FORCEINLINE UInvSys_InventoryItemInfo* GetItemInfo() const;
 
 	template<class T>
-	T* GetItemInfo()
+	T* GetItemInfo() const
 	{
 		return Cast<T>(InventoryItem.BaseItemData.ItemInfo);
 	}
@@ -43,6 +43,11 @@ public:
 	
 	FORCEINLINE FIntPoint GetOriginPosition() const;
 
+	const FGridInvSys_InventoryItemPosition& GetGridItemPosition()const
+	{
+		return InventoryItem.ItemPosition;
+	}
+	
 	FORCEINLINE UGridInvSys_ContainerGridItemWidget* GetOriginGridItemWidget() const;
 
 	FORCEINLINE bool IsOccupied() const;
@@ -51,9 +56,12 @@ public:
 
 	FORCEINLINE void SetGridID(FName NewGridID);
 
+	FORCEINLINE EGridInvSys_ItemDirection GetItemDirection() const;
+
 	FIntPoint GetItemSize() const;
 
-	FName GetItemUniqueID() const;
+	FORCEINLINE FName GetItemUniqueID() const;
+	FORCEINLINE FName GetSlotName() const;
 
 	const FGridInvSys_InventoryItem& GetInventoryItemData() const
 	{
@@ -63,6 +71,8 @@ public:
 	TArray<UWidget*> GetOccupiedGridItems();
 
 	FIntPoint CalculateRelativePosition(const UGridInvSys_ContainerGridItemWidget* Parent) const;
+
+	FName GetGridID() const;
 
 protected:
 	virtual void NativePreConstruct() override;
@@ -93,8 +103,8 @@ protected:
 	FName SlotName;
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item")
 	FName GridID;
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item")
-	FIntPoint Position;
+	//UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item")
+	//FIntPoint Position;
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item")
 	bool bIsOccupied = false;
 

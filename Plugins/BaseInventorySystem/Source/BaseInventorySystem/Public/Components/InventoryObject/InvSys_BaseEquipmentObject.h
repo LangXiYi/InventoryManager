@@ -18,11 +18,13 @@ class BASEINVENTORYSYSTEM_API UInvSys_BaseEquipmentObject : public UInvSys_BaseI
 public:
 	UInvSys_BaseEquipmentObject();
 
-	virtual void RefreshInventoryObject() override;
+	virtual void RefreshInventoryObject(const FString& Reason = "") override;
 
 	virtual void InitInventoryObject(UInvSys_InventoryComponent* NewInventoryComponent, UObject* PreEditPayLoad) override;
 	
 	virtual void AddInventoryItemToEquipSlot(const FInvSys_InventoryItem& NewItem);
+
+	virtual void UnEquipInventoryItem();
 
 protected:
 	/**	刷新显示效果 */
@@ -36,6 +38,11 @@ public:
 	virtual bool ContainsItem(FName UniqueID) override;
 
 	FInvSys_InventoryItem GetOccupantData() const;
+
+	bool IsEquipped() const
+	{
+		return bIsOccupied;
+	}
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
@@ -45,6 +52,9 @@ protected:
 	FInvSys_InventoryItem Occupant;
 	UFUNCTION()
 	virtual void OnRep_Occupant(FInvSys_InventoryItem OldOccupant);
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory Equipment Object")
+	bool bIsOccupied = false;
 };
 
 /**

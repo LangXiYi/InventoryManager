@@ -9,10 +9,10 @@ UInvSys_BaseEquipmentObject::UInvSys_BaseEquipmentObject()
 {
 }
 
-void UInvSys_BaseEquipmentObject::RefreshInventoryObject()
+void UInvSys_BaseEquipmentObject::RefreshInventoryObject(const FString& Reason)
 {
-	Super::RefreshInventoryObject();
-	TryRefreshOccupant("RefreshInventoryObject() ===> TryRefreshOccupant");
+	Super::RefreshInventoryObject(Reason);
+	TryRefreshOccupant();
 }
 
 void UInvSys_BaseEquipmentObject::InitInventoryObject(UInvSys_InventoryComponent* NewInventoryComponent,
@@ -26,14 +26,21 @@ void UInvSys_BaseEquipmentObject::AddInventoryItemToEquipSlot(const FInvSys_Inve
 {
 	if (HasAuthority())
 	{
-		UE_LOG(LogInventorySystem, Log, TEXT("[%s:%s] 添加装备 [%s] ===> [%s]"),
-			HasAuthority() ? TEXT("Server") : TEXT("Client"),
-			*GetInventoryComponent()->GetOwner()->GetName(),
-			*NewItem.ItemID.ToString(), *NewItem.SlotName.ToString());
 		Occupant = NewItem;
-		// 手动调用OnRep函数更新服务器玩家的数据
-		// GetOwningActor()->HasLocalNetOwner();
-		//HasLocalNetOwner()
+		bIsOccupied = true;
+		if (GetNetMode() != NM_DedicatedServer && IsLocallyControlled())
+		{
+			OnRep_Occupant(Occupant);
+		}
+	}
+}
+
+void UInvSys_BaseEquipmentObject::UnEquipInventoryItem()
+{
+	if (HasAuthority())
+	{
+		Occupant = FInvSys_InventoryItem();
+		bIsOccupied = false;
 		if (GetNetMode() != NM_DedicatedServer && IsLocallyControlled())
 		{
 			OnRep_Occupant(Occupant);
@@ -46,6 +53,7 @@ void UInvSys_BaseEquipmentObject::GetLifetimeReplicatedProps(TArray<FLifetimePro
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME_CONDITION(UInvSys_BaseEquipmentObject, Occupant, COND_None);
+	DOREPLIFETIME_CONDITION(UInvSys_BaseEquipmentObject, bIsOccupied, COND_None);
 }
 
 void UInvSys_BaseEquipmentObject::TryRefreshOccupant(const FString& Reason)

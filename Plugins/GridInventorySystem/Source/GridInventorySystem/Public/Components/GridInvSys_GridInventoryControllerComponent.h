@@ -23,7 +23,8 @@ public:
 	 * @param NewItemData 
 	 */
 	UFUNCTION(BlueprintCallable, Server, Reliable)
-	virtual void Server_UpdateInventoryItems(const TArray<FName>& ChangedItems, const TArray<FGridInvSys_InventoryItem>& NewItemData);
+	virtual void Server_UpdateInventoryItems(UInvSys_InventoryComponent* TargetInvComp, const TArray<FName>& ChangedItems,
+		const TArray<FGridInvSys_InventoryItemPosition>& NewItemData);
 
 protected:
 	// Called when the game starts
@@ -33,6 +34,4 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
 	                           FActorComponentTickFunction* ThisTickFunction) override;
-	
-	virtual UInvSys_InventoryComponent* GetInventoryComponent_Implementation() const override;
 };
