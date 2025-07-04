@@ -4,7 +4,6 @@
 #include "Components/InvSys_InventoryComponent.h"
 
 #include "BaseInventorySystem.h"
-#include "Components/InventoryObject/InvSys_BaseContainerObject.h"
 #include "Components/InventoryObject/InvSys_BaseEquipContainerObject.h"
 #include "Components/InventoryObject/InvSys_BaseEquipmentObject.h"
 #include "Components/InventoryObject/InvSys_BaseInventoryObject.h"

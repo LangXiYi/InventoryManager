@@ -60,6 +60,7 @@ public:
 
 	FIntPoint GetItemSize() const;
 
+	UFUNCTION(BlueprintPure)
 	FORCEINLINE FName GetItemUniqueID() const;
 	FORCEINLINE FName GetSlotName() const;
 
@@ -81,6 +82,9 @@ protected:
 	
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnItemInfoChanged(UInvSys_InventoryItemInfo* NewOccupant);
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnRemoveItemInfo();
 
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item", meta = (BindWidget))

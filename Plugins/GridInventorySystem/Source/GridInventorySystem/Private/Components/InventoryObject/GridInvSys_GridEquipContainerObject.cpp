@@ -113,7 +113,7 @@ void UGridInvSys_GridEquipContainerObject::AddInventoryItemToContainer(const FGr
 	if (HasAuthority())
 	{
 		RepNotify_ContainerItems.Add(InventoryItem);
-		ContainerGridItems.Add(InventoryItem.BaseItemData.UniqueID, InventoryItem);
+		// ContainerGridItems.Add(InventoryItem.BaseItemData.UniqueID, InventoryItem);
 		ItemPositionMap.Add(InventoryItem.ItemPosition.Position, InventoryItem.BaseItemData.UniqueID);
 		AddDataToRep_AddedInventoryItems(InventoryItem.BaseItemData.UniqueID);
 	}
@@ -125,7 +125,7 @@ void UGridInvSys_GridEquipContainerObject::RemoveInventoryItemFromContainer(FGri
 	if (HasAuthority())
 	{
 		RepNotify_ContainerItems.Remove(InventoryItem);
-		ContainerGridItems.Remove(InventoryItem.BaseItemData.UniqueID);
+		// ContainerGridItems.Remove(InventoryItem.BaseItemData.UniqueID);
 		ItemPositionMap.Remove(InventoryItem.ItemPosition.Position);
 		AddDataToRep_RemovedInventoryItems(InventoryItem.BaseItemData.UniqueID);
 	}
@@ -145,7 +145,7 @@ void UGridInvSys_GridEquipContainerObject::UpdateInventoryItemFromContainer(FNam
 			TempGridItem.ItemPosition = NewPosition;
 			TempGridItem.BaseItemData.SlotName = NewPosition.SlotName;
 			RepNotify_ContainerItems[Index] = TempGridItem;
-			ContainerGridItems[ItemUniqueID] = TempGridItem;
+			// ContainerGridItems[ItemUniqueID] = TempGridItem;
 			AddDataToRep_ChangedInventoryItems(ItemUniqueID);
 		}
 	}
@@ -169,6 +169,7 @@ void UGridInvSys_GridEquipContainerObject::GetLifetimeReplicatedProps(TArray<FLi
 
 void UGridInvSys_GridEquipContainerObject::OnAddedContainerItems(const TArray<FName>& InAddedItems)
 {
+	//UE_LOG(LogInventorySystem, Log, TEXT("[Client] On Added Container Items."))
 	for (FName ItemUniqueID : InAddedItems)
 	{
 		// ContainerItems 是服务器同步过来的，所以在正常情况下，其内部应该会存在
@@ -190,7 +191,7 @@ void UGridInvSys_GridEquipContainerObject::OnAddedContainerItems(const TArray<FN
 
 void UGridInvSys_GridEquipContainerObject::OnRemovedContainerItems(const TArray<FName>& InRemovedItems)
 {
-
+	//UE_LOG(LogInventorySystem, Log, TEXT("[Client] On Removed Container Items."))
 	for (FName ItemUniqueID : InRemovedItems)
 	{
 		if (ContainerGridItems.Contains(ItemUniqueID))
@@ -198,7 +199,7 @@ void UGridInvSys_GridEquipContainerObject::OnRemovedContainerItems(const TArray<
 			FGridInvSys_InventoryItem TempItemData = ContainerGridItems[ItemUniqueID];
 			ContainerGridItems.Remove(ItemUniqueID);
 
-			if (EquipmentSlotWidget == nullptr)
+			if (EquipmentSlotWidget)
 			{
 				UGridInvSys_ContainerGridWidget* GridWidget = ContainerGridWidgets[TempItemData.ItemPosition.GridID];
 				GridWidget->RemoveInventoryItem(TempItemData);
@@ -209,7 +210,7 @@ void UGridInvSys_GridEquipContainerObject::OnRemovedContainerItems(const TArray<
 
 void UGridInvSys_GridEquipContainerObject::OnUpdatedContainerItems(const TArray<FName>& InChangedItems)
 {
-
+	//UE_LOG(LogInventorySystem, Log, TEXT("[Client] On Updated Container Items."))
 	for (FName ItemUniqueID : InChangedItems)
 	{
 		int32 Index = FindContainerItemIndex(ItemUniqueID);

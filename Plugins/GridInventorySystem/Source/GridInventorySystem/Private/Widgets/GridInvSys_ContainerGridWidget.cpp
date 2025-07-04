@@ -153,7 +153,7 @@ bool UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer(UGridInvSys_Con
 			if (!IsInRange(TempOriginPosition, TempItemInfo->ItemSize, ToPosition, FromItemSize) &&
 				!IsInRange(ToPosition, FromItemSize, TempOriginPosition, TempItemInfo->ItemSize))
 			{
-				UE_LOG(LogInventorySystem, Log, TEXT("有物体在范围外 [%d]"), FromGridItemWidget->GetOccupiedGridItems().Num())
+				// UE_LOG(LogInventorySystem, Log, TEXT("有物体在范围外 [%d]"), FromGridItemWidget->GetOccupiedGridItems().Num())
 				return false;
 			}
 		}
@@ -165,7 +165,7 @@ bool UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer(UGridInvSys_Con
 	{
 		if (HasEnoughFreeSpace(ToPosition, FromItemSize, FromGridItemWidget->GetOccupiedGridItems()))
 		{
-			UE_LOG(LogInventorySystem, Log, TEXT("To 未被占领或是 From 与 To 的 Occupant 是同一对象"))
+			// UE_LOG(LogInventorySystem, Log, TEXT("To 未被占领或是 From 与 To 的 Occupant 是同一对象"))
 			return true;
 		}
 	}
@@ -173,14 +173,14 @@ bool UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer(UGridInvSys_Con
 	// To 的位置已经被其他物品占领，但 From 与 To 的大小一致 且 To 的位置是物品的左上角
 	if (FromItemSize == ToGridItemWidget->GetItemSize() && ToGridItemWidget == ToGridItemWidget->GetOriginGridItemWidget())
 	{
-		UE_LOG(LogInventorySystem, Log, TEXT("To 的位置已经被其他物品占领，但 From 与 To 的大小一致 且 To 的位置是物品的左上角"))
+		// UE_LOG(LogInventorySystem, Log, TEXT("To 的位置已经被其他物品占领，但 From 与 To 的大小一致 且 To 的位置是物品的左上角"))
 		return true;
 	}
 
 	// To 的位置已经被其他物品占领，且拖拽的物品大小 > 放置位置的物品的大小
 	if (FromItemSize.X >= ToGridItemWidget->GetItemSize().X && FromItemSize.Y >= ToGridItemWidget->GetItemSize().Y)
 	{
-		UE_LOG(LogInventorySystem, Log, TEXT("To 的位置已经被其他物品占领，且拖拽的物品大小 > 放置位置的物品的大小"))
+		// UE_LOG(LogInventorySystem, Log, TEXT("To 的位置已经被其他物品占领，且拖拽的物品大小 > 放置位置的物品的大小"))
 		return true;
 	}
 	// To 的位置已经被其他物品占领，且拖拽的物品大小 < 放置位置的物品的大小
@@ -197,7 +197,7 @@ bool UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer(UGridInvSys_Con
 			Ignores.Remove(NotIgnore);
 		}
 		// 在容器内查找其他可以放置该物品的位置，From占据的网格会被视为空闲。
-		UE_LOG(LogInventorySystem, Log, TEXT("To 的位置已经被其他物品占领，且拖拽的物品大小 < 放置位置的物品的大小"))
+		// UE_LOG(LogInventorySystem, Log, TEXT("To 的位置已经被其他物品占领，且拖拽的物品大小 < 放置位置的物品的大小"))
 		return FindValidPosition(ToGridItemWidget->GetItemSize(), Position, Ignores);
 	}
 	return false;
@@ -574,11 +574,20 @@ void UGridInvSys_ContainerGridWidget::RemoveInventoryItem(const FGridInvSys_Inve
 		UE_LOG(LogInventorySystem, Warning, TEXT("移除物品失败：RemoveGridItemWidget is nullptr."));
 		return;
 	}
-	// 判断要删除的物品唯一ID是否与需要删除的物品一致，避免误删。
-	if (RemoveGridItemWidget->GetItemUniqueID() == InventoryItem.BaseItemData.UniqueID)
+	if (UGridInvSys_InventoryItemInfo* ItemInfo = Cast<UGridInvSys_InventoryItemInfo>(InventoryItem.BaseItemData.ItemInfo))
 	{
-		RemoveGridItemWidget->RemoveItemInfo();
-	}
+		ItemInfo->ItemSize;
+		TArray<UGridInvSys_ContainerGridItemWidget*> OutArray;
+		GetContainerGridItems<UGridInvSys_ContainerGridItemWidget>(OutArray,ToPosition, ItemInfo->ItemSize);
+		for (UGridInvSys_ContainerGridItemWidget* ItemWidget : OutArray)
+		{
+			// 判断要删除的物品唯一ID是否与需要删除的物品一致，避免误删。
+			if (ItemWidget->GetItemUniqueID() == InventoryItem.BaseItemData.UniqueID)
+			{
+				ItemWidget->RemoveItemInfo();
+			}
+		}
+	} 
 }
 
 void UGridInvSys_ContainerGridWidget::RemoveAllInventoryItem()

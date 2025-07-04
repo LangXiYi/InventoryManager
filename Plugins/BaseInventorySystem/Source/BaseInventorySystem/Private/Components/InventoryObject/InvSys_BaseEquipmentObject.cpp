@@ -28,7 +28,7 @@ void UInvSys_BaseEquipmentObject::AddInventoryItemToEquipSlot(const FInvSys_Inve
 	{
 		Occupant = NewItem;
 		bIsOccupied = true;
-		if (GetNetMode() != NM_DedicatedServer && IsLocallyControlled())
+		if (GetNetMode() != NM_DedicatedServer)
 		{
 			OnRep_Occupant(Occupant);
 		}
@@ -41,7 +41,7 @@ void UInvSys_BaseEquipmentObject::UnEquipInventoryItem()
 	{
 		Occupant = FInvSys_InventoryItem();
 		bIsOccupied = false;
-		if (GetNetMode() != NM_DedicatedServer && IsLocallyControlled())
+		if (GetNetMode() != NM_DedicatedServer)
 		{
 			OnRep_Occupant(Occupant);
 		}

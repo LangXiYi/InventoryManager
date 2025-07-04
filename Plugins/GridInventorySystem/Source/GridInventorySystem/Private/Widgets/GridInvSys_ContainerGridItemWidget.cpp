@@ -44,6 +44,7 @@ void UGridInvSys_ContainerGridItemWidget::UpdateItemInfo(const FGridInvSys_Inven
 	ContainerGridWidget->GetContainerGridItems<UGridInvSys_ContainerGridItemWidget>(OutArray, GetPosition(), GetItemSize(), {this});
 	for (UGridInvSys_ContainerGridItemWidget* GridItemWidget : OutArray)
 	{
+		//UE_LOG(LogInventorySystem, Warning, TEXT("正在添加子集 [%d,%d]"), GridItemWidget->GetPosition().X, GridItemWidget->GetPosition().Y);
 		GridItemWidget->RemoveItemInfo();
 		GridItemWidget->bIsOccupied = true;
 		GridItemWidget->InventoryItem = NewInventoryItem;
@@ -79,10 +80,11 @@ void UGridInvSys_ContainerGridItemWidget::RemoveItemInfo()
 		// 确保被删除的网格的拥有者是自己而不是其他物品
 		if (GridItemWidget->GetOriginGridItemWidget() == this)
 		{
+			//UE_LOG(LogInventorySystem, Warning, TEXT("正在删除子集 [%d,%d]"), GridItemWidget->GetPosition().X, GridItemWidget->GetPosition().Y);
 			GridItemWidget->RemoveItemInfo();
 		}
 	}
-	OnItemInfoChanged(nullptr);
+	OnRemoveItemInfo();
 }
 
 UGridInvSys_ContainerGridWidget* UGridInvSys_ContainerGridItemWidget::GetContainerGridWidget() const

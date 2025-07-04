@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "InvSys_BaseContainerObject.h"
 #include "InvSys_BaseEquipmentObject.h"
 #include "InvSys_BaseEquipContainerObject.generated.h"
 
@@ -37,11 +36,11 @@ protected:
 	virtual void TryRefreshOccupant(const FString& Reason = "") override;
 	virtual void TryRefreshContainerItems(const FString& Reason = "");
 	
-	/** [Client] 处理服务器批量返回的操作记录 */
+	/** [Client & Server] 处理服务器批量返回的操作记录 */
 	virtual void OnAddedContainerItems(const TArray<FName>& InAddedItems) {}
-	/** [Client] 处理服务器批量返回的操作记录 */
+	/** [Client & Server] 处理服务器批量返回的操作记录 */
 	virtual void OnRemovedContainerItems(const TArray<FName>& InRemovedItems) {}
-	/** [Client] 处理服务器批量返回的操作记录 */
+	/** [Client & Server] 处理服务器批量返回的操作记录 */
 	virtual void OnUpdatedContainerItems(const TArray<FName>& InChangedItems) {}
 
 private:

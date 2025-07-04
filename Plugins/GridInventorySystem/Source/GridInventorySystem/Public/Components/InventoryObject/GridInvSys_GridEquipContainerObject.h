@@ -76,9 +76,9 @@ protected:
 private:
 	/** Server: 优化物品查询速度  Key ===> Position : Value ===> ItemUniqueId */
 	TMap<FIntPoint, FName> ItemPositionMap;
-	/** Server & Client: 加快物品的查询速度。 Key ===> ItemUniqueID */
+	/** [Client & Server]: 加快物品的查询速度。 Key ===> ItemUniqueID */
 	TMap<FName, FGridInvSys_InventoryItem> ContainerGridItems;
-	// Client: <GridID, ContainerGridWidgets> 供客户端使用，会在创建控件之后自动填充。
+	/** [Client] <GridID, ContainerGridWidgets> 供客户端使用，会在创建控件之后自动填充。 */
 	TMap<FName, UGridInvSys_ContainerGridWidget*> ContainerGridWidgets;
 };
 

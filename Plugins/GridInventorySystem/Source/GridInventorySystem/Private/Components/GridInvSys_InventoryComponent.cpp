@@ -5,7 +5,6 @@
 
 #include "BaseInventorySystem.h"
 #include "Blueprint/UserWidget.h"
-#include "Components/InventoryObject/GridInvSys_GridContainerObject.h"
 #include "Components/InventoryObject/GridInvSys_GridEquipContainerObject.h"
 
 
@@ -31,15 +30,7 @@ void UGridInvSys_InventoryComponent::AddInventoryItemToGridContainer(FGridInvSys
 		HasAuthority() ? TEXT("Server") : TEXT("Client"), *GetOwner()->GetName(),
 		*GridContainerItem.BaseItemData.ItemID.ToString(), *SlotName.ToString());
 	
-	if (InventoryObjectMap[SlotName]->IsA(UGridInvSys_GridContainerObject::StaticClass()))
-	{
-		// 网格容器对象
-		if (UGridInvSys_GridContainerObject* ContainerObj = Cast<UGridInvSys_GridContainerObject>(InventoryObjectMap[SlotName]))
-		{
-			ContainerObj->AddInventoryItemToContainer(GridContainerItem);
-		}
-	}
-	else if(InventoryObjectMap[SlotName]->IsA(UGridInvSys_GridEquipContainerObject::StaticClass()))
+	if(InventoryObjectMap[SlotName]->IsA(UGridInvSys_GridEquipContainerObject::StaticClass()))
 	{
 		// 可装备的网格容器对象
 		if (UGridInvSys_GridEquipContainerObject* ContainerObj = Cast<UGridInvSys_GridEquipContainerObject>(InventoryObjectMap[SlotName]))
@@ -89,7 +80,7 @@ void UGridInvSys_InventoryComponent::UpdateContainerItemsPosition(TArray<FName> 
 		FGridInvSys_InventoryItem OldItemData;
 		FindContainerGridItem(ChangedItems[i], OldItemData);
 
-		UE_LOG(LogInventorySystem, Log, TEXT("[Server:%s]: Position [%s:%s]:(%d,%d) ===> [%s:%-s]:(%d,%d)"),
+		UE_LOG(LogInventorySystem, Warning, TEXT("[%s]:%s-%s:(%d,%d) ===> %s-%s:(%d,%d)"),
 			*ChangedItems[i].ToString(),
 			*OldItemData.ItemPosition.SlotName.ToString(), *OldItemData.ItemPosition.GridID.ToString(),
 			OldItemData.ItemPosition.Position.X, OldItemData.ItemPosition.Position.Y,
@@ -100,11 +91,6 @@ void UGridInvSys_InventoryComponent::UpdateContainerItemsPosition(TArray<FName> 
 		if (OldItemData.ItemPosition.SlotName == NewItemData[i].SlotName)
 		{
 			UInvSys_BaseInventoryObject* InventoryObject = InventoryObjectMap[NewItemData[i].SlotName];
-			if (InventoryObject->IsA(UGridInvSys_GridContainerObject::StaticClass()))
-			{
-				UGridInvSys_GridContainerObject* ContainerObj = Cast<UGridInvSys_GridContainerObject>(InventoryObject);
-				// ContainerObj->UpdateInventoryItemFromContainer(ItemData);
-			}
 			if(InventoryObject->IsA(UGridInvSys_GridEquipContainerObject::StaticClass()))
 			{
 				UGridInvSys_GridEquipContainerObject* EquipContainerObj = Cast<UGridInvSys_GridEquipContainerObject>(InventoryObject);
@@ -115,11 +101,6 @@ void UGridInvSys_InventoryComponent::UpdateContainerItemsPosition(TArray<FName> 
 		{
 			// 删除旧物品
 			UInvSys_BaseInventoryObject* OldInvObject = InventoryObjectMap[OldItemData.ItemPosition.SlotName];
-			if (OldInvObject->IsA(UGridInvSys_GridContainerObject::StaticClass()))
-			{
-				UGridInvSys_GridContainerObject* ContainerObj = Cast<UGridInvSys_GridContainerObject>(OldInvObject);
-				// ContainerObj->UpdateInventoryItemFromContainer(ItemData);
-			}
 			if(OldInvObject->IsA(UGridInvSys_GridEquipContainerObject::StaticClass()))
 			{
 				UGridInvSys_GridEquipContainerObject* EquipContainerObj = Cast<UGridInvSys_GridEquipContainerObject>(OldInvObject);
@@ -127,11 +108,6 @@ void UGridInvSys_InventoryComponent::UpdateContainerItemsPosition(TArray<FName> 
 			}
 			// 添加新物品
 			UInvSys_BaseInventoryObject* NewInvObject = InventoryObjectMap[NewItemData[i].SlotName];
-			if (NewInvObject->IsA(UGridInvSys_GridContainerObject::StaticClass()))
-			{
-				UGridInvSys_GridContainerObject* ContainerObj = Cast<UGridInvSys_GridContainerObject>(NewInvObject);
-				// ContainerObj->UpdateInventoryItemFromContainer(ItemData);
-			}
 			if(NewInvObject->IsA(UGridInvSys_GridEquipContainerObject::StaticClass()))
 			{
 				UGridInvSys_GridEquipContainerObject* EquipContainerObj = Cast<UGridInvSys_GridEquipContainerObject>(NewInvObject);
@@ -175,12 +151,6 @@ bool UGridInvSys_InventoryComponent::FindInventoryItem(FName SlotName, const FIn
 	if (InventoryObjectMap.Contains(SlotName))
 	{
 		UInvSys_BaseInventoryObject* InventoryObject = InventoryObjectMap[SlotName];
-		if (InventoryObject->IsA(UGridInvSys_GridContainerObject::StaticClass()))
-		{
-			const UGridInvSys_GridContainerObject* ContainerObj = Cast<UGridInvSys_GridContainerObject>(InventoryObject);
-			return ContainerObj->FindContainerGridItem(ItemPosition, OutItem);
-
-		}
 		if(InventoryObject->IsA(UGridInvSys_GridEquipContainerObject::StaticClass()))
 		{
 			const UGridInvSys_GridEquipContainerObject* EquipContainerObj = Cast<UGridInvSys_GridEquipContainerObject>(InventoryObject);
@@ -194,14 +164,6 @@ bool UGridInvSys_InventoryComponent::FindContainerGridItem(FName ItemUniqueID,  
 {
 	for (UInvSys_BaseInventoryObject* InvObject : InventoryObjectList)
 	{
-		if (InvObject->IsA(UGridInvSys_GridContainerObject::StaticClass()))
-		{
-			const UGridInvSys_GridContainerObject* ContainerObj = Cast<UGridInvSys_GridContainerObject>(InvObject);
-			if (ContainerObj->FindContainerGridItem(ItemUniqueID, OutItem))
-			{
-				return true;
-			}
-		}
 		if(InvObject->IsA(UGridInvSys_GridEquipContainerObject::StaticClass()))
 		{
 			const UGridInvSys_GridEquipContainerObject* EquipContainerObj = Cast<UGridInvSys_GridEquipContainerObject>(InvObject);

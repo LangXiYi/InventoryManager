@@ -84,7 +84,7 @@ void UInvSys_BaseEquipContainerObject::TryRepInventoryItems_Add()
 	Pending_AddedInventoryItems.Empty();
 	OwningActor->ForceNetUpdate();
 	
-	if (GetNetMode() != NM_DedicatedServer && IsLocallyControlled())
+	if (GetNetMode() != NM_DedicatedServer)
 		OnRep_AddedInventoryItems();
 
 	// 发送数据后等待 N 秒后清除旧数据，若在等待期间缓存数据增加，则清除完成后再次调用本函数，将数据发送至客户端。
@@ -113,9 +113,10 @@ void UInvSys_BaseEquipContainerObject::TryRepInventoryItems_Remove()
 	}
 	RemovedInventoryItems = Pending_RemovedInventoryItems;
 	Pending_RemovedInventoryItems.Empty();
+	UE_LOG(LogInventorySystem, Log, TEXT("Net update to client."))
 	OwningActor->ForceNetUpdate();
 
-	if (GetNetMode() != NM_DedicatedServer && IsLocallyControlled())
+	if (GetNetMode() != NM_DedicatedServer)
 		OnRep_RemovedInventoryItems();
 
 	// 发送数据后等待 N 秒后清除旧数据，若在等待期间缓存数据增加，则清除完成后再次调用本函数，将数据发送至客户端。
@@ -124,7 +125,7 @@ void UInvSys_BaseEquipContainerObject::TryRepInventoryItems_Remove()
 		RemoveTimerHandle.Invalidate();
 		if (!Pending_RemovedInventoryItems.IsEmpty())
 		{
-			UE_LOG(LogInventorySystem, Log, TEXT("Pending_AddedInventoryItems 中存在新的数据，需要先进行强制更新。"))
+			// UE_LOG(LogInventorySystem, Log, TEXT("Pending_AddedInventoryItems 中存在新的数据，需要先进行强制更新。"))
 			TryRepInventoryItems_Remove(); // 存在新的需要更新的数据，强制继续更新。
 		}
 	}, GetServerWaitBatchTime(), false);
@@ -146,7 +147,7 @@ void UInvSys_BaseEquipContainerObject::TryRepInventoryItems_Change()
 	Pending_ChangedInventoryItems.Empty();
 	OwningActor->ForceNetUpdate();
 
-	if (GetNetMode() != NM_DedicatedServer && IsLocallyControlled())
+	if (GetNetMode() != NM_DedicatedServer)
 		OnRep_ChangedInventoryItems();
 
 	// 发送数据后等待 N 秒后清除旧数据，若在等待期间缓存数据增加，则清除完成后再次调用本函数，将数据发送至客户端。
@@ -155,7 +156,7 @@ void UInvSys_BaseEquipContainerObject::TryRepInventoryItems_Change()
 		ChangeTimerHandle.Invalidate();
 		if (!Pending_ChangedInventoryItems.IsEmpty())
 		{
-			UE_LOG(LogInventorySystem, Log, TEXT("Pending_AddedInventoryItems 中存在新的数据，需要先进行强制更新。"))
+			// UE_LOG(LogInventorySystem, Log, TEXT("Pending_AddedInventoryItems 中存在新的数据，需要先进行强制更新。"))
 			TryRepInventoryItems_Change(); // 存在新的需要更新的数据，强制继续更新。
 		}
 	}, GetServerWaitBatchTime(), false);
