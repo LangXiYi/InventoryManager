@@ -82,6 +82,7 @@ void UGridInvSys_DragDropWidget::NativeOnDragDetected(const FGeometry& InGeometr
 	// 创建 Dragging 控件
 	UGridInvSys_DragItemWidget* DraggingWidget = CreateWidget<UGridInvSys_DragItemWidget>(GetOwningPlayer(), DraggingWidgetClass);
 	DraggingWidget->UpdateItemInfo(ItemInfo);
+	DraggingWidget->UpdateDirection(ItemDirection);
 	
 	UDragDropOperation* DragDropOperation = NewObject<UDragDropOperation>();
 	DragDropOperation->Payload = this;

@@ -48,19 +48,19 @@ struct FGridInvSys_InventoryItemPosition
 
 	// 槽位名称
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
-	FName SlotName;
+	FName SlotName = NAME_None;
 	// 网格ID
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
-	FName GridID;
+	FName GridID = NAME_None;
 	// 单元格位置
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
-	FIntPoint Position = FIntPoint(-1, -1);
-	// 物品方向
+	FIntPoint Position = FIntPoint(0, 0);
+	// 物品方向会影响贴图方向以及占据的网格大小。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
 	EGridInvSys_ItemDirection Direction = EGridInvSys_ItemDirection::Horizontal;
-	// 物品大小
-	/*UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
-	FIntPoint Size = FIntPoint(1, 1);*/
+	// 物品在网格占据的大小，受方向影响，如1，2的物品在旋转后应该为2，1，但物品的默认大小为1，2
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
+	FIntPoint ItemSize = FIntPoint(1, 1);
 };
 
 USTRUCT(BlueprintType)

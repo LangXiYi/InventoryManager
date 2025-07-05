@@ -45,7 +45,7 @@ protected:
 	virtual void ResetDragDropData();
 
 	/** 放下物品至容器的目标位置，From必须是来自容器对象而非装备槽，仅在同容器组件下有效！！ */
-	bool TryDropItemFromContainer(UGridInvSys_ContainerGridItemWidget* FromGridItemWidget,
+	bool TryDropItemFromContainer(UGridInvSys_ContainerGridItemWidget* FromGridItemWidget, FIntPoint FromItemSize,
 		FGridInvSys_InventoryItemPosition ItemPositionData) const;
 	
 	/**
@@ -131,7 +131,8 @@ public:
 
 protected:
 	// 判断目标位置能否放置物品，注意：使用此方法时From必须是来自其他容器
-	bool IsCanDropItemFromContainer(UGridInvSys_ContainerGridItemWidget* FromGridItemWidget, FIntPoint ToPosition) const;
+	bool IsCanDropItemFromContainer(UGridInvSys_ContainerGridItemWidget* FromGridItemWidget,
+		FIntPoint ToPosition, FIntPoint FromItemSize) const;
 
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Container Grid", meta = (BindWidget))

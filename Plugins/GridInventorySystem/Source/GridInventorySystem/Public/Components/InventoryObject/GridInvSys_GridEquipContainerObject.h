@@ -24,6 +24,9 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_GridEquipContainerObject : public UInv
 public:
 	UGridInvSys_GridEquipContainerObject();
 	
+	virtual void TryRefreshOccupant(const FString& Reason = "") override;
+	virtual void TryRefreshContainerItems(const FString& Reason = "") override;
+	
 	virtual void AddInventoryItemToEquipSlot(const FInvSys_InventoryItem& NewItem) override;
 
 	virtual void AddInventoryItemToContainer(const FGridInvSys_InventoryItem& InventoryItem);
@@ -32,9 +35,6 @@ public:
 
 protected:
 	virtual void CreateDisplayWidget(APlayerController* PC) override;
-	
-	virtual void TryRefreshOccupant(const FString& Reason = "") override;
-	virtual void TryRefreshContainerItems(const FString& Reason = "") override;
 	
 	virtual void OnAddedContainerItems(const TArray<FName>& InAddedItems) override;
 	virtual void OnRemovedContainerItems(const TArray<FName>& InRemovedItems) override;
@@ -74,10 +74,12 @@ protected:
 	TArray<FGridInvSys_InventoryItem> RepNotify_ContainerItems;
 
 private:
-	/** Server: 优化物品查询速度  Key ===> Position : Value ===> ItemUniqueId */
+	/** [Server] 优化物品查询速度  Key ===> Position : Value ===> ItemUniqueId */
 	TMap<FIntPoint, FName> ItemPositionMap;
-	/** [Client & Server]: 加快物品的查询速度。 Key ===> ItemUniqueID */
+	/** [Client & Server] 加快物品的查询速度。 Key ===> ItemUniqueID */
 	TMap<FName, FGridInvSys_InventoryItem> ContainerGridItems;
+	/** 存储 UniqueID, Position，更新物品位置信息时只会修改这个？ */
+	TMap<FName, FGridInvSys_InventoryItemPosition> GridItemPositions;
 	/** [Client] <GridID, ContainerGridWidgets> 供客户端使用，会在创建控件之后自动填充。 */
 	TMap<FName, UGridInvSys_ContainerGridWidget*> ContainerGridWidgets;
 };

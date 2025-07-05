@@ -24,18 +24,17 @@ public:
 	UInvSys_BaseEquipContainerObject();
 
 	virtual void RefreshInventoryObject(const FString& Reason = "") override;
-	
-	/** [Server] 添加物品，并将操作记录至复制列表，等待一段时间后，将所有操作批量发送给客户端并清除操作列表。 */
-	void AddDataToRep_AddedInventoryItems(FName ItemUniqueID);
-	/** [Server] 删除物品，并将操作记录至复制列表，等待一段时间后，将所有操作批量发送给客户端并清除操作列表。 */
-	void AddDataToRep_RemovedInventoryItems(FName ItemUniqueID);
-	/** [Server] 修改物品，并将操作记录至操作列表，等待一段时间后，将所有操作批量发送给客户端并清除操作列表。 */
-	void AddDataToRep_ChangedInventoryItems(FName ItemUniqueID);
-
-protected:
 	virtual void TryRefreshOccupant(const FString& Reason = "") override;
 	virtual void TryRefreshContainerItems(const FString& Reason = "");
 	
+	/** [Server] 添加物品，并将操作记录至复制列表，等待一段时间后，将所有操作批量发送给客户端并清除操作列表。 */
+	void RecordItemOperationByAdd(FName ItemUniqueID);
+	/** [Server] 删除物品，并将操作记录至复制列表，等待一段时间后，将所有操作批量发送给客户端并清除操作列表。 */
+	void RecordItemOperationByRemove(FName ItemUniqueID);
+	/** [Server] 修改物品，并将操作记录至操作列表，等待一段时间后，将所有操作批量发送给客户端并清除操作列表。 */
+	void RecordItemOperationByUpdate(FName ItemUniqueID);
+
+protected:
 	/** [Client & Server] 处理服务器批量返回的操作记录 */
 	virtual void OnAddedContainerItems(const TArray<FName>& InAddedItems) {}
 	/** [Client & Server] 处理服务器批量返回的操作记录 */
@@ -44,9 +43,12 @@ protected:
 	virtual void OnUpdatedContainerItems(const TArray<FName>& InChangedItems) {}
 
 private:
-	void TryRepInventoryItems_Add();
-	void TryRepInventoryItems_Remove();
-	void TryRepInventoryItems_Change();
+	/** [Server] 将所有操作批量发送给客户端并清除操作列表 */
+	void TryApplyAddOperations();
+	/** [Server] 将所有操作批量发送给客户端并清除操作列表 */
+	void TryApplyRemoveOperations();
+	/** [Server] 将所有操作批量发送给客户端并清除操作列表 */
+	void TryApplyUpdateOperations();
 
 public:
 	/**
@@ -58,27 +60,35 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 protected:
-	// 用于记录容器内保存的对象
-	TSet<FName> ItemUniqueIDSet;
+	/** [Server] 当前容器内的所有物品的 UniqueID */
+	TSet<FName> ContainerItems;
+
+	// TMap<FName, FInvSys_InventoryItem> ContainerItemInfos;
 	
 private:
+	/*
+	 * 注意：在同一时间内不得对同一物品进行不同操作，同一时间内对一个物品只能进行一种操作，该操作可以不限制次数，
+	 * 如：在某一时刻对物品A记录了Add操作，但在发送操作前又进行另一操作
+	 * 若网络出现波动，导致Add操作在另一操作之后出现，则在其他操作执行完成后，物品才姗姗来迟。
+	 */
+	
 	UPROPERTY(ReplicatedUsing = OnRep_AddedInventoryItems)
 	TArray<FName> AddedInventoryItems;
-	TArray<FName> Pending_AddedInventoryItems;
+	TSet<FName> Pending_AddedInventoryItems;
 	bool bIsWait_Pending_AddedInventoryItems = false;
 	UFUNCTION()
 	void OnRep_AddedInventoryItems();
 
 	UPROPERTY(ReplicatedUsing = OnRep_RemovedInventoryItems)
 	TArray<FName> RemovedInventoryItems;
-	TArray<FName> Pending_RemovedInventoryItems;
+	TSet<FName> Pending_RemovedInventoryItems;
 	bool bIsWait_Pending_RemovedInventoryItems = false;
 	UFUNCTION()
 	void OnRep_RemovedInventoryItems();
 
 	UPROPERTY(ReplicatedUsing = OnRep_ChangedInventoryItems)
 	TArray<FName> ChangedInventoryItems;
-	TArray<FName> Pending_ChangedInventoryItems;
+	TSet<FName> Pending_ChangedInventoryItems;
 	bool bIsWait_Pending_ChangedInventoryItems = false;
 	UFUNCTION()
 	void OnRep_ChangedInventoryItems();

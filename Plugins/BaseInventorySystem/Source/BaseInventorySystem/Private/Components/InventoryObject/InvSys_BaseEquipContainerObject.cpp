@@ -17,35 +17,32 @@ void UInvSys_BaseEquipContainerObject::RefreshInventoryObject(const FString& Rea
 	TryRefreshContainerItems();
 }
 
-void UInvSys_BaseEquipContainerObject::AddDataToRep_AddedInventoryItems(FName ItemUniqueID)
+void UInvSys_BaseEquipContainerObject::RecordItemOperationByAdd(FName ItemUniqueID)
 {
 	if (HasAuthority())
 	{
-		bIsWait_Pending_AddedInventoryItems = true;
 		Pending_AddedInventoryItems.Add(ItemUniqueID);
-		ItemUniqueIDSet.Add(ItemUniqueID);
-		TryRepInventoryItems_Add();
+		ContainerItems.Add(ItemUniqueID);
+		TryApplyAddOperations();
 	}
 }
 
-void UInvSys_BaseEquipContainerObject::AddDataToRep_RemovedInventoryItems(FName ItemUniqueID)
+void UInvSys_BaseEquipContainerObject::RecordItemOperationByRemove(FName ItemUniqueID)
 {
 	if (HasAuthority())
 	{
-		bIsWait_Pending_RemovedInventoryItems = true;
 		Pending_RemovedInventoryItems.Add(ItemUniqueID);
-		ItemUniqueIDSet.Remove(ItemUniqueID);
-		TryRepInventoryItems_Remove();
+		ContainerItems.Remove(ItemUniqueID);
+		TryApplyRemoveOperations();
 	}
 }
 
-void UInvSys_BaseEquipContainerObject::AddDataToRep_ChangedInventoryItems(FName ItemUniqueID)
+void UInvSys_BaseEquipContainerObject::RecordItemOperationByUpdate(FName ItemUniqueID)
 {
 	if (HasAuthority())
 	{
-		bIsWait_Pending_ChangedInventoryItems = true;
 		Pending_ChangedInventoryItems.Add(ItemUniqueID);
-		TryRepInventoryItems_Change();
+		TryApplyUpdateOperations();
 	}
 }
 
@@ -68,7 +65,7 @@ void UInvSys_BaseEquipContainerObject::GetLifetimeReplicatedProps(TArray<FLifeti
 	DOREPLIFETIME(UInvSys_BaseEquipContainerObject, RemovedInventoryItems);
 }
 
-void UInvSys_BaseEquipContainerObject::TryRepInventoryItems_Add()
+void UInvSys_BaseEquipContainerObject::TryApplyAddOperations()
 {
 	if (HasAuthority() == false || AddTimerHandle.IsValid()) return;
 	// 第一批数据，直接发送无延迟，后续数据等待 N 秒后，将 N 秒内增加的数据合批发送。
@@ -80,7 +77,7 @@ void UInvSys_BaseEquipContainerObject::TryRepInventoryItems_Add()
 		UE_LOG(LogInventorySystem, Error, TEXT("OwningActor is nullptr."))
 		return;
 	}
-	AddedInventoryItems = Pending_AddedInventoryItems;
+	AddedInventoryItems.Append(Pending_AddedInventoryItems.Array());
 	Pending_AddedInventoryItems.Empty();
 	OwningActor->ForceNetUpdate();
 	
@@ -94,12 +91,12 @@ void UInvSys_BaseEquipContainerObject::TryRepInventoryItems_Add()
 		if (!Pending_AddedInventoryItems.IsEmpty())
 		{
 			// UE_LOG(LogInventorySystem, Log, TEXT("Pending_AddedInventoryItems 中存在新的数据，需要先进行强制更新。"))
-			TryRepInventoryItems_Add(); // 存在新的需要更新的数据，强制继续更新。
+			TryApplyAddOperations(); // 存在新的需要更新的数据，强制继续更新。
 		}
 	}, GetServerWaitBatchTime(), false);
 }
 
-void UInvSys_BaseEquipContainerObject::TryRepInventoryItems_Remove()
+void UInvSys_BaseEquipContainerObject::TryApplyRemoveOperations()
 {
 	if (HasAuthority() == false || RemoveTimerHandle.IsValid()) return;
 	// 第一批数据，直接发送无延迟，后续数据等待 N 秒后，将 N 秒内增加的数据合批发送。
@@ -111,7 +108,7 @@ void UInvSys_BaseEquipContainerObject::TryRepInventoryItems_Remove()
 		UE_LOG(LogInventorySystem, Error, TEXT("OwningActor is nullptr."))
 		return;
 	}
-	RemovedInventoryItems = Pending_RemovedInventoryItems;
+	RemovedInventoryItems.Append(Pending_RemovedInventoryItems.Array());
 	Pending_RemovedInventoryItems.Empty();
 	UE_LOG(LogInventorySystem, Log, TEXT("Net update to client."))
 	OwningActor->ForceNetUpdate();
@@ -126,12 +123,12 @@ void UInvSys_BaseEquipContainerObject::TryRepInventoryItems_Remove()
 		if (!Pending_RemovedInventoryItems.IsEmpty())
 		{
 			// UE_LOG(LogInventorySystem, Log, TEXT("Pending_AddedInventoryItems 中存在新的数据，需要先进行强制更新。"))
-			TryRepInventoryItems_Remove(); // 存在新的需要更新的数据，强制继续更新。
+			TryApplyRemoveOperations(); // 存在新的需要更新的数据，强制继续更新。
 		}
 	}, GetServerWaitBatchTime(), false);
 }
 
-void UInvSys_BaseEquipContainerObject::TryRepInventoryItems_Change()
+void UInvSys_BaseEquipContainerObject::TryApplyUpdateOperations()
 {
 	if (HasAuthority() == false || ChangeTimerHandle.IsValid()) return;
 	// 第一批数据，直接发送无延迟，后续数据等待 N 秒后，将 N 秒内增加的数据合批发送。
@@ -143,7 +140,7 @@ void UInvSys_BaseEquipContainerObject::TryRepInventoryItems_Change()
 		UE_LOG(LogInventorySystem, Error, TEXT("OwningActor is nullptr."))
 		return;
 	}
-	ChangedInventoryItems = Pending_ChangedInventoryItems;
+	ChangedInventoryItems.Append(Pending_ChangedInventoryItems.Array());
 	Pending_ChangedInventoryItems.Empty();
 	OwningActor->ForceNetUpdate();
 
@@ -157,14 +154,14 @@ void UInvSys_BaseEquipContainerObject::TryRepInventoryItems_Change()
 		if (!Pending_ChangedInventoryItems.IsEmpty())
 		{
 			// UE_LOG(LogInventorySystem, Log, TEXT("Pending_AddedInventoryItems 中存在新的数据，需要先进行强制更新。"))
-			TryRepInventoryItems_Change(); // 存在新的需要更新的数据，强制继续更新。
+			TryApplyUpdateOperations(); // 存在新的需要更新的数据，强制继续更新。
 		}
 	}, GetServerWaitBatchTime(), false);
 }
 
 bool UInvSys_BaseEquipContainerObject::ContainsItem(FName UniqueID)
 {
-	return Super::ContainsItem(UniqueID) || ItemUniqueIDSet.Contains(UniqueID);
+	return Super::ContainsItem(UniqueID) || ContainerItems.Contains(UniqueID);
 }
 
 void UInvSys_BaseEquipContainerObject::OnRep_AddedInventoryItems()

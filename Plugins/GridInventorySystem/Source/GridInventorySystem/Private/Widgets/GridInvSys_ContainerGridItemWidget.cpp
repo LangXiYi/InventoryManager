@@ -31,6 +31,7 @@ void UGridInvSys_ContainerGridItemWidget::UpdateItemInfo(const FGridInvSys_Inven
 	check(GridItemInfo);
 
 	DragDropWidget->UpdateItemInfo(NewItemInfo);
+	DragDropWidget->SetDirection(NewInventoryItem.ItemPosition.Direction);
 
 	InventoryItem = NewInventoryItem;
 	bIsOccupied = true;
@@ -137,7 +138,13 @@ EGridInvSys_ItemDirection UGridInvSys_ContainerGridItemWidget::GetItemDirection(
 FIntPoint UGridInvSys_ContainerGridItemWidget::GetItemSize() const
 {
 	const UGridInvSys_InventoryItemInfo* TempInfo = GetItemInfo<UGridInvSys_InventoryItemInfo>();
-	return TempInfo ? TempInfo->ItemSize : FIntPoint(1, 1);
+	FIntPoint TempItemSize = TempInfo ? TempInfo->ItemSize : FIntPoint(1, 1);
+	if (InventoryItem.ItemPosition.Direction == EGridInvSys_ItemDirection::Vertical &&
+		TempItemSize.X != TempItemSize.Y)
+	{
+		return FIntPoint(TempItemSize.Y, TempItemSize.X);
+	}
+	return TempItemSize;
 }
 
 FName UGridInvSys_ContainerGridItemWidget::GetItemUniqueID() const

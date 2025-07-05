@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GridInvSys_CommonType.h"
 #include "GridInvSys_InventoryWidget.h"
 #include "GridInvSys_DragItemWidget.generated.h"
 
@@ -20,8 +21,24 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_DragItemWidget : public UGridInvSys_In
 
 public:
 	void UpdateItemInfo(UInvSys_InventoryItemInfo* NewItemInfo);
+
+	void UpdateDirection(EGridInvSys_ItemDirection NewDirection);
+
+	EGridInvSys_ItemDirection GetDirection() const
+	{
+		return ItemDirection;
+	}
+
+	FIntPoint GetItemSize() const
+	{
+		return  ItemSize;
+	}
 	
 protected:
+	EGridInvSys_ItemDirection ItemDirection;
+
+	FIntPoint ItemSize;
+	
 	UPROPERTY(BlueprintReadOnly, Category = "Dragging Widget")
 	TObjectPtr<UGridInvSys_InventoryItemInfo> GridItemInfo;
 

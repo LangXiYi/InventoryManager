@@ -115,7 +115,7 @@ void UGridInvSys_GridEquipContainerObject::AddInventoryItemToContainer(const FGr
 		RepNotify_ContainerItems.Add(InventoryItem);
 		// ContainerGridItems.Add(InventoryItem.BaseItemData.UniqueID, InventoryItem);
 		ItemPositionMap.Add(InventoryItem.ItemPosition.Position, InventoryItem.BaseItemData.UniqueID);
-		AddDataToRep_AddedInventoryItems(InventoryItem.BaseItemData.UniqueID);
+		RecordItemOperationByAdd(InventoryItem.BaseItemData.UniqueID);
 	}
 }
 
@@ -127,7 +127,7 @@ void UGridInvSys_GridEquipContainerObject::RemoveInventoryItemFromContainer(FGri
 		RepNotify_ContainerItems.Remove(InventoryItem);
 		// ContainerGridItems.Remove(InventoryItem.BaseItemData.UniqueID);
 		ItemPositionMap.Remove(InventoryItem.ItemPosition.Position);
-		AddDataToRep_RemovedInventoryItems(InventoryItem.BaseItemData.UniqueID);
+		RecordItemOperationByRemove(InventoryItem.BaseItemData.UniqueID);
 	}
 }
 
@@ -146,7 +146,7 @@ void UGridInvSys_GridEquipContainerObject::UpdateInventoryItemFromContainer(FNam
 			TempGridItem.BaseItemData.SlotName = NewPosition.SlotName;
 			RepNotify_ContainerItems[Index] = TempGridItem;
 			// ContainerGridItems[ItemUniqueID] = TempGridItem;
-			AddDataToRep_ChangedInventoryItems(ItemUniqueID);
+			RecordItemOperationByUpdate(ItemUniqueID);
 		}
 	}
 }
@@ -172,6 +172,7 @@ void UGridInvSys_GridEquipContainerObject::OnAddedContainerItems(const TArray<FN
 	//UE_LOG(LogInventorySystem, Log, TEXT("[Client] On Added Container Items."))
 	for (FName ItemUniqueID : InAddedItems)
 	{
+		// todo::
 		// ContainerItems 是服务器同步过来的，所以在正常情况下，其内部应该会存在
 		int32 Index = FindContainerItemIndex(ItemUniqueID);
 		if (RepNotify_ContainerItems.IsValidIndex(Index))
@@ -183,7 +184,7 @@ void UGridInvSys_GridEquipContainerObject::OnAddedContainerItems(const TArray<FN
 			if (EquipmentSlotWidget)
 			{
 				UGridInvSys_ContainerGridWidget* GridWidget = ContainerGridWidgets[TempInvItem.ItemPosition.GridID];
-				GridWidget->UpdateInventoryItem(RepNotify_ContainerItems[Index]);
+				GridWidget->UpdateInventoryItem(TempInvItem);
 			}
 		}
 	}

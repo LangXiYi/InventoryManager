@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GridInvSys_InventoryWidget.h"
+#include "GridInvSys_CommonType.h"
 #include "GridInvSys_DragDropWidget.generated.h"
 
 class UGridInvSys_ContainerGridItemWidget;
@@ -14,17 +15,6 @@ enum class EDragDropType : uint8
 	None = 0,
 	Container,
 	Equipment,
-};
-
-static TMap<EDragDropType, FString> DragDropTypeString = {
-	{EDragDropType::None, "None"},
-	{EDragDropType::Container, "Container"},
-	{EDragDropType::Equipment, "Equipment"},
-};
-static TMap<FString, EDragDropType> DragDropTypeEnum = {
-	{"None", EDragDropType::None},
-	{"Container", EDragDropType::Container},
-	{"Equipment", EDragDropType::Equipment},
 };
 
 class UInvSys_InventoryComponent;
@@ -66,6 +56,17 @@ public:
 	EDragDropType GetDragDropType() const;
 
 	void SetDragDropType(EDragDropType NewDragType);
+
+	void SetDirection(EGridInvSys_ItemDirection NewDirection)
+	{
+		ItemDirection = NewDirection;
+	}
+
+	EGridInvSys_ItemDirection GetDirection() const
+	{
+		return ItemDirection;
+	}
+	
 	
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Drag Drop Widget")
@@ -76,6 +77,9 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Drag Drop Widget")
 	EDragDropType DragDropType = EDragDropType::Container;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Drag Drop Widget")
+	EGridInvSys_ItemDirection ItemDirection;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Drag Drop Widget")
 	bool bIsOverrideDraggingWidgetClass = false;
