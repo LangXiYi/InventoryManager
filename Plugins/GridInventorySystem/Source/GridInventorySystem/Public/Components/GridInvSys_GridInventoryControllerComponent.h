@@ -26,6 +26,9 @@ public:
 	virtual void Server_UpdateInventoryItems(UInvSys_InventoryComponent* TargetInvComp, const TArray<FName>& ChangedItems,
 		const TArray<FGridInvSys_InventoryItemPosition>& NewItemData);
 
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	virtual void Server_AddInventoryItem(UInvSys_InventoryComponent* TargetInvComp, FGridInvSys_InventoryItem NewItem);
+
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;

@@ -8,7 +8,7 @@
 #include "GridInvSys_InventoryComponent.generated.h"
 
 
-
+class UGridInvSys_InventoryItemInfo;
 /***
  * GridItem ----> ContainerGrid ----> InventoryContainer ----> InventoryComponent
  * Item --------> Grid--------------> Container -------------> Inventory
@@ -43,7 +43,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 	virtual void UpdateOtherContainerItemsPosition(UGridInvSys_InventoryComponent* ToInvCom,
 		TArray<FGridInvSys_InventoryItem> FromItemData, TArray<FGridInvSys_InventoryItem> ToItemData);
-	
+
+	UFUNCTION(BlueprintCallable)
+	bool FindEnoughFreeSpace(FName SlotName, FIntPoint ItemSize, FGridInvSys_InventoryItemPosition& OutPosition) const;
+
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
@@ -64,6 +67,10 @@ public:
 	{
 		return InventoryLayoutWidget;
 	}
+
+	/** 获取所有容器的SlotName */
+	UFUNCTION(BlueprintCallable)
+	void GetAllContainerSlotName(TArray<FName>& OutArray) const;
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 

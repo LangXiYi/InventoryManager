@@ -27,6 +27,15 @@ void UGridInvSys_GridInventoryControllerComponent::Server_UpdateInventoryItems_I
 	}
 }
 
+void UGridInvSys_GridInventoryControllerComponent::Server_AddInventoryItem_Implementation(UInvSys_InventoryComponent* TargetInvComp, FGridInvSys_InventoryItem NewItem)
+{
+	if (TargetInvComp && TargetInvComp->IsA(UGridInvSys_InventoryComponent::StaticClass()))
+	{
+		UGridInvSys_InventoryComponent* GridInvComp = Cast<UGridInvSys_InventoryComponent>(TargetInvComp);
+		GridInvComp->AddInventoryItemToGridContainer(NewItem);
+	}
+}
+
 // Called when the game starts
 void UGridInvSys_GridInventoryControllerComponent::BeginPlay()
 {

@@ -6,6 +6,7 @@
 #include "GridInvSys_InventoryWidget.h"
 #include "GridInvSys_ContainerGridLayoutWidget.generated.h"
 
+class UGridInvSys_InventoryContainerInfo;
 class UGridInvSys_ContainerGridWidget;
 /**
  * 
@@ -23,7 +24,7 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Container Grid Layout")
 	UGridInvSys_ContainerGridWidget* FindContainerGrid(FName GridID);
 
-	void GetAllContainerGridWidgets(TArray<UGridInvSys_ContainerGridWidget*>& OutArray);
+	void GetAllContainerGridWidgets(TArray<UGridInvSys_ContainerGridWidget*>& OutArray) const;
 	
 protected:
 	virtual void NativeConstruct() override;
@@ -37,7 +38,7 @@ public:
 	}
 
 private:
-	void Private_GetAllContainerGridWidgets(TArray<UGridInvSys_ContainerGridWidget*>& OutArray, UWidget* Parent);
+	void Private_GetAllContainerGridWidgets(TArray<UGridInvSys_ContainerGridWidget*>& OutArray, UWidget* Parent) const;
 
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Container Grid Layout")
@@ -45,4 +46,7 @@ protected:
 
 	UPROPERTY()
 	TMap<FName, UGridInvSys_ContainerGridWidget*> ContainerGridMap;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Container Grid Layout")
+	TObjectPtr<UGridInvSys_InventoryContainerInfo> ContainerInfo;
 };

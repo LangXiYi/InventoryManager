@@ -55,12 +55,6 @@ APlayerController* UInvSys_InventoryComponent::GetPlayerController() const
 	return OwningPlayer;
 }
 
-FTimerManager& UInvSys_InventoryComponent::GetWorldTimerManager() const
-{
-	ensure(GetWorld());
-	return GetWorld()->GetTimerManager();
-}
-
 bool UInvSys_InventoryComponent::IsContainsInventoryItem(const FName ItemUniqueID)
 {
 	for (UInvSys_BaseInventoryObject* InventoryObject : InventoryObjectList)

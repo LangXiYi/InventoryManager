@@ -3,7 +3,9 @@
 
 #include "Widgets/GridInvSys_ContainerGridLayoutWidget.h"
 
+#include "BaseInventorySystem.h"
 #include "Components/PanelWidget.h"
+#include "Data/GridInvSys_InventoryContainerInfo.h"
 #include "Widgets/GridInvSys_ContainerGridWidget.h"
 
 #if WITH_EDITOR
@@ -13,13 +15,24 @@
 
 void UGridInvSys_ContainerGridLayoutWidget::ConstructContainerGrid(FName SlotName)
 {
+	if (ContainerInfo == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("[%s] 控件未设置 Container Info。"), *GetName())
+		return;
+	}
 	// 初始化容器网格
+	ContainerGridWidgets.Empty();
 	GetAllContainerGridWidgets(ContainerGridWidgets);
 	ContainerGridMap.Empty();
 	ContainerGridMap.Reserve(ContainerGridWidgets.Num());
 	for (int i = 0; i < ContainerGridWidgets.Num(); ++i)
 	{
-		ContainerGridWidgets[i]->SetContainerGridID(*FString::FromInt(i));
+		FName GridID = *FString::FromInt(i);
+		ContainerGridWidgets[i]->SetContainerGridID(GridID);
+
+		FIntPoint GridSize = ContainerInfo->ContainerGridSizeMap.FindRef(GridID);
+		ContainerGridWidgets[i]->UpdateContainerGridSize(GridSize);
+
 		ContainerGridWidgets[i]->SetInventoryComponent(GetInventoryComponent());
 		ContainerGridWidgets[i]->ConstructGridItems(SlotName);
 		ContainerGridMap.Add(ContainerGridWidgets[i]->GetContainerGridID(), ContainerGridWidgets[i]);
@@ -48,12 +61,7 @@ void UGridInvSys_ContainerGridLayoutWidget::NativePreConstruct()
 	Super::NativePreConstruct();
 	if (IsDesignTime())
 	{
-		GetAllContainerGridWidgets(ContainerGridWidgets);
-		for (int i = 0; i < ContainerGridWidgets.Num(); ++i)
-		{
-			ContainerGridWidgets[i]->SetContainerGridID(*FString::FromInt(i));
-		}
-		// ConstructContainerGrid(NAME_None);
+		ConstructContainerGrid(NAME_None);
 #ifdef WITH_EDITOR
 		// 判断内部是否存在重读的 ContainerGridID
 		TSet<FName> TempSet;
@@ -75,14 +83,16 @@ void UGridInvSys_ContainerGridLayoutWidget::NativePreConstruct()
 	}
 }
 
-void UGridInvSys_ContainerGridLayoutWidget::GetAllContainerGridWidgets(TArray<UGridInvSys_ContainerGridWidget*>& OutArray)
+void UGridInvSys_ContainerGridLayoutWidget::GetAllContainerGridWidgets(TArray<UGridInvSys_ContainerGridWidget*>& OutArray) const
 {
-	OutArray.Empty();
+	//OutArray.Empty();
 	UWidget* RootWidget = GetRootWidget();
+	check(RootWidget);
 	Private_GetAllContainerGridWidgets(OutArray, RootWidget);
 }
 
-void UGridInvSys_ContainerGridLayoutWidget::Private_GetAllContainerGridWidgets(TArray<UGridInvSys_ContainerGridWidget*>& OutArray, UWidget* Parent)
+void UGridInvSys_ContainerGridLayoutWidget::Private_GetAllContainerGridWidgets(
+	TArray<UGridInvSys_ContainerGridWidget*>& OutArray, UWidget* Parent) const
 {
 	if (Parent == nullptr)
 	{

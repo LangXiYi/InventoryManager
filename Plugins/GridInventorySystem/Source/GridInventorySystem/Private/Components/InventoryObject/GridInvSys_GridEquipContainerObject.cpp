@@ -5,7 +5,9 @@
 
 #include "Components/GridInvSys_InventoryComponent.h"
 #include "Components/NamedSlot.h"
+#include "Data/GridInvSys_InventoryContainerInfo.h"
 #include "Net/UnrealNetwork.h"
+#include "Widgets/GridInvSys_ContainerGridLayoutWidget.h"
 #include "Widgets/GridInvSys_ContainerGridWidget.h"
 #include "Widgets/GridInvSys_EquipContainerSlotWidget.h"
 
@@ -99,6 +101,15 @@ void UGridInvSys_GridEquipContainerObject::CreateDisplayWidget(APlayerController
 
 void UGridInvSys_GridEquipContainerObject::AddInventoryItemToEquipSlot(const FInvSys_InventoryItem& NewItem)
 {
+	if (HasAuthority() == false)
+	{
+		return;
+	}
+	// 根据Item信息获取容器网格信息，比如各个网格的大小等数据。
+	if (UGridInvSys_InventoryContainerInfo* ContainerInfo = Cast<UGridInvSys_InventoryContainerInfo>(NewItem.ItemInfo))
+	{
+		ContainerGridSizeMap = ContainerInfo->ContainerGridSizeMap;
+	}
 	// 检查类型是否一致
 	if (EquipmentSupportType == EGridInvSys_InventoryItemType::Weapon_Primary)
 	{
@@ -256,6 +267,60 @@ int32 UGridInvSys_GridEquipContainerObject::FindContainerItemIndex(FName ItemUni
 		}
 	}
 	return INDEX_NONE;
+}
+
+bool UGridInvSys_GridEquipContainerObject::IsValidPosition(const FGridInvSys_InventoryItemPosition& ItemPosition)
+{
+	if (HasAuthority() == false)
+	{
+		return false;
+	}
+	
+	if (ContainerGridSizeMap.Contains(ItemPosition.GridID) == false)
+	{
+		return false;
+	}
+	// 根据GridID检查对应网格的范围，判断该物品是否可以存放在当前位置
+	int32 ItemMaxPosX = ItemPosition.Position.X + ItemPosition.ItemSize.X - 1;
+	int32 ItemMaxPosY = ItemPosition.Position.Y + ItemPosition.ItemSize.Y - 1;
+	FIntPoint GridSize = ContainerGridSizeMap[ItemPosition.GridID];
+	if (ItemPosition.Position.X < 0 || ItemMaxPosX > GridSize.X ||
+		ItemPosition.Position.Y < 0 || ItemMaxPosX > GridSize.Y)
+	{
+		return false;
+	}
+	// 判断目标范围内是否存在其他物品 
+	for (int i = ItemPosition.Position.X; i < ItemMaxPosX; ++i)
+	{
+		for (int j = ItemPosition.Position.Y; j < ItemMaxPosY; ++j)
+		{
+			if (ItemPositionMap.Contains(FIntPoint(i, j)))
+			{
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+bool UGridInvSys_GridEquipContainerObject::FindEnoughFreeSpace(FIntPoint ItemSize,
+                                                               FGridInvSys_InventoryItemPosition& OutPosition) const
+{
+	if (EquipmentSlotWidget && EquipmentSlotWidget.IsA(UGridInvSys_EquipContainerSlotWidget::StaticClass()))
+	{
+		for (auto ContainerGridWidget : ContainerGridWidgets)
+		{
+			FIntPoint TempPosition;
+			if (ContainerGridWidget.Value->FindValidPosition(ItemSize, TempPosition))
+			{
+				// 根据找到的有效位置设置值。
+				OutPosition.GridID = ContainerGridWidget.Key;
+				OutPosition.Position = TempPosition;
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 bool UGridInvSys_GridEquipContainerObject::FindContainerGridItem(const FIntPoint& ItemPosition, FGridInvSys_InventoryItem& OutItem) const

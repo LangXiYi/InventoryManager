@@ -7,6 +7,7 @@
 #include "GridInvSys_CommonType.h"
 #include "GridInvSys_InventorySystemConfig.h"
 #include "Blueprint/DragDropOperation.h"
+#include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Components/GridInvSys_GridInventoryControllerComponent.h"
 #include "Components/GridPanel.h"
 #include "Components/SizeBox.h"
@@ -34,6 +35,17 @@ void UGridInvSys_ContainerGridWidget::FindContainerGridItems(TArray<UGridInvSys_
 				OutArray.AddUnique(GridItemWidget);
 			}
 		}
+	}
+}
+
+void UGridInvSys_ContainerGridWidget::UpdateContainerGridSize(FIntPoint GridSize)
+{
+	ContainerGridSize = GridSize;
+	int32 ItemDrawSize = GetDefault<UGridInvSys_InventorySystemConfig>()->ItemDrawSize;
+	if (SizeBox)
+	{
+		SizeBox->SetWidthOverride(ItemDrawSize * GridSize.Y);
+		SizeBox->SetHeightOverride(ItemDrawSize * GridSize.X);
 	}
 }
 
@@ -215,12 +227,14 @@ bool UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer(UGridInvSys_Con
 void UGridInvSys_ContainerGridWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+	/*UpdateContainerGridSize(ContainerGridSize);
+	
 	int32 ItemDrawSize = GetDefault<UGridInvSys_InventorySystemConfig>()->ItemDrawSize;
 	if (SizeBox)
 	{
 		SizeBox->SetWidthOverride(ItemDrawSize * ContainerGridSize.Y);
 		SizeBox->SetHeightOverride(ItemDrawSize * ContainerGridSize.X);
-	}
+	}*/
 }
 
 void UGridInvSys_ContainerGridWidget::NativePreConstruct()
@@ -242,8 +256,27 @@ void UGridInvSys_ContainerGridWidget::NativePreConstruct()
 	}
 }
 
+int32 UGridInvSys_ContainerGridWidget::NativePaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry,
+	const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId,
+	const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const
+{
+	// 创建控件的线条
+	//FPaintContext Context(AllottedGeometry, MyCullingRect, OutDrawElements, LayerId, InWidgetStyle, bParentEnabled);
+
+	/*SizeBox->
+	// MyCullingRect->
+	// 获取当前组件在屏幕控件的坐标
+	const FVector2D ScreenPosition = InDragDropEvent.GetScreenSpacePosition();
+	const FVector2D LocalPosition = AllottedGeometry.AbsoluteToLocal(ScreenPosition);
+	// DrawDashedLine()
+	UWidgetBlueprintLibrary::DrawLine(Context, )*/
+	
+	return Super::NativePaint(Args, AllottedGeometry, MyCullingRect, OutDrawElements, LayerId, InWidgetStyle,
+	                          bParentEnabled);
+}
+
 bool UGridInvSys_ContainerGridWidget::NativeOnDragOver(const FGeometry& InGeometry,
-	const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
+                                                       const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
 {
 	UGridInvSys_DragItemWidget* DefaultDragVisual = Cast<UGridInvSys_DragItemWidget>(InOperation->DefaultDragVisual);
 	const FVector2D ScreenPosition = InDragDropEvent.GetScreenSpacePosition();
@@ -588,6 +621,14 @@ void UGridInvSys_ContainerGridWidget::ConstructGridItems(FName NewSlotName)
 		return;
 	}
 #endif
+	SlotName = NewSlotName;
+	OnConstructItems();
+	
+	if (IsDesignTime())
+	{
+		return;
+	}
+	
 	//  清除 ContainerGrid 中所有子项。
 	if (ContainerGridItemPanel->HasAnyChildren() == true)
 	{
@@ -611,8 +652,6 @@ void UGridInvSys_ContainerGridWidget::ConstructGridItems(FName NewSlotName)
 		
 		GridItemWidget->SetContainerGridWidget(this);
 	}
-
-	SlotName = NewSlotName;
 }
 
 void UGridInvSys_ContainerGridWidget::UpdateInventoryItem(const FGridInvSys_InventoryItem& InventoryItem)

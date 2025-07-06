@@ -48,6 +48,12 @@ public:
 	 * Getter Or Setter
 	 **/
 
+	/** [Server] */
+	bool IsValidPosition(const FGridInvSys_InventoryItemPosition& ItemPosition);
+
+	/** [Client] */
+	bool FindEnoughFreeSpace(FIntPoint ItemSize, FGridInvSys_InventoryItemPosition& OutPosition) const;
+	
 	bool FindContainerGridItem(const FIntPoint& ItemPosition, FGridInvSys_InventoryItem& OutItem) const;
 	
 	 bool FindContainerGridItem(FName ItemUniqueID, FGridInvSys_InventoryItem& OutItem) const;
@@ -82,6 +88,8 @@ private:
 	TMap<FName, FGridInvSys_InventoryItemPosition> GridItemPositions;
 	/** [Client] <GridID, ContainerGridWidgets> 供客户端使用，会在创建控件之后自动填充。 */
 	TMap<FName, UGridInvSys_ContainerGridWidget*> ContainerGridWidgets;
+	/** [Server] 仅服务器使用，存储当前容器内的不同网格的大小 */
+	TMap<FName, FIntPoint> ContainerGridSizeMap;
 };
 
 /**

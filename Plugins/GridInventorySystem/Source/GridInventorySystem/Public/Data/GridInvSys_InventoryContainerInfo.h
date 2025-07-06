@@ -15,8 +15,15 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_InventoryContainerInfo : public UGridI
 {
 	GENERATED_BODY()
 
+protected:
+	UFUNCTION(CallInEditor)
+	void GetAllContainerGridSize();
+	
 public:
 	// 布局控件
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Container Info")
 	TSubclassOf<UGridInvSys_ContainerGridLayoutWidget> ContainerGridLayoutWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Container Info")
+	TMap<FName, FIntPoint> ContainerGridSizeMap;
 };

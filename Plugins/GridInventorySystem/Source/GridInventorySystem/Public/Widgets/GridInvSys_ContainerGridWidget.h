@@ -33,9 +33,15 @@ public:
 	void FindContainerGridItems(TArray<UGridInvSys_ContainerGridItemWidget*>& OutArray, FIntPoint Position,
 		FIntPoint ItemSize, const TSet<UGridInvSys_ContainerGridItemWidget*>& Ignores = {});
 
+	void UpdateContainerGridSize(FIntPoint GridSize);
+
 protected:
 	virtual void NativeConstruct() override;
 	virtual void NativePreConstruct() override;
+
+	virtual int32 NativePaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry,
+		const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements,
+		int32 LayerId, const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const override;
 
 	virtual bool NativeOnDragOver(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 	virtual void NativeOnDragEnter(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
@@ -43,6 +49,9 @@ protected:
 	virtual void NativeOnDragCancelled(const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 	virtual void ResetDragDropData();
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnConstructItems();
 
 	/** 放下物品至容器的目标位置，From必须是来自容器对象而非装备槽，仅在同容器组件下有效！！ */
 	bool TryDropItemFromContainer(UGridInvSys_ContainerGridItemWidget* FromGridItemWidget, FIntPoint FromItemSize,
@@ -153,7 +162,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory Container Grid")
 	TSubclassOf<UGridInvSys_DragItemWidget> DragItemWidgetClass;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory Container Grid")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory Container Grid")
 	FIntPoint ContainerGridSize = FIntPoint(1, 1);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory Container Grid")

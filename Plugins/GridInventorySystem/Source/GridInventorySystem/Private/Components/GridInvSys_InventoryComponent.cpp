@@ -19,24 +19,29 @@ UGridInvSys_InventoryComponent::UGridInvSys_InventoryComponent()
 
 void UGridInvSys_InventoryComponent::AddInventoryItemToGridContainer(FGridInvSys_InventoryItem GridContainerItem)
 {
-	FName SlotName = GridContainerItem.BaseItemData.SlotName;
+	// 检查位置是否合法
+	const FGridInvSys_InventoryItemPosition& ItemPosition = GridContainerItem.ItemPosition;
+	FName SlotName = ItemPosition.SlotName;
 	if (InventoryObjectMap.Contains(SlotName) == false)
 	{
-		UE_LOG(LogInventorySystem, Log, TEXT("%s 必须在 InventoryObjectMap 中存在的。"), *GridContainerItem.BaseItemData.SlotName.ToString());
+		UE_LOG(LogInventorySystem, Error, TEXT("%s 必须在 InventoryObjectMap 中存在的。"), *GridContainerItem.BaseItemData.SlotName.ToString());
 		return;
 	}
 	
-	UE_LOG(LogInventorySystem, Log, TEXT("[%s:%s] Container add item [%s] to [%s]."),
-		HasAuthority() ? TEXT("Server") : TEXT("Client"), *GetOwner()->GetName(),
-		*GridContainerItem.BaseItemData.ItemID.ToString(), *SlotName.ToString());
-	
-	if(InventoryObjectMap[SlotName]->IsA(UGridInvSys_GridEquipContainerObject::StaticClass()))
+	if(InventoryObjectMap[SlotName]->IsA(UGridInvSys_GridEquipContainerObject::StaticClass()) == false)
 	{
-		// 可装备的网格容器对象
-		if (UGridInvSys_GridEquipContainerObject* ContainerObj = Cast<UGridInvSys_GridEquipContainerObject>(InventoryObjectMap[SlotName]))
-		{
-			ContainerObj->AddInventoryItemToContainer(GridContainerItem);
-		}
+		UE_LOG(LogInventorySystem, Error, TEXT("SlotName [%s] 不是容器对象。"), *SlotName.ToString());
+		return;
+	}
+	
+	// 可装备的网格容器对象
+	UGridInvSys_GridEquipContainerObject* ContainerObj = Cast<UGridInvSys_GridEquipContainerObject>(InventoryObjectMap[SlotName]);
+	if (ContainerObj->IsValidPosition(ItemPosition))
+	{
+		UE_LOG(LogInventorySystem, Log, TEXT("[%s:%s] Container add item [%s] to [%s]."),
+			HasAuthority() ? TEXT("Server") : TEXT("Client"), *GetOwner()->GetName(),
+			*GridContainerItem.BaseItemData.ItemID.ToString(), *SlotName.ToString());
+		ContainerObj->AddInventoryItemToContainer(GridContainerItem);
 	}
 }
 
@@ -133,6 +138,24 @@ void UGridInvSys_InventoryComponent::UpdateOtherContainerItemsPosition(UGridInvS
 	// todo::发送的删除命令与添加命令若与客户端冲突如何处理？直接整体刷新？
 }
 
+bool UGridInvSys_InventoryComponent::FindEnoughFreeSpace(FName SlotName, FIntPoint ItemSize,
+	FGridInvSys_InventoryItemPosition& OutPosition) const
+{
+	if (InventoryObjectMap.Contains(SlotName))
+	{
+		UInvSys_BaseInventoryObject* InvObj = InventoryObjectMap[SlotName];
+		if (InvObj->IsA(UInvSys_BaseEquipContainerObject::StaticClass()))
+		{
+			OutPosition.SlotName = SlotName;
+			OutPosition.ItemSize = ItemSize;
+			// OutPosition.Direction = EGridInvSys_ItemDirection::Horizontal;
+			UGridInvSys_GridEquipContainerObject* ContainerObject = Cast<UGridInvSys_GridEquipContainerObject>(InvObj);
+			return ContainerObject->FindEnoughFreeSpace(ItemSize, OutPosition);
+		}
+	}
+	return false;
+}
+
 // Called when the game starts
 void UGridInvSys_InventoryComponent::BeginPlay()
 {
@@ -174,6 +197,17 @@ bool UGridInvSys_InventoryComponent::FindContainerGridItem(FName ItemUniqueID,  
 		}
 	}
 	return false;
+}
+
+void UGridInvSys_InventoryComponent::GetAllContainerSlotName(TArray<FName>& OutArray) const
+{
+	for (auto InventoryObjectTuple : InventoryObjectMap)
+	{
+		if (InventoryObjectTuple.Value->IsA(UInvSys_BaseEquipContainerObject::StaticClass()))
+		{
+			OutArray.Add(InventoryObjectTuple.Key);
+		}
+	}
 }
 
 void UGridInvSys_InventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
