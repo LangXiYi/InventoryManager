@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GridInvSys_InventoryWidget.h"
+#include "Widgets\InvSys_InventoryWidget.h"
 #include "GridInvSys_ContainerGridDropWidget.generated.h"
 
 class USizeBox;
@@ -11,7 +11,7 @@ class USizeBox;
  * 
  */
 UCLASS()
-class GRIDINVENTORYSYSTEM_API UGridInvSys_ContainerGridDropWidget : public UGridInvSys_InventoryWidget
+class GRIDINVENTORYSYSTEM_API UGridInvSys_ContainerGridDropWidget : public UInvSys_InventoryWidget
 {
 	GENERATED_BODY()
 

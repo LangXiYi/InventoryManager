@@ -3,6 +3,9 @@
 
 #include "Widgets/InvSys_InventoryWidget.h"
 
+#include "Blueprint/WidgetTree.h"
+#include "Widgets/Components/InvSys_TagSlot.h"
+
 void UInvSys_InventoryWidget::SetInventoryComponent(UInvSys_InventoryComponent* NewInvComp)
 {
 	InventoryComponent = NewInvComp;

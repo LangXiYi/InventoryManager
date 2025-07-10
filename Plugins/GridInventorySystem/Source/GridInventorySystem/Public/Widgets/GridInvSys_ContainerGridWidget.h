@@ -4,11 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "GridInvSys_CommonType.h"
-#include "GridInvSys_InventoryWidget.h"
 #include "Components/GridPanel.h"
 #include "Components/UniformGridPanel.h"
+#include "Widgets/InvSys_InventoryWidget.h"
 #include "GridInvSys_ContainerGridWidget.generated.h"
 
+class UGridInvSys_ContainerGridLayoutWidget;
 class UGridInvSys_DragItemWidget;
 class UGridInvSys_ContainerGridDropWidget;
 class UGridInvSys_ContainerGridItemWidget;
@@ -16,12 +17,12 @@ class UGridInvSys_ContainerGridItemWidget;
  * 
  */
 UCLASS()
-class GRIDINVENTORYSYSTEM_API UGridInvSys_ContainerGridWidget : public UGridInvSys_InventoryWidget
+class GRIDINVENTORYSYSTEM_API UGridInvSys_ContainerGridWidget : public UInvSys_InventoryWidget
 {
 	GENERATED_BODY()
 
 public:
-	void ConstructGridItems(FName NewSlotName);
+	void ConstructGridItems(UGridInvSys_ContainerGridLayoutWidget* InContainerLayout, int32 InGridID);
 
 	void UpdateInventoryItem(const FGridInvSys_InventoryItem& InventoryItem);
 
@@ -33,15 +34,11 @@ public:
 	void FindContainerGridItems(TArray<UGridInvSys_ContainerGridItemWidget*>& OutArray, FIntPoint Position,
 		FIntPoint ItemSize, const TSet<UGridInvSys_ContainerGridItemWidget*>& Ignores = {});
 
-	void UpdateContainerGridSize(FIntPoint GridSize);
+	void UpdateContainerGridSize();
 
 protected:
 	virtual void NativeConstruct() override;
 	virtual void NativePreConstruct() override;
-
-	virtual int32 NativePaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry,
-		const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements,
-		int32 LayerId, const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const override;
 
 	virtual bool NativeOnDragOver(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 	virtual void NativeOnDragEnter(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
@@ -50,20 +47,19 @@ protected:
 	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 	virtual void ResetDragDropData();
 
-	UFUNCTION(BlueprintImplementableEvent)
-	void OnConstructItems();
-
 	/** 放下物品至容器的目标位置，From必须是来自容器对象而非装备槽，仅在同容器组件下有效！！ */
 	bool TryDropItemFromContainer(UGridInvSys_ContainerGridItemWidget* FromGridItemWidget, FIntPoint FromItemSize,
 		FGridInvSys_InventoryItemPosition ItemPositionData) const;
+
+	void ShowDragGridEffect(FIntPoint Position, FIntPoint Size, bool bIsRight);
 	
 	/**
 	 * Getter Or Setter
 	 **/
 
 public:
-	int32 GetContainerGridItemIndex(const FIntPoint Position) const;
-	UGridInvSys_ContainerGridItemWidget* GetContainerGridItem(FIntPoint Position) const;
+	int32 GetItemIndex(const FIntPoint Position) const;
+	UGridInvSys_ContainerGridItemWidget* GetGridItemWidget(FIntPoint Position) const;
 	UGridInvSys_ContainerGridDropWidget* GetContainerGridDropItem(FIntPoint Position) const;
 
 	bool FindValidPosition(FIntPoint ItemSize, FIntPoint& OutPosition, const TArray<UWidget*>& Ignores = {}) const;
@@ -122,11 +118,9 @@ public:
 
 	void FindAllFreeGridItems(TArray<UGridInvSys_ContainerGridItemWidget*>& OutArray, const TArray<UWidget*>& Ignores = {}) const;
 	
-	FORCEINLINE FName GetContainerGridID() const;
+	FORCEINLINE int32 GetContainerGridID() const;
 
 	FORCEINLINE FName GetSlotName() const;
-
-	FORCEINLINE void SetContainerGridID(FName NewContainerGridID);
 
 	FORCEINLINE FIntPoint GetContainerGridSize() const { return ContainerGridSize; }
 
@@ -162,14 +156,17 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory Container Grid")
 	TSubclassOf<UGridInvSys_DragItemWidget> DragItemWidgetClass;
 	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory Container Grid")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory Container Grid")
 	FIntPoint ContainerGridSize = FIntPoint(1, 1);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory Container Grid")
-	FName ContainerGridID;
+	int32 ContainerGridID;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory Container Grid")
 	FName SlotName;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory Container Grid")
+	TObjectPtr<UGridInvSys_ContainerGridLayoutWidget> ContainerLayout;
 
 private:
 	UPROPERTY()

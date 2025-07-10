@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "GameplayTagContainer.h"
 #include "InvSys_CommonType.h"
 
 #include "GridInvSys_CommonType.generated.h"
@@ -61,6 +62,24 @@ struct FGridInvSys_InventoryItemPosition
 	// 物品在网格占据的大小，受方向影响，如1，2的物品在旋转后应该为2，1，但物品的默认大小为1，2
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
 	FIntPoint ItemSize = FIntPoint(1, 1);
+};
+
+USTRUCT(BlueprintType)
+struct FGridInvSys_ItemPosition
+{
+	GENERATED_BODY()
+	// 容器名称
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
+	FGameplayTag EquipSlotTag = FGameplayTag();
+	// 网格ID
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
+	int32 GridID = -1;
+	// 单元格位置
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
+	FIntPoint Position = FIntPoint(0, 0);
+	// 物品方向会影响贴图方向以及占据的网格大小。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
+	EGridInvSys_ItemDirection Direction = EGridInvSys_ItemDirection::Horizontal;
 };
 
 USTRUCT(BlueprintType)

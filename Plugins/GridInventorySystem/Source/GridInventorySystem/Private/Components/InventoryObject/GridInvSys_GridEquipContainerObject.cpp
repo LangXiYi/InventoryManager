@@ -6,100 +6,22 @@
 #include "Components/GridInvSys_InventoryComponent.h"
 #include "Components/NamedSlot.h"
 #include "Data/GridInvSys_InventoryContainerInfo.h"
+#include "Data/GridInvSys_InventoryItemInstance.h"
+#include "Data/InvSys_InventoryItemInstance.h"
+#include "Data/InvSys_InventoryItemDefinition.h"
+#include "Data/InvSys_InventoryItemInstance.h"
 #include "Net/UnrealNetwork.h"
+#include "Widgets/GridInvSys_ContainerGridItemWidget.h"
 #include "Widgets/GridInvSys_ContainerGridLayoutWidget.h"
 #include "Widgets/GridInvSys_ContainerGridWidget.h"
 #include "Widgets/GridInvSys_EquipContainerSlotWidget.h"
-
 
 
 UGridInvSys_GridEquipContainerObject::UGridInvSys_GridEquipContainerObject()
 {
 }
 
-void UGridInvSys_GridEquipContainerObject::TryRefreshOccupant(const FString& Reason)
-{
-	Super::TryRefreshOccupant(Reason);
-	if (EquipmentSlotWidget && IsEquipped())
-	{
-		// 刷新装备槽
-		UE_LOG(LogInventorySystem, Log, TEXT("[%s] 刷新装备槽 [%s]"),
-			HasAuthority() ? TEXT("Server") : TEXT("Client"), *SlotName.ToString())
-
-		// todo:: Use interface?
-		if (UGridInvSys_EquipmentSlotWidget* GridInvSys_EquipmentSlotWidget = Cast<UGridInvSys_EquipmentSlotWidget>(EquipmentSlotWidget))
-		{
-			GridInvSys_EquipmentSlotWidget->UpdateOccupant(Occupant);
-		}
-		TryRefreshContainerItems(Reason);
-	}
-}
-
-void UGridInvSys_GridEquipContainerObject::TryRefreshContainerItems(const FString& Reason)
-{
-	Super::TryRefreshContainerItems(Reason);
-	UE_LOG(LogInventorySystem, Log, TEXT("刷新容器所有内容，ContainerItems 的长度为：%s"), *FString::FromInt(RepNotify_ContainerItems.Num()))
-	if (EquipmentSlotWidget)
-	{
-		// 刷新网格容器
-		if (UGridInvSys_EquipContainerSlotWidget* EquipContainerSlotWidget =
-			Cast<UGridInvSys_EquipContainerSlotWidget>(EquipmentSlotWidget))
-		{
-			// 本地缓存容器网格映射，方便通过 GridID 直接获取 ContainerGrid 对象
-			TArray<UGridInvSys_ContainerGridWidget*> ContainerGrids;
-			EquipContainerSlotWidget->GetAllContainerGrid(ContainerGrids);
-			ContainerGridWidgets.Empty();
-			ContainerGridWidgets.Reserve(ContainerGrids.Num());
-			for (UGridInvSys_ContainerGridWidget* ContainerGrid : ContainerGrids)
-			{
-				ContainerGridWidgets.Add(ContainerGrid->GetContainerGridID(), ContainerGrid);
-			}
-			EquipContainerSlotWidget->UpdateContainerGrid(RepNotify_ContainerItems);
-		}
-	}
-}
-
-void UGridInvSys_GridEquipContainerObject::CreateDisplayWidget(APlayerController* PC)
-{
-	Super::CreateDisplayWidget(PC);
-#if WITH_EDITOR
-	if (InventoryComponent->IsA(UGridInvSys_InventoryComponent::StaticClass()) == false)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("库存组件类型与填充的 InventoryObject 的类型不匹配。"))
-		return;
-	}
-#endif
-	UGridInvSys_InventoryComponent* GridInventoryComponent = static_cast<UGridInvSys_InventoryComponent*>(InventoryComponent);
-
-	if (PC)
-		EquipmentSlotWidget = CreateWidget<UGridInvSys_EquipmentSlotWidget>(PC, EquipmentSlotWidgetClass);
-	else
-		EquipmentSlotWidget = CreateWidget<UGridInvSys_EquipmentSlotWidget>(GetWorld(), EquipmentSlotWidgetClass);
-
-	EquipmentSlotWidget->SetSlotName(GetSlotName());
-	EquipmentSlotWidget->SetInventoryComponent(GetInventoryComponent());
-
-	// 获取库存布局控件，并将装备槽插入指定位置
-	UUserWidget* InventoryMenuWidget = GridInventoryComponent->GetInventoryLayoutWidget();
-	if (InventoryMenuWidget == nullptr)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("InventoryMenuWidget 在 GridInventoryComponent 中不存在"));
-		return;
-	}
-	UNamedSlot* NamedSlot = Cast<UNamedSlot>(InventoryMenuWidget->GetWidgetFromName(GetSlotName()));
-#if WITH_EDITOR
-	if (NamedSlot == nullptr)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("命名槽[%s]在 InventoryMenuWidget 中不存在"), *GetSlotName().ToString())
-		return;
-	}
-#endif
-
-	NamedSlot->AddChild(EquipmentSlotWidget);
-	// TryRefreshOccupant();
-}
-
-void UGridInvSys_GridEquipContainerObject::AddInventoryItemToEquipSlot(const FInvSys_InventoryItem& NewItem)
+void UGridInvSys_GridEquipContainerObject::AddInventoryItemToEquipSlot_DEPRECATED(const FInvSys_InventoryItem& NewItem)
 {
 	if (HasAuthority() == false)
 	{
@@ -116,33 +38,33 @@ void UGridInvSys_GridEquipContainerObject::AddInventoryItemToEquipSlot(const FIn
 		// 根据 NewItem.ItemID 判断物品类型
 		// GetItemType(ItemID)
 	}
-	Super::AddInventoryItemToEquipSlot(NewItem);
+	Super::AddInventoryItemToEquipSlot_DEPRECATED(NewItem);
 }
 
-void UGridInvSys_GridEquipContainerObject::AddInventoryItemToContainer(const FGridInvSys_InventoryItem& InventoryItem)
+void UGridInvSys_GridEquipContainerObject::AddInventoryItemToContainer_DEPRECATED(const FGridInvSys_InventoryItem& InventoryItem)
 {
 	if (HasAuthority())
 	{
-		RepNotify_ContainerItems.Add(InventoryItem);
+		RepNotify_ContainerItems_DEPRECATED.Add(InventoryItem);
 		// ContainerGridItems.Add(InventoryItem.BaseItemData.UniqueID, InventoryItem);
 		ItemPositionMap.Add(InventoryItem.ItemPosition.Position, InventoryItem.BaseItemData.UniqueID);
-		RecordItemOperationByAdd(InventoryItem.BaseItemData.UniqueID);
+		//RecordItemOperationByAdd(InventoryItem.BaseItemData.UniqueID);
 	}
 }
 
-void UGridInvSys_GridEquipContainerObject::RemoveInventoryItemFromContainer(FGridInvSys_InventoryItem InventoryItem)
+void UGridInvSys_GridEquipContainerObject::RemoveInventoryItemFromContainer_DEPRECATED(FGridInvSys_InventoryItem InventoryItem)
 {
 	// todo::
 	if (HasAuthority())
 	{
-		RepNotify_ContainerItems.Remove(InventoryItem);
+		RepNotify_ContainerItems_DEPRECATED.Remove(InventoryItem);
 		// ContainerGridItems.Remove(InventoryItem.BaseItemData.UniqueID);
 		ItemPositionMap.Remove(InventoryItem.ItemPosition.Position);
-		RecordItemOperationByRemove(InventoryItem.BaseItemData.UniqueID);
+		//RecordItemOperationByRemove(InventoryItem.BaseItemData.UniqueID);
 	}
 }
 
-void UGridInvSys_GridEquipContainerObject::UpdateInventoryItemFromContainer(FName ItemUniqueID, FGridInvSys_InventoryItemPosition NewPosition)
+void UGridInvSys_GridEquipContainerObject::UpdateInventoryItemFromContainer_DEPRECATED(FName ItemUniqueID, FGridInvSys_InventoryItemPosition NewPosition)
 {
 	if (HasAuthority())
 	{
@@ -152,116 +74,99 @@ void UGridInvSys_GridEquipContainerObject::UpdateInventoryItemFromContainer(FNam
 			ItemPositionMap.Remove(TempGridItem.ItemPosition.Position);
 			ItemPositionMap.Add(NewPosition.Position, ItemUniqueID);
 
-			const int32 Index = RepNotify_ContainerItems.Find(TempGridItem);
+			const int32 Index = RepNotify_ContainerItems_DEPRECATED.Find(TempGridItem);
 			TempGridItem.ItemPosition = NewPosition;
 			TempGridItem.BaseItemData.SlotName = NewPosition.SlotName;
-			RepNotify_ContainerItems[Index] = TempGridItem;
+			RepNotify_ContainerItems_DEPRECATED[Index] = TempGridItem;
 			// ContainerGridItems[ItemUniqueID] = TempGridItem;
-			RecordItemOperationByUpdate(ItemUniqueID);
+			//RecordItemOperationByUpdate(ItemUniqueID);
 		}
 	}
 }
 
-void UGridInvSys_GridEquipContainerObject::CopyPropertyFromPreEdit(UInvSys_InventoryComponent* NewInventoryComponent,
-	UObject* PreEditPayLoad)
+void UGridInvSys_GridEquipContainerObject::CopyPropertyFromPreEdit(UObject* PreEditPayLoad)
 {
-	Super::CopyPropertyFromPreEdit(NewInventoryComponent, PreEditPayLoad);
+	Super::CopyPropertyFromPreEdit(PreEditPayLoad);
 
-	COPY_INVENTORY_OBJECT_PROPERTY(UGridInvSys_PreEditGridEquipContainerObject, EquipmentSlotWidgetClass);
 	COPY_INVENTORY_OBJECT_PROPERTY(UGridInvSys_PreEditGridEquipContainerObject, EquipmentSupportType);
 }
 
 void UGridInvSys_GridEquipContainerObject::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME(UGridInvSys_GridEquipContainerObject, RepNotify_ContainerItems);
 }
 
-void UGridInvSys_GridEquipContainerObject::OnAddedContainerItems(const TArray<FName>& InAddedItems)
+void UGridInvSys_GridEquipContainerObject::OnItemPositionChange(const FGridInvSys_ItemPositionChangeMessage& Message)
 {
-	//UE_LOG(LogInventorySystem, Log, TEXT("[Client] On Added Container Items."))
-	for (FName ItemUniqueID : InAddedItems)
-	{
-		// todo::
-		// ContainerItems 是服务器同步过来的，所以在正常情况下，其内部应该会存在
-		int32 Index = FindContainerItemIndex(ItemUniqueID);
-		if (RepNotify_ContainerItems.IsValidIndex(Index))
-		{
-			// 确保未显示控件时，物品信息任然存在
-			FGridInvSys_InventoryItem TempInvItem = RepNotify_ContainerItems[Index];
-			ContainerGridItems.Add(ItemUniqueID, TempInvItem);
+	if (EquipSlotWidget == nullptr) return;
 
-			if (EquipmentSlotWidget)
-			{
-				UGridInvSys_ContainerGridWidget* GridWidget = ContainerGridWidgets[TempInvItem.ItemPosition.GridID];
-				GridWidget->UpdateInventoryItem(TempInvItem);
-			}
-		}
+	UGridInvSys_EquipContainerSlotWidget* LOCAL_ContainerSlot = nullptr;
+	if (EquipSlotWidget->IsA(UGridInvSys_EquipContainerSlotWidget::StaticClass()))
+	{
+		LOCAL_ContainerSlot = Cast<UGridInvSys_EquipContainerSlotWidget>(EquipSlotWidget);
+	}
+	if (LOCAL_ContainerSlot == nullptr) return; //目标控件类型不匹配。
+
+	UE_LOG(LogInventorySystem, Log, TEXT("==== 正在处理物品位置变化事件 ===="))
+	if (UGridInvSys_ContainerGridItemWidget* ItemWidget = LOCAL_ContainerSlot->FindGridItemWidget(Message.OldPosition)) 
+	{
+		UE_LOG(LogInventorySystem, Log, TEXT("正在移除旧位置的物品"))
+		ItemWidget->RemoveItemInstance();
+	}
+	
+	if (UGridInvSys_ContainerGridItemWidget* ItemWidget = LOCAL_ContainerSlot->FindGridItemWidget(Message.NewPosition))
+	{
+		UE_LOG(LogInventorySystem, Log, TEXT("正在为新位置添加物品"))
+		ItemWidget->UpdateItemInstance(Message.Instance);
 	}
 }
 
-void UGridInvSys_GridEquipContainerObject::OnRemovedContainerItems(const TArray<FName>& InRemovedItems)
+void UGridInvSys_GridEquipContainerObject::OnInventoryStackChange(const FInvSys_InventoryStackChangeMessage& ChangeInfo)
 {
-	//UE_LOG(LogInventorySystem, Log, TEXT("[Client] On Removed Container Items."))
-	for (FName ItemUniqueID : InRemovedItems)
-	{
-		if (ContainerGridItems.Contains(ItemUniqueID))
-		{
-			FGridInvSys_InventoryItem TempItemData = ContainerGridItems[ItemUniqueID];
-			ContainerGridItems.Remove(ItemUniqueID);
+	if (EquipSlotWidget == nullptr) return;
 
-			if (EquipmentSlotWidget)
-			{
-				UGridInvSys_ContainerGridWidget* GridWidget = ContainerGridWidgets[TempItemData.ItemPosition.GridID];
-				GridWidget->RemoveInventoryItem(TempItemData);
-			}
-		}
+	UGridInvSys_EquipContainerSlotWidget* LOCAL_ContainerSlot = nullptr;
+	if (EquipSlotWidget.IsA(UGridInvSys_EquipContainerSlotWidget::StaticClass()))
+	{
+		LOCAL_ContainerSlot = Cast<UGridInvSys_EquipContainerSlotWidget>(EquipSlotWidget);
+	}
+	if (LOCAL_ContainerSlot == nullptr) return; //目标控件类型不匹配。
+
+	if (UGridInvSys_ContainerGridItemWidget* ItemWidget = LOCAL_ContainerSlot->FindGridItemWidget(ChangeInfo.ItemInstance)) 
+	{
+		//todo::更新数量显示
+		UE_LOG(LogInventorySystem, Warning, TEXT("正在更新物品数量 ==> [%d]"), ChangeInfo.StackCount);
+		// ItemWidget->RemoveItemInstance();
 	}
 }
 
-void UGridInvSys_GridEquipContainerObject::OnUpdatedContainerItems(const TArray<FName>& InChangedItems)
+void UGridInvSys_GridEquipContainerObject::OnContainerEntryAdded(const FInvSys_ContainerEntry& Entry)
 {
-	//UE_LOG(LogInventorySystem, Log, TEXT("[Client] On Updated Container Items."))
-	for (FName ItemUniqueID : InChangedItems)
+	UE_LOG(LogInventorySystem, Log, TEXT("正在为新添加的物品绑定回调，并调用物品的位置改变广播，添加新物品。"))
+	UGridInvSys_InventoryItemInstance* Instance = Entry.GetInstance<UGridInvSys_InventoryItemInstance>();
+	if (Instance->OnItemPositionChangeDelegate().IsBound() == false)
 	{
-		int32 Index = FindContainerItemIndex(ItemUniqueID);
-		if (!RepNotify_ContainerItems.IsValidIndex(Index))
-		{
-			check(false);
-			continue;
-		}
-		const FGridInvSys_InventoryItem& NewInvItem = RepNotify_ContainerItems[Index];
-
-		if (EquipmentSlotWidget)
-		{
-			check(ContainerGridWidgets.Contains(NewInvItem.ItemPosition.GridID))
-			if (UGridInvSys_ContainerGridWidget* GridWidget = ContainerGridWidgets[NewInvItem.ItemPosition.GridID])
-			{
-				if (ContainerGridItems.Contains(ItemUniqueID))
-				{
-					FGridInvSys_InventoryItem OldInvItem = ContainerGridItems[ItemUniqueID];
-					GridWidget->RemoveInventoryItem(OldInvItem); // 移除旧数据
-					GridWidget->UpdateInventoryItem(NewInvItem); // 添加新数据
-				}
-				else
-				{
-					UE_LOG(LogInventorySystem, Warning, TEXT("%s 在 ContainerGridItems[%d] 中不存在。"), *ItemUniqueID.ToString(), ContainerGridItems.Num())
-				}
-			}
-		}
-		// 更新容器保存的物品信息
-		ContainerGridItems[ItemUniqueID] = NewInvItem;
+		Instance->OnItemPositionChangeDelegate().BindUObject(this, &UGridInvSys_GridEquipContainerObject::OnItemPositionChange);
 	}
-	Super::OnUpdatedContainerItems(InChangedItems);
+	//此时 ItemInstance 处于新添加的状态，所以传入的 OldItemPosition 需要为空
+	Instance->BroadcastItemPositionChangeMessage(FGridInvSys_ItemPosition(), Instance->GetItemPosition());
+}
+
+void UGridInvSys_GridEquipContainerObject::OnContainerEntryRemove(const FInvSys_ContainerEntry& Entry)
+{
+	UE_LOG(LogInventorySystem, Log, TEXT("正在移除目标物品的绑定回调，并调用物品的位置改变广播，将物品移除。"))
+	UGridInvSys_InventoryItemInstance* Instance = Entry.GetInstance<UGridInvSys_InventoryItemInstance>();
+	//此时 ItemInstance 处于待移除的状态，所以传入的 NewItemPosition 需要为空
+	Instance->BroadcastItemPositionChangeMessage(Instance->GetItemPosition(), FGridInvSys_ItemPosition());
+	Instance->OnItemPositionChangeDelegate().Unbind();
 }
 
 int32 UGridInvSys_GridEquipContainerObject::FindContainerItemIndex(FName ItemUniqueID)
 {
 	// todo:: 优化查询速度
-	for (int i = 0; i < RepNotify_ContainerItems.Num(); ++i)
+	for (int i = 0; i < RepNotify_ContainerItems_DEPRECATED.Num(); ++i)
 	{
-		if (RepNotify_ContainerItems[i].BaseItemData.UniqueID == ItemUniqueID)
+		if (RepNotify_ContainerItems_DEPRECATED[i].BaseItemData.UniqueID == ItemUniqueID)
 		{
 			return i;
 		}
@@ -306,7 +211,7 @@ bool UGridInvSys_GridEquipContainerObject::IsValidPosition(const FGridInvSys_Inv
 bool UGridInvSys_GridEquipContainerObject::FindEnoughFreeSpace(FIntPoint ItemSize,
                                                                FGridInvSys_InventoryItemPosition& OutPosition) const
 {
-	if (EquipmentSlotWidget && EquipmentSlotWidget.IsA(UGridInvSys_EquipContainerSlotWidget::StaticClass()))
+	if (EquipSlotWidget && EquipSlotWidget.IsA(UGridInvSys_EquipContainerSlotWidget::StaticClass()))
 	{
 		for (auto ContainerGridWidget : ContainerGridWidgets)
 		{

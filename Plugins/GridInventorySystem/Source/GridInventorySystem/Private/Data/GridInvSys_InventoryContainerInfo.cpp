@@ -13,10 +13,9 @@ void UGridInvSys_InventoryContainerInfo::GetAllContainerGridSize()
 	
 	const UGridInvSys_ContainerGridLayoutWidget* TempObject = GetDefault<UGridInvSys_ContainerGridLayoutWidget>(ContainerGridLayoutWidgetClass);
 	check(TempObject);
-	TArray<UGridInvSys_ContainerGridWidget*> OutArray;
-	TempObject->GetAllContainerGridWidgets(OutArray);
+	TArray<UGridInvSys_ContainerGridWidget*> OutArray = TempObject->GetContainerGridWidgets();
 	for (const UGridInvSys_ContainerGridWidget* Item : OutArray)
 	{
-		ContainerGridSizeMap.Add(Item->GetContainerGridID(), Item->GetContainerGridSize());
+		// ContainerGridSizeMap.Add(Item->GetContainerGridID(), Item->GetContainerGridSize());
 	}
 }

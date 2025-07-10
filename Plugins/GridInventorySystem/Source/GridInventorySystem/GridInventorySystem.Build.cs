@@ -37,10 +37,12 @@ public class GridInventorySystem : ModuleRules
 				"CoreUObject",
 				"Engine",
 				"Slate",
+				"NetCore",
 				"SlateCore",
 				"UMG",
 				"InputCore",
-				"DeveloperSettings"
+				"DeveloperSettings",
+				"GameplayTags",
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

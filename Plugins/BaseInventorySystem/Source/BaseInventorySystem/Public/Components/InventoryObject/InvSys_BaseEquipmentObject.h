@@ -7,6 +7,9 @@
 #include "InvSys_CommonType.h"
 #include "InvSys_BaseEquipmentObject.generated.h"
 
+class UInvSys_EquipSlotWidget;
+class UInvSys_InventoryItemDefinition;
+class UInvSys_InventoryItemInstance;
 /**
  * 
  */
@@ -22,13 +25,21 @@ public:
 
 	virtual void InitInventoryObject(UInvSys_InventoryComponent* NewInventoryComponent, UObject* PreEditPayLoad) override;
 	
-	virtual void AddInventoryItemToEquipSlot(const FInvSys_InventoryItem& NewItem);
+	virtual void AddInventoryItemToEquipSlot_DEPRECATED(const FInvSys_InventoryItem& NewItem);
+
+	virtual void EquipInventoryItem(UInvSys_InventoryItemInstance* NewItemInstance);
+
+	virtual void EquipInventoryItem(TSubclassOf<UInvSys_InventoryItemDefinition> NewItemDefinition);
 
 	virtual void UnEquipInventoryItem();
 
+	virtual UInvSys_EquipSlotWidget* CreateEquipSlotWidget(APlayerController* PC);
+
 protected:
 	/**	刷新显示效果 */
-	virtual void TryRefreshOccupant(const FString& Reason = "");
+	virtual void TryRefreshEquipSlot(const FString& Reason = "");
+
+	virtual void CopyPropertyFromPreEdit(UObject* PreEditPayLoad) override;
 
 public:
 	/**
@@ -37,24 +48,27 @@ public:
 
 	virtual bool ContainsItem(FName UniqueID) override;
 
-	FInvSys_InventoryItem GetOccupantData() const;
-
-	bool IsEquipped() const
+	/*bool IsEquipped() const
 	{
-		return bIsOccupied;
-	}
+		return false;
+	}*/
+
+	virtual bool ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags) override;
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 protected:
 	// 装备的物品
-	UPROPERTY(ReplicatedUsing=OnRep_Occupant, BlueprintReadOnly, Category = "Inventory Equipment Object")
-	FInvSys_InventoryItem Occupant;
+	UPROPERTY(ReplicatedUsing=OnRep_EquipItemInstance, BlueprintReadOnly, Category = "Inventory Object")
+	UInvSys_InventoryItemInstance* EquipItemInstance;
 	UFUNCTION()
-	virtual void OnRep_Occupant(FInvSys_InventoryItem OldOccupant);
+	virtual void OnRep_EquipItemInstance();
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory Equipment Object")
-	bool bIsOccupied = false;
+	UPROPERTY(BlueprintReadOnly, Category = "Container Type")
+	TObjectPtr<UInvSys_EquipSlotWidget> EquipSlotWidget;
+	/** 装备控件类型 */
+	UPROPERTY(BlueprintReadOnly, Category = "Container Type")
+	TSubclassOf<UInvSys_EquipSlotWidget> EquipSlotWidgetClass;
 };
 
 /**
@@ -69,4 +83,9 @@ class BASEINVENTORYSYSTEM_API UInvSys_PreEditEquipmentObject : public UInvSys_Pr
 public:
 	/** 容器构建函数 */
 	CONSTRUCT_INVENTORY_OBJECT(UInvSys_BaseEquipmentObject);
+
+	
+	/** 装备控件类型 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Container Type")
+	TSubclassOf<UInvSys_EquipSlotWidget> EquipSlotWidgetClass;
 };

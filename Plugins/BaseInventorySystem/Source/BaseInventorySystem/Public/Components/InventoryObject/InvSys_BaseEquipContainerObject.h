@@ -4,12 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "InvSys_BaseEquipmentObject.h"
+#include "Data/InvSys_ContainerList.h"
 #include "InvSys_BaseEquipContainerObject.generated.h"
 
-enum class EInventoryUpdateType : uint8
-{
-	Add, Remove, Change		
-};
+
+class UInvSys_InventoryWidget;
+class UInvSys_ContainerLayoutWidget;
+class UInvSys_InventoryItemDefinition;
+class UInvSys_InventoryItemInstance;
 
 /**
  *
@@ -20,35 +22,58 @@ class BASEINVENTORYSYSTEM_API UInvSys_BaseEquipContainerObject : public UInvSys_
 {
 	GENERATED_BODY()
 
+	friend UInvSys_InventoryComponent;
+
+	// 如果是添加Item，则为ItemInstance添加代理，监听属性变化
+	// 如果是Remove，则移除所有相关的代理
+	// 监听到属性变化时，比如位置发生改变，根据旧位置以及新位置，更新控件
+	// 如果是数量发生改变？通知控件更新显示效果。
+
+	// 添加新物品时，设置监听，监听物品的属性变化
+	// 当移动物品至另一容器时，移除监听
+	// 如果是不同的库存组件进行移动
+	// 把这个物品在旧库存组件中删除，然后在新库存组件中创建新的物品？
+	// 或者是把物品在旧库存中删除，在新库存组件中，将物品实例的Owner转移到新库存组件中。
+	
 public:
 	UInvSys_BaseEquipContainerObject();
 
-	virtual void RefreshInventoryObject(const FString& Reason = "") override;
-	virtual void TryRefreshOccupant(const FString& Reason = "") override;
-	virtual void TryRefreshContainerItems(const FString& Reason = "");
-	
-	/** [Server] 添加物品，并将操作记录至复制列表，等待一段时间后，将所有操作批量发送给客户端并清除操作列表。 */
-	void RecordItemOperationByAdd(FName ItemUniqueID);
-	/** [Server] 删除物品，并将操作记录至复制列表，等待一段时间后，将所有操作批量发送给客户端并清除操作列表。 */
-	void RecordItemOperationByRemove(FName ItemUniqueID);
-	/** [Server] 修改物品，并将操作记录至操作列表，等待一段时间后，将所有操作批量发送给客户端并清除操作列表。 */
-	void RecordItemOperationByUpdate(FName ItemUniqueID);
+	virtual void OnConstructInventoryObject(UInvSys_InventoryComponent* NewInvComp, UObject* PreEditPayLoad) override;
+
+	virtual UInvSys_EquipSlotWidget* CreateEquipSlotWidget(APlayerController* PC) override;
+
+	virtual void TryRefreshEquipSlot(const FString& Reason) override;
+	virtual void TryRefreshContainerItems();
+
+	/**
+	 * 主要用于初始化库存，或不同库存组件间的物品交换
+	 * 注意：传入可变参数时，请确保目标类型中正确创建了对于的处理函数。
+	 */
+	template<class T, class... Arg>
+	T* AddItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, const Arg&... Args)
+	{
+		if (ItemDef == nullptr) return nullptr;
+		T* ItemInstance = ContainerList.AddEntry<T>(ItemDef, StackCount, Args...);
+		return ItemInstance;
+	}
+
+	/** 从其他容器添加物品，容器与容器间的交换，不会 RemoveReplicateObject，因为它们都在同一个Actor下 */
+	bool AddItemInstance(UInvSys_InventoryItemInstance* ItemInstance, int32 StackCount);
+	bool RemoveItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
+	bool UpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance, int32 NewStackCount);
 
 protected:
-	/** [Client & Server] 处理服务器批量返回的操作记录 */
-	virtual void OnAddedContainerItems(const TArray<FName>& InAddedItems) {}
-	/** [Client & Server] 处理服务器批量返回的操作记录 */
-	virtual void OnRemovedContainerItems(const TArray<FName>& InRemovedItems) {}
-	/** [Client & Server] 处理服务器批量返回的操作记录 */
-	virtual void OnUpdatedContainerItems(const TArray<FName>& InChangedItems) {}
+	virtual bool ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags) override;
+	
+	// Begin Listen Container List Event ====
+	void NativeOnInventoryStackChange(FInvSys_InventoryStackChangeMessage ChangeInfo);
+	void NativeOnContainerEntryAdded(const FInvSys_ContainerEntry& Entry);
+	void NativeOnContainerEntryRemove(const FInvSys_ContainerEntry& Entry);
 
-private:
-	/** [Server] 将所有操作批量发送给客户端并清除操作列表 */
-	void TryApplyAddOperations();
-	/** [Server] 将所有操作批量发送给客户端并清除操作列表 */
-	void TryApplyRemoveOperations();
-	/** [Server] 将所有操作批量发送给客户端并清除操作列表 */
-	void TryApplyUpdateOperations();
+	virtual void OnInventoryStackChange(const FInvSys_InventoryStackChangeMessage& ChangeInfo) {}
+	virtual void OnContainerEntryAdded(const FInvSys_ContainerEntry& Entry) {}
+	virtual void OnContainerEntryRemove(const FInvSys_ContainerEntry& Entry) {}
+	// End Listen Container List Event ====
 
 public:
 	/**
@@ -57,43 +82,22 @@ public:
 
 	virtual bool ContainsItem(FName UniqueID) override;
 
+	virtual void CopyPropertyFromPreEdit(UObject* PreEditPayLoad) override;
+
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+	const UInvSys_InventoryItemInstance* FindItemInstance(FGuid ItemUniqueID) const;
+
+
 protected:
-	/** [Server] 当前容器内的所有物品的 UniqueID */
+	/** [Server] 当前容器内的所有物品的 UniqueID */// Deprecated
 	TSet<FName> ContainerItems;
 
-	// TMap<FName, FInvSys_InventoryItem> ContainerItemInfos;
-	
-private:
-	/*
-	 * 注意：在同一时间内不得对同一物品进行不同操作，同一时间内对一个物品只能进行一种操作，该操作可以不限制次数，
-	 * 如：在某一时刻对物品A记录了Add操作，但在发送操作前又进行另一操作
-	 * 若网络出现波动，导致Add操作在另一操作之后出现，则在其他操作执行完成后，物品才姗姗来迟。
-	 */
-	
-	UPROPERTY(ReplicatedUsing = OnRep_AddedInventoryItems)
-	TArray<FName> AddedInventoryItems;
-	TSet<FName> Pending_AddedInventoryItems;
-	bool bIsWait_Pending_AddedInventoryItems = false;
-	UFUNCTION()
-	void OnRep_AddedInventoryItems();
+	UPROPERTY(Replicated)
+	FInvSys_ContainerList ContainerList;
 
-	UPROPERTY(ReplicatedUsing = OnRep_RemovedInventoryItems)
-	TArray<FName> RemovedInventoryItems;
-	TSet<FName> Pending_RemovedInventoryItems;
-	bool bIsWait_Pending_RemovedInventoryItems = false;
-	UFUNCTION()
-	void OnRep_RemovedInventoryItems();
+	UPROPERTY()
+	TObjectPtr<UInvSys_InventoryWidget> ContainerLayout;
 
-	UPROPERTY(ReplicatedUsing = OnRep_ChangedInventoryItems)
-	TArray<FName> ChangedInventoryItems;
-	TSet<FName> Pending_ChangedInventoryItems;
-	bool bIsWait_Pending_ChangedInventoryItems = false;
-	UFUNCTION()
-	void OnRep_ChangedInventoryItems();
-
-	FTimerHandle AddTimerHandle;
-	FTimerHandle RemoveTimerHandle;
-	FTimerHandle ChangeTimerHandle;
+	TMap<FGuid, FInvSys_ContainerEntry> ContainerEntryMap;
 };

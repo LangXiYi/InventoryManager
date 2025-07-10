@@ -3,49 +3,23 @@
 
 #include "Widgets/GridInvSys_DragDropWidget.h"
 
-#include "GridInvSys_InventorySystemConfig.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
-#include"Components/GridInvSys_InventoryComponent.h"
-#include "Components/GridInvSys_GridInventoryControllerComponent.h"
-#include "Framework/Notifications/NotificationManager.h"
+#include "Data/GridInvSys_InventoryItemInstance.h"
+#include "Data/InvSys_InventoryItemInstance.h"
+#include "Data/GridInvSys_ItemFragment_DragDrop.h"
 #include "Widgets/GridInvSys_DragItemWidget.h"
 #include "Data/InvSys_InventoryItemInfo.h"
 
-
-#if WITH_EDITOR
-#include "Widgets/Notifications/SNotificationList.h"
-#endif
-
-UGridInvSys_DragDropWidget::UGridInvSys_DragDropWidget(const FObjectInitializer& ObjectInitializer)
-: Super(ObjectInitializer)
+void UGridInvSys_DragDropWidget::SetItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)
 {
-	if (bIsOverrideDraggingWidgetClass == false)
-	{
-		if (const UGridInvSys_InventorySystemConfig* InventorySystemConfig = GetDefault<UGridInvSys_InventorySystemConfig>())
-		{
-			check(InventorySystemConfig->DraggingWidgetClass)
-			DraggingWidgetClass = InventorySystemConfig->DraggingWidgetClass;
-		}
-	}
-	
-	DragPivot = EDragPivot::CenterCenter;
-	DragOffset = FVector2D(0.f, 0.f);
-	SetVisibilityInternal(ESlateVisibility::Visible);
+	ItemInstance = NewItemInstance;
 }
 
-void UGridInvSys_DragDropWidget::UpdateItemInfo(UInvSys_InventoryItemInfo* NewItemInfo)
-{
-	ItemInfo = NewItemInfo;
-}
-
-void UGridInvSys_DragDropWidget::SetGridItemWidget(UGridInvSys_ContainerGridItemWidget* NewGridItemWidget)
-{
-	GridItemWidget = NewGridItemWidget;
-}
 
 UGridInvSys_ContainerGridItemWidget* UGridInvSys_DragDropWidget::GetGridItemWidget() const
 {
-	return GridItemWidget;
+	//return GridItemWidget;
+	return nullptr;
 }
 
 EDragDropType UGridInvSys_DragDropWidget::GetDragDropType() const
@@ -58,14 +32,9 @@ void UGridInvSys_DragDropWidget::SetDragDropType(EDragDropType NewDragType)
 	DragDropType = NewDragType;
 }
 
-void UGridInvSys_DragDropWidget::SetDraggingWidgetClass(TSubclassOf<UGridInvSys_DragItemWidget> NewDraggingWidgetClass)
-{
-	DraggingWidgetClass = NewDraggingWidgetClass;
-}
-
 FReply UGridInvSys_DragDropWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
-	if (ItemInfo)
+	if (ItemInstance)
 	{
 		FEventReply EventReply = UWidgetBlueprintLibrary::DetectDragIfPressed(InMouseEvent, this, EKeys::LeftMouseButton);
 		return EventReply.NativeReply;
@@ -77,17 +46,24 @@ void UGridInvSys_DragDropWidget::NativeOnDragDetected(const FGeometry& InGeometr
 	UDragDropOperation*& OutOperation)
 {
 	Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
-	// TODO: 创建拖拽对象。
 
-	// 创建 Dragging 控件
-	UGridInvSys_DragItemWidget* DraggingWidget = CreateWidget<UGridInvSys_DragItemWidget>(GetOwningPlayer(), DraggingWidgetClass);
-	DraggingWidget->UpdateItemInfo(ItemInfo);
-	DraggingWidget->UpdateDirection(ItemDirection);
+	if (UGridInvSys_InventoryItemInstance* GridItemInstance = GetItemInstance<UGridInvSys_InventoryItemInstance>())
+	{
+		auto DragDropFragment = GridItemInstance->FindFragmentByClass<UGridInvSys_ItemFragment_DragDrop>();
+		if (DragDropFragment)
+		{
+			// 创建 Dragging 控件
+			UGridInvSys_DragItemWidget* DraggingWidget =
+				CreateWidget<UGridInvSys_DragItemWidget>(this, DragDropFragment->DraggingWidgetClass);
+			DraggingWidget->SetItemInstance(GridItemInstance);
 	
-	UDragDropOperation* DragDropOperation = NewObject<UDragDropOperation>();
-	DragDropOperation->Payload = this;
-	DragDropOperation->DefaultDragVisual = DraggingWidget;
-	DragDropOperation->Pivot = DragPivot;
-	DragDropOperation->Offset = DragOffset;
-	OutOperation = DragDropOperation;
+			UDragDropOperation* DragDropOperation = NewObject<UDragDropOperation>();
+			DragDropOperation->Payload = DraggingWidget;
+			DragDropOperation->DefaultDragVisual = DraggingWidget;
+			DragDropOperation->Pivot = DragDropFragment->DragPivot;
+			DragDropOperation->Offset = DragDropFragment->DragOffset;
+
+			OutOperation = DragDropOperation;
+		}
+	}
 }

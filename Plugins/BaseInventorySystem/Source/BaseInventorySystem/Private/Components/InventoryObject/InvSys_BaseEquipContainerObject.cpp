@@ -3,160 +3,138 @@
 
 #include "Components/InventoryObject/InvSys_BaseEquipContainerObject.h"
 
-#include "InvSys_InventorySystemConfig.h"
+#include "BaseInventorySystem.h"
+#include "Data/InvSys_ItemFragment_ContainerLayout.h"
+#include "Blueprint/UserWidget.h"
+#include "Data/InvSys_InventoryItemInstance.h"
+#include "Engine/ActorChannel.h"
 #include "Net/UnrealNetwork.h"
+#include "Widgets/InvSys_EquipContainerSlotWidget.h"
+#include "Widgets/InvSys_EquipSlotWidget.h"
+
 
 UInvSys_BaseEquipContainerObject::UInvSys_BaseEquipContainerObject()
+	:ContainerList(this)
 {
+	ContainerList.OnContainerEntryAddedDelegate().AddUObject(this,
+		&UInvSys_BaseEquipContainerObject::NativeOnContainerEntryAdded);
+	
+	ContainerList.OnContainerEntryRemoveDelegate().AddUObject(this,
+		&UInvSys_BaseEquipContainerObject::NativeOnContainerEntryRemove);
 
+	ContainerList.OnInventoryStackChangeDelegate().AddUObject(this,
+		&UInvSys_BaseEquipContainerObject::NativeOnInventoryStackChange);
 }
 
-void UInvSys_BaseEquipContainerObject::RefreshInventoryObject(const FString& Reason)
+bool UInvSys_BaseEquipContainerObject::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch,
+                                                           FReplicationFlags* RepFlags)
 {
-	Super::RefreshInventoryObject(Reason);
-	TryRefreshContainerItems();
-}
-
-void UInvSys_BaseEquipContainerObject::RecordItemOperationByAdd(FName ItemUniqueID)
-{
-	if (HasAuthority())
+	bool WroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
+	for (FInvSys_ContainerEntry Entry : ContainerList.Entries)
 	{
-		Pending_AddedInventoryItems.Add(ItemUniqueID);
-		ContainerItems.Add(ItemUniqueID);
-		TryApplyAddOperations();
+		UInvSys_InventoryItemInstance* Instance = Entry.Instance;
+		if (Instance && IsValid(Instance))
+		{
+			WroteSomething |= Channel->ReplicateSubobject(Instance, *Bunch, *RepFlags);
+		}
+		// UE_LOG(LogInventorySystem, Error, TEXT("复制 Fast Array 的子对象 = %s]"), *Instance->GetName());
+	}
+	return WroteSomething;
+}
+
+void UInvSys_BaseEquipContainerObject::NativeOnInventoryStackChange(FInvSys_InventoryStackChangeMessage ChangeInfo)
+{
+	OnInventoryStackChange(ChangeInfo); // 监听 Stack Count 变化
+}
+
+void UInvSys_BaseEquipContainerObject::NativeOnContainerEntryAdded(const FInvSys_ContainerEntry& Entry)
+{
+	OnContainerEntryAdded(Entry);// 监听 Item Instance 变化
+}
+
+void UInvSys_BaseEquipContainerObject::NativeOnContainerEntryRemove(const FInvSys_ContainerEntry& Entry)
+{
+	OnContainerEntryRemove(Entry); // 移除监听 Item Instance 变化
+}
+
+void UInvSys_BaseEquipContainerObject::OnConstructInventoryObject(UInvSys_InventoryComponent* NewInvComp,
+                                                                  UObject* PreEditPayLoad)
+{
+	Super::OnConstructInventoryObject(NewInvComp, PreEditPayLoad);
+}
+
+UInvSys_EquipSlotWidget* UInvSys_BaseEquipContainerObject::CreateEquipSlotWidget(APlayerController* PC)
+{
+	UInvSys_EquipSlotWidget* TempEquipSlotWidget = Super::CreateEquipSlotWidget(PC);
+
+	return TempEquipSlotWidget;
+}
+
+void UInvSys_BaseEquipContainerObject::TryRefreshEquipSlot(const FString& Reason)
+{
+	Super::TryRefreshEquipSlot(Reason);
+	if (EquipItemInstance && EquipSlotWidget) // 刷新物品时同步刷新容器控件
+	{
+		auto Fragment = EquipItemInstance->FindFragmentByClass<UInvSys_ItemFragment_ContainerLayout>();
+		if (Fragment)
+		{
+			ContainerLayout = CreateWidget<UInvSys_InventoryWidget>(EquipSlotWidget, Fragment->ContainerLayout);
+			if (EquipSlotWidget->IsA(UInvSys_EquipContainerSlotWidget::StaticClass()))
+			{
+				UInvSys_EquipContainerSlotWidget* TempContainerSlotWidget = Cast<UInvSys_EquipContainerSlotWidget>(EquipSlotWidget);
+				check(TempContainerSlotWidget);
+				TempContainerSlotWidget->AddContainerLayout(ContainerLayout);
+				TryRefreshContainerItems();
+			}
+		}
 	}
 }
 
-void UInvSys_BaseEquipContainerObject::RecordItemOperationByRemove(FName ItemUniqueID)
+void UInvSys_BaseEquipContainerObject::TryRefreshContainerItems()
 {
-	if (HasAuthority())
+	UE_LOG(LogInventorySystem, Log, TEXT("正在刷新容器内所有物品！"))
+	for (const FInvSys_ContainerEntry& Entry : ContainerList.Entries)
 	{
-		Pending_RemovedInventoryItems.Add(ItemUniqueID);
-		ContainerItems.Remove(ItemUniqueID);
-		TryApplyRemoveOperations();
+		ContainerList.BroadcastRemoveEntryMessage(Entry);
+	}
+	for (const FInvSys_ContainerEntry& Entry : ContainerList.Entries)
+	{
+		ContainerList.BroadcastAddEntryMessage(Entry);
 	}
 }
 
-void UInvSys_BaseEquipContainerObject::RecordItemOperationByUpdate(FName ItemUniqueID)
+bool UInvSys_BaseEquipContainerObject::AddItemInstance(UInvSys_InventoryItemInstance* ItemInstance, int32 StackCount)
 {
-	if (HasAuthority())
-	{
-		Pending_ChangedInventoryItems.Add(ItemUniqueID);
-		TryApplyUpdateOperations();
-	}
+	if (ItemInstance == nullptr) return false;
+	return ContainerList.AddEntry(ItemInstance, StackCount);
 }
 
-void UInvSys_BaseEquipContainerObject::TryRefreshOccupant(const FString& Reason)
+bool UInvSys_BaseEquipContainerObject::RemoveItemInstance(UInvSys_InventoryItemInstance* ItemInstance)
 {
-	Super::TryRefreshOccupant(Reason);
+	if (ItemInstance != nullptr) return false;
+	return ContainerList.RemoveEntry(ItemInstance);
 }
 
-void UInvSys_BaseEquipContainerObject::TryRefreshContainerItems(const FString& Reason)
+bool UInvSys_BaseEquipContainerObject::UpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance, int32 NewStackCount)
 {
-	if (Reason != "") UE_LOG(LogInventorySystem, Log, TEXT("[%s]"), *Reason);
+	if (ItemInstance == nullptr) return false;
+	return ContainerList.UpdateEntryStackCount(ItemInstance, NewStackCount);
 }
 
 void UInvSys_BaseEquipContainerObject::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UInvSys_BaseEquipContainerObject, ChangedInventoryItems);
-	DOREPLIFETIME(UInvSys_BaseEquipContainerObject, AddedInventoryItems);
-	DOREPLIFETIME(UInvSys_BaseEquipContainerObject, RemovedInventoryItems);
+	DOREPLIFETIME(UInvSys_BaseEquipContainerObject, ContainerList);
 }
 
-void UInvSys_BaseEquipContainerObject::TryApplyAddOperations()
+const UInvSys_InventoryItemInstance* UInvSys_BaseEquipContainerObject::FindItemInstance(FGuid ItemUniqueID) const
 {
-	if (HasAuthority() == false || AddTimerHandle.IsValid()) return;
-	// 第一批数据，直接发送无延迟，后续数据等待 N 秒后，将 N 秒内增加的数据合批发送。
-	// 优点：保证正常玩家使用无延迟，对高频数据会自动合批发送，减少发送频率。
-	AActor* OwningActor = GetOwner();
-	check(OwningActor)
-	if (OwningActor == nullptr)
+	if (ContainerEntryMap.Contains(ItemUniqueID))
 	{
-		UE_LOG(LogInventorySystem, Error, TEXT("OwningActor is nullptr."))
-		return;
+		return ContainerEntryMap[ItemUniqueID].Instance;
 	}
-	AddedInventoryItems.Append(Pending_AddedInventoryItems.Array());
-	Pending_AddedInventoryItems.Empty();
-	OwningActor->ForceNetUpdate();
-	
-	if (GetNetMode() != NM_DedicatedServer)
-		OnRep_AddedInventoryItems();
-
-	// 发送数据后等待 N 秒后清除旧数据，若在等待期间缓存数据增加，则清除完成后再次调用本函数，将数据发送至客户端。
-	GetWorld()->GetTimerManager().SetTimer(AddTimerHandle, [this]() {
-		AddedInventoryItems.Empty();
-		AddTimerHandle.Invalidate();
-		if (!Pending_AddedInventoryItems.IsEmpty())
-		{
-			// UE_LOG(LogInventorySystem, Log, TEXT("Pending_AddedInventoryItems 中存在新的数据，需要先进行强制更新。"))
-			TryApplyAddOperations(); // 存在新的需要更新的数据，强制继续更新。
-		}
-	}, GetServerWaitBatchTime(), false);
-}
-
-void UInvSys_BaseEquipContainerObject::TryApplyRemoveOperations()
-{
-	if (HasAuthority() == false || RemoveTimerHandle.IsValid()) return;
-	// 第一批数据，直接发送无延迟，后续数据等待 N 秒后，将 N 秒内增加的数据合批发送。
-	// 优点：保证正常玩家使用无延迟，对高频数据会自动合批发送，减少发送频率。
-	AActor* OwningActor = GetOwner();
-	check(OwningActor)
-	if (OwningActor == nullptr)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("OwningActor is nullptr."))
-		return;
-	}
-	RemovedInventoryItems.Append(Pending_RemovedInventoryItems.Array());
-	Pending_RemovedInventoryItems.Empty();
-	UE_LOG(LogInventorySystem, Log, TEXT("Net update to client."))
-	OwningActor->ForceNetUpdate();
-
-	if (GetNetMode() != NM_DedicatedServer)
-		OnRep_RemovedInventoryItems();
-
-	// 发送数据后等待 N 秒后清除旧数据，若在等待期间缓存数据增加，则清除完成后再次调用本函数，将数据发送至客户端。
-	GetWorld()->GetTimerManager().SetTimer(RemoveTimerHandle, [this]() {
-		RemovedInventoryItems.Empty();
-		RemoveTimerHandle.Invalidate();
-		if (!Pending_RemovedInventoryItems.IsEmpty())
-		{
-			// UE_LOG(LogInventorySystem, Log, TEXT("Pending_AddedInventoryItems 中存在新的数据，需要先进行强制更新。"))
-			TryApplyRemoveOperations(); // 存在新的需要更新的数据，强制继续更新。
-		}
-	}, GetServerWaitBatchTime(), false);
-}
-
-void UInvSys_BaseEquipContainerObject::TryApplyUpdateOperations()
-{
-	if (HasAuthority() == false || ChangeTimerHandle.IsValid()) return;
-	// 第一批数据，直接发送无延迟，后续数据等待 N 秒后，将 N 秒内增加的数据合批发送。
-	// 优点：保证正常玩家使用无延迟，对高频数据会自动合批发送，减少发送频率。
-	AActor* OwningActor = GetOwner();
-	check(OwningActor)
-	if (OwningActor == nullptr)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("OwningActor is nullptr."))
-		return;
-	}
-	ChangedInventoryItems.Append(Pending_ChangedInventoryItems.Array());
-	Pending_ChangedInventoryItems.Empty();
-	OwningActor->ForceNetUpdate();
-
-	if (GetNetMode() != NM_DedicatedServer)
-		OnRep_ChangedInventoryItems();
-
-	// 发送数据后等待 N 秒后清除旧数据，若在等待期间缓存数据增加，则清除完成后再次调用本函数，将数据发送至客户端。
-	GetWorld()->GetTimerManager().SetTimer(ChangeTimerHandle, [this]() {
-		ChangedInventoryItems.Empty();
-		ChangeTimerHandle.Invalidate();
-		if (!Pending_ChangedInventoryItems.IsEmpty())
-		{
-			// UE_LOG(LogInventorySystem, Log, TEXT("Pending_AddedInventoryItems 中存在新的数据，需要先进行强制更新。"))
-			TryApplyUpdateOperations(); // 存在新的需要更新的数据，强制继续更新。
-		}
-	}, GetServerWaitBatchTime(), false);
+	return nullptr;
 }
 
 bool UInvSys_BaseEquipContainerObject::ContainsItem(FName UniqueID)
@@ -164,17 +142,8 @@ bool UInvSys_BaseEquipContainerObject::ContainsItem(FName UniqueID)
 	return Super::ContainsItem(UniqueID) || ContainerItems.Contains(UniqueID);
 }
 
-void UInvSys_BaseEquipContainerObject::OnRep_AddedInventoryItems()
+void UInvSys_BaseEquipContainerObject::CopyPropertyFromPreEdit(UObject* PreEditPayLoad)
 {
-	OnAddedContainerItems(AddedInventoryItems);
-}
+	Super::CopyPropertyFromPreEdit(PreEditPayLoad);
 
-void UInvSys_BaseEquipContainerObject::OnRep_RemovedInventoryItems()
-{
-	OnRemovedContainerItems(RemovedInventoryItems);
-}
-
-void UInvSys_BaseEquipContainerObject::OnRep_ChangedInventoryItems()
-{
-	OnUpdatedContainerItems(ChangedInventoryItems);
 }

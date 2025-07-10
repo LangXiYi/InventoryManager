@@ -2,69 +2,36 @@
 
 
 #include "Widgets/GridInvSys_EquipContainerSlotWidget.h"
-
-#include "InvSys_CommonType.h"
-#include "Components/NamedSlot.h"
 #include "Widgets/GridInvSys_ContainerGridLayoutWidget.h"
-#include "Data/GridInvSys_InventoryContainerInfo.h"
-#include "Widgets/GridInvSys_ContainerGridWidget.h"
+#include "Widgets/GridInvSys_ContainerGridItemWidget.h"
+#include "Data/GridInvSys_InventoryItemInstance.h"
+#include "GridInvSys_CommonType.h"
 
 
-void UGridInvSys_EquipContainerSlotWidget::UpdateOccupant(const FInvSys_InventoryItem& NewOccupant)
+UGridInvSys_ContainerGridItemWidget* UGridInvSys_EquipContainerSlotWidget::FindGridItemWidget(
+	const FGridInvSys_ItemPosition& ItemPosition) const
 {
-	Super::UpdateOccupant(NewOccupant);
-	// 根据Occupant创建容器布局控件
-	if (UGridInvSys_InventoryContainerInfo* ContainerInfo = Cast<UGridInvSys_InventoryContainerInfo>(NewOccupant.ItemInfo))
+	if (GetSlotTag() != ItemPosition.EquipSlotTag)
 	{
-		if (ContainerInfo->ContainerGridLayoutWidgetClass == nullptr)
-		{
-			return;
-		}
-		// todo:: remove old widget.
-		ContainerLayoutWidget = CreateWidget<UGridInvSys_ContainerGridLayoutWidget>(
-			GetOwningPlayer(), ContainerInfo->ContainerGridLayoutWidgetClass);
-		// 构建容器网格
-		ContainerLayoutWidget->SetInventoryComponent(GetInventoryComponent());
-		ContainerLayoutWidget->ConstructContainerGrid(GetSlotName());
-		NS_ContainerGridLayout->AddChild(ContainerLayoutWidget);
+		return nullptr;
 	}
+	if (ContainerLayoutWidget && ContainerLayoutWidget->IsA(UGridInvSys_ContainerGridLayoutWidget::StaticClass()))
+	{
+		UGridInvSys_ContainerGridLayoutWidget* LayoutWidget = Cast<UGridInvSys_ContainerGridLayoutWidget>(ContainerLayoutWidget);
+		check(LayoutWidget);
+		return LayoutWidget->FindGridItemWidget(ItemPosition);
+	}
+	return nullptr;
 }
 
-void UGridInvSys_EquipContainerSlotWidget::UpdateContainerGrid(const TArray<FGridInvSys_InventoryItem>& AllItems)
+UGridInvSys_ContainerGridItemWidget* UGridInvSys_EquipContainerSlotWidget::FindGridItemWidget(
+	const UInvSys_InventoryItemInstance* NewItemInstance) const
 {
-	check(ContainerLayoutWidget)
-	if (ContainerLayoutWidget == nullptr)
+	if (NewItemInstance && NewItemInstance->IsA(UGridInvSys_InventoryItemInstance::StaticClass()))
 	{
-		return;
+		UGridInvSys_InventoryItemInstance* TempItemInstance = (UGridInvSys_InventoryItemInstance*)NewItemInstance;
+		check(TempItemInstance);
+		return FindGridItemWidget(TempItemInstance->GetItemPosition());
 	}
-	TArray<UGridInvSys_ContainerGridWidget*> ContainerGridWidgets = ContainerLayoutWidget->GetContainerGridWidgets();
-	for (UGridInvSys_ContainerGridWidget* ContainerGridWidget : ContainerGridWidgets)
-	{
-		ContainerGridWidget->RemoveAllInventoryItem();
-	}
-	
-	//获取Layout下
-	for (const FGridInvSys_InventoryItem& Item : AllItems)
-	{
-		UGridInvSys_ContainerGridWidget* GridWidget = ContainerLayoutWidget->FindContainerGrid(Item.ItemPosition.GridID);
-		if (GridWidget)
-		{
-			GridWidget->UpdateInventoryItem(Item);
-		}
-	}
-}
-
-UGridInvSys_ContainerGridLayoutWidget* UGridInvSys_EquipContainerSlotWidget::GetContainerGridLayoutWidget()
-{
-	return ContainerLayoutWidget;
-}
-
-void UGridInvSys_EquipContainerSlotWidget::GetAllContainerGrid(
-	TArray<UGridInvSys_ContainerGridWidget*>& OutContainerGrids)
-{
-	check(ContainerLayoutWidget);
-	if (ContainerLayoutWidget)
-	{
-		OutContainerGrids = ContainerLayoutWidget->GetContainerGridWidgets();
-	}
+	return nullptr;
 }

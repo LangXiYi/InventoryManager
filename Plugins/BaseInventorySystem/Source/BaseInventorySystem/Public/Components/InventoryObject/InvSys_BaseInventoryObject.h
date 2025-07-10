@@ -3,11 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "BaseInventorySystem.h"
-#include "Components/InvSys_InventoryComponent.h"
+#include "GameplayTagContainer.h"
+#include "Components/ActorComponent.h"
 #include "UObject/Object.h"
 #include "InvSys_BaseInventoryObject.generated.h"
 
+class UInvSys_EquipSlotWidget;
 class UInvSys_InventoryComponent;
 
 
@@ -21,6 +22,7 @@ class BASEINVENTORYSYSTEM_API UInvSys_BaseInventoryObject : public UObject
 {
 	GENERATED_BODY()
 
+	friend UInvSys_InventoryComponent;
 	friend class UInvSys_PreEditInventoryObject;
 	
 #define COPY_INVENTORY_OBJECT_PROPERTY(c, v)\
@@ -28,6 +30,9 @@ class BASEINVENTORYSYSTEM_API UInvSys_BaseInventoryObject : public UObject
 
 public:
 	UInvSys_BaseInventoryObject();
+
+	// [Server & Client] 在服务器创建库存对象后自动调用
+	virtual void OnConstructInventoryObject(UInvSys_InventoryComponent* NewInvComp, UObject* PreEditPayLoad);
 	
 	/** 初始化库存对象，仅由客户端调用 */
 	virtual void InitInventoryObject(UInvSys_InventoryComponent* NewInventoryComponent, UObject* PreEditPayLoad);
@@ -35,14 +40,21 @@ public:
 	virtual void RefreshInventoryObject(const FString& Reason = "");
 
 protected:
-	virtual void CreateDisplayWidget(APlayerController* PC);
+	virtual bool ReplicateSubobjects(UActorChannel *Channel, FOutBunch *Bunch, FReplicationFlags *RepFlags);
+
+	/** 从预设对象中复制属性 */
+	virtual void CopyPropertyFromPreEdit(UObject* PreEditPayLoad);
 	
 public:
 	/**
 	 * Getter Or Setter
 	 **/
 
-	FORCEINLINE FName GetSlotName() const;
+	/** 传入 Item Unique ID 判断其在库存对象中是否存在 */
+	virtual bool ContainsItem(FName UniqueID);
+	
+	UFUNCTION(BlueprintPure)
+	FORCEINLINE FGameplayTag GetSlotTag() const{ return EquipSlotTag; }
 
 	FORCEINLINE UInvSys_InventoryComponent* GetInventoryComponent() const;
 
@@ -50,36 +62,25 @@ public:
 
 	FORCEINLINE ENetMode GetNetMode() const;
 
-	FORCEINLINE bool IsLocallyControlled() const;
-
 	FORCEINLINE AActor* GetOwner() const;
 
-	FORCEINLINE float GetServerWaitBatchTime() const;
+	FORCEINLINE bool IsReadyForReplication() const;
+
+	FORCEINLINE bool IsUsingRegisteredSubObjectList();
 
 	FORCEINLINE virtual bool IsSupportedForNetworking() const override { return true; }
-
-	/** 传入 Item Unique ID 判断其在库存对象中是否存在 */
-	virtual bool ContainsItem(FName UniqueID);
-
-	/** 从预设对象中复制属性 */
-	virtual void CopyPropertyFromPreEdit(UInvSys_InventoryComponent* NewInventoryComponent,UObject* PreEditPayLoad);
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 protected:
-	/** 在当前库存组件下具有唯一 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory Object")
-	FName SlotName;
-
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Object")
 	UInvSys_InventoryComponent* InventoryComponent = nullptr;
 
-	bool bIsCopyPreEditData = false;
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory Object")
+	FGameplayTag EquipSlotTag;
 
 private:
 	bool bIsInitInventoryObject = false;
-
-	float ServerWaitBatchTime = 0.f;
 };
 
 /**
@@ -92,20 +93,15 @@ class BASEINVENTORYSYSTEM_API UInvSys_PreEditInventoryObject : public UObject
 	GENERATED_BODY()
 	
 public:
-	/** 在当前库存组件下具有唯一 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Container Type")
-	FName SlotName;
+	FGameplayTag EquipSlotTag;
 	
 protected:
-#define CONSTRUCT_INVENTORY_OBJECT(c) \
-	virtual UInvSys_BaseInventoryObject* ConstructInventoryObject(UInvSys_InventoryComponent* NewInventoryComponent)\
+#define CONSTRUCT_INVENTORY_OBJECT(C) \
+	virtual UInvSys_BaseInventoryObject* ConstructInventoryObject(UActorComponent* InvComp)\
 	{\
-		check(NewInventoryComponent);\
-		c* InvObj = NewObject<c>(NewInventoryComponent->GetOwner());\
-		UE_LOG(LogInventorySystem, Log, TEXT("[%s] 正在构建库存对象: From [%s] ===> To [%s]。"),\
-			NewInventoryComponent->HasAuthority() ? TEXT("Server") : TEXT("Client"),\
-			*GetName(), *InvObj->GetName());\
-		InvObj->CopyPropertyFromPreEdit(NewInventoryComponent, this);\
+		check(InvComp);\
+		C* InvObj = NewObject<C>(InvComp->GetOwner());\
 		return InvObj;\
 	}
 

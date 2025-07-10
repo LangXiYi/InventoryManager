@@ -8,6 +8,7 @@
 #include "GridInvSys_InventoryComponent.generated.h"
 
 
+class UInvSys_InventoryItemDefinition;
 class UGridInvSys_InventoryItemInfo;
 /***
  * GridItem ----> ContainerGrid ----> InventoryContainer ----> InventoryComponent
@@ -26,6 +27,11 @@ public:
 	UFUNCTION(BlueprintCallable)
 	virtual void AddInventoryItemToGridContainer(FGridInvSys_InventoryItem GridContainerItem);
 
+
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
+	virtual void AddItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, FGridInvSys_ItemPosition Pos);
+
+	
 	/**
 	 * 仅适用于同容器组件下的物品转移
 	 * @param ChangedItems 旧物品的唯一ID
@@ -51,7 +57,7 @@ protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
-	virtual void NativeOnInitInventoryObjects(APlayerController* InController) override;
+	//virtual void NativeOnInitInventoryObjects(APlayerController* InController) override;
 
 public:
 	/**
@@ -63,21 +69,11 @@ public:
 
 	bool FindContainerGridItem(FName ItemUniqueID,  FGridInvSys_InventoryItem& OutItem);
 	
-	UUserWidget* GetInventoryLayoutWidget() const
-	{
-		return InventoryLayoutWidget;
-	}
+	UUserWidget* GetInventoryLayoutWidget() const;
 
 	/** 获取所有容器的SlotName */
 	UFUNCTION(BlueprintCallable)
 	void GetAllContainerSlotName(TArray<FName>& OutArray) const;
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
-protected:
-	/** 库存组件的展示菜单 */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Component")
-	TSubclassOf<UUserWidget> InventoryLayoutWidgetClass;
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Component")
-	TObjectPtr<UUserWidget> InventoryLayoutWidget;
 };

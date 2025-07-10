@@ -3,37 +3,23 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GridInvSys_EquipmentSlotWidget.h"
+#include "Widgets/InvSys_EquipContainerSlotWidget.h"
 #include "GridInvSys_EquipContainerSlotWidget.generated.h"
 
-class UGridInvSys_ContainerGridWidget;
-struct FGridInvSys_InventoryItem;
+struct FGridInvSys_ItemPosition;
+class UInvSys_InventoryItemInstance;
+class UGridInvSys_ContainerGridItemWidget;
+
 /**
  * 
  */
 UCLASS()
-class GRIDINVENTORYSYSTEM_API UGridInvSys_EquipContainerSlotWidget : public UGridInvSys_EquipmentSlotWidget
+class GRIDINVENTORYSYSTEM_API UGridInvSys_EquipContainerSlotWidget : public UInvSys_EquipContainerSlotWidget
 {
 	GENERATED_BODY()
 
 public:
-	virtual void UpdateOccupant(const FInvSys_InventoryItem& NewOccupant) override;
+	UGridInvSys_ContainerGridItemWidget* FindGridItemWidget(const FGridInvSys_ItemPosition& ItemPosition) const;
 
-	virtual void UpdateContainerGrid(const TArray<FGridInvSys_InventoryItem>& AllItems);
-
-	UFUNCTION(BlueprintImplementableEvent)
-	void OnUpdateContainerGrid(const TArray<FGridInvSys_InventoryItem>& AllItems);
-
-public:
-	// 获取容器布局对象
-	UGridInvSys_ContainerGridLayoutWidget* GetContainerGridLayoutWidget();
-
-	void GetAllContainerGrid(TArray<UGridInvSys_ContainerGridWidget*>& OutContainerGrids);
-
-protected:
-	UPROPERTY()
-	TObjectPtr<UGridInvSys_ContainerGridLayoutWidget> ContainerLayoutWidget;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
-	TObjectPtr<UNamedSlot> NS_ContainerGridLayout;
+	UGridInvSys_ContainerGridItemWidget* FindGridItemWidget(const UInvSys_InventoryItemInstance* NewItemInstance) const;
 };

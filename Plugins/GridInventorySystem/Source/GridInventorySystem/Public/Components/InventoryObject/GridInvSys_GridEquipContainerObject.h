@@ -4,11 +4,27 @@
 
 #include "CoreMinimal.h"
 #include "GridInvSys_CommonType.h"
+#include "Net/Serialization/FastArraySerializer.h"
 #include "Components/InventoryObject/InvSys_BaseEquipContainerObject.h"
+#include "Data/GridInvSys_InventoryItemInstance.h"
 #include "GridInvSys_GridEquipContainerObject.generated.h"
 
+class UGridInvSys_InventoryItemInstance;
+class UGridInvSys_InventoryComponent;
+struct FGridInvSys_InventoryList;
 class UGridInvSys_EquipmentSlotWidget;
 class UGridInvSys_ContainerGridWidget;
+
+
+class UInvSys_InventoryItemDefinition;
+class UInvSys_InventoryItemInstance;
+class UInvSys_PreEditInventoryObject;
+class UInvSys_BaseInventoryObject;
+
+struct FInvSys_InventoryItem;
+struct FInvSys_ContainerList;
+
+
 /**
  * 装备容器继承自装备对象，和装备对象一样会在开始前为库存组件添加一个可供物品装备的插槽，但是在装备物品后会根据物品的内容，创建一个新的
  * 容器，并管理该容器。
@@ -24,22 +40,17 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_GridEquipContainerObject : public UInv
 public:
 	UGridInvSys_GridEquipContainerObject();
 	
-	virtual void TryRefreshOccupant(const FString& Reason = "") override;
-	virtual void TryRefreshContainerItems(const FString& Reason = "") override;
+	virtual void AddInventoryItemToEquipSlot_DEPRECATED(const FInvSys_InventoryItem& NewItem) override;
+	virtual void AddInventoryItemToContainer_DEPRECATED(const FGridInvSys_InventoryItem& InventoryItem);
+	virtual void RemoveInventoryItemFromContainer_DEPRECATED(FGridInvSys_InventoryItem InventoryItem);
+	virtual void UpdateInventoryItemFromContainer_DEPRECATED(FName ItemUniqueID, FGridInvSys_InventoryItemPosition NewPosition);
 	
-	virtual void AddInventoryItemToEquipSlot(const FInvSys_InventoryItem& NewItem) override;
-
-	virtual void AddInventoryItemToContainer(const FGridInvSys_InventoryItem& InventoryItem);
-	virtual void RemoveInventoryItemFromContainer(FGridInvSys_InventoryItem InventoryItem);
-	virtual void UpdateInventoryItemFromContainer(FName ItemUniqueID, FGridInvSys_InventoryItemPosition NewPosition);
-
 protected:
-	virtual void CreateDisplayWidget(APlayerController* PC) override;
+	void OnItemPositionChange(const FGridInvSys_ItemPositionChangeMessage& Message);
+	virtual void OnInventoryStackChange(const FInvSys_InventoryStackChangeMessage& ChangeInfo) override;
+	virtual void OnContainerEntryAdded(const FInvSys_ContainerEntry& Entry) override;
+	virtual void OnContainerEntryRemove(const FInvSys_ContainerEntry& Entry) override;
 	
-	virtual void OnAddedContainerItems(const TArray<FName>& InAddedItems) override;
-	virtual void OnRemovedContainerItems(const TArray<FName>& InRemovedItems) override;
-	virtual void OnUpdatedContainerItems(const TArray<FName>& InChangedItems) override;
-
 private:
 	int32 FindContainerItemIndex(FName ItemUniqueID);
 
@@ -58,27 +69,18 @@ public:
 	
 	 bool FindContainerGridItem(FName ItemUniqueID, FGridInvSys_InventoryItem& OutItem) const;
 	
-	virtual void CopyPropertyFromPreEdit(UInvSys_InventoryComponent* NewInventoryComponent, UObject* PreEditPayLoad) override;
+	virtual void CopyPropertyFromPreEdit(UObject* PreEditPayLoad) override;
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 protected:
-	/** 装备控件类型 */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Equipment Object")
-	TSubclassOf<UGridInvSys_EquipmentSlotWidget> EquipmentSlotWidgetClass;
-
-	/** 装备控件 */
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Equipment Object")
-	TObjectPtr<UGridInvSys_EquipmentSlotWidget> EquipmentSlotWidget;
-
 	/** 该装备槽支持装备的类型 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Equipment Object")
 	EGridInvSys_InventoryItemType EquipmentSupportType = EGridInvSys_InventoryItemType::None;
 
 	/** 当前容器内的所有物品 */
-	UPROPERTY(BlueprintReadWrite, Replicated, Category = "Inventory Component")
-	TArray<FGridInvSys_InventoryItem> RepNotify_ContainerItems;
-
+	TArray<FGridInvSys_InventoryItem> RepNotify_ContainerItems_DEPRECATED;
+	
 private:
 	/** [Server] 优化物品查询速度  Key ===> Position : Value ===> ItemUniqueId */
 	TMap<FIntPoint, FName> ItemPositionMap;
@@ -103,10 +105,6 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_PreEditGridEquipContainerObject : publ
 
 public:
 	CONSTRUCT_INVENTORY_OBJECT(UGridInvSys_GridEquipContainerObject);
-
-	/** 装备控件类型 */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Container Type")
-	TSubclassOf<UUserWidget> EquipmentSlotWidgetClass;
 
 	/** 该装备槽支持装备的类型 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Container Type")

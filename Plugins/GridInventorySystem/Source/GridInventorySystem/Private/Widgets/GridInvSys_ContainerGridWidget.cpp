@@ -13,9 +13,13 @@
 #include "Components/SizeBox.h"
 #include "Components/UniformGridPanel.h"
 #include "Data/GridInvSys_InventoryItemInfo.h"
+#include "Data/GridInvSys_InventoryItemInstance.h"
+#include "Data/GridInvSys_ItemFragment_DragDrop.h"
+#include "Data/GridInvSys_ItemFragment_GridItemSize.h"
 #include "Framework/Notifications/NotificationManager.h"
 #include "Widgets/GridInvSys_ContainerGridDropWidget.h"
 #include "Widgets/GridInvSys_ContainerGridItemWidget.h"
+#include "Widgets/GridInvSys_ContainerGridLayoutWidget.h"
 #include "Widgets/GridInvSys_DragDropWidget.h"
 #include "Widgets/GridInvSys_DragItemWidget.h"
 #include "Widgets/Notifications/SNotificationList.h"
@@ -28,7 +32,7 @@ void UGridInvSys_ContainerGridWidget::FindContainerGridItems(TArray<UGridInvSys_
 	{
 		for (int j = 0; j < ItemSize.Y; ++j)
 		{
-			UGridInvSys_ContainerGridItemWidget* GridItemWidget = GetContainerGridItem(FIntPoint(Position.X + i, Position.Y + j));
+			UGridInvSys_ContainerGridItemWidget* GridItemWidget = GetGridItemWidget(FIntPoint(Position.X + i, Position.Y + j));
 			// 仅处理 UContainerGridItemWidget 及其子类。
 			if (GridItemWidget != nullptr && Ignores.Contains(GridItemWidget) == false)
 			{
@@ -38,31 +42,30 @@ void UGridInvSys_ContainerGridWidget::FindContainerGridItems(TArray<UGridInvSys_
 	}
 }
 
-void UGridInvSys_ContainerGridWidget::UpdateContainerGridSize(FIntPoint GridSize)
+void UGridInvSys_ContainerGridWidget::UpdateContainerGridSize()
 {
-	ContainerGridSize = GridSize;
-	int32 ItemDrawSize = GetDefault<UGridInvSys_InventorySystemConfig>()->ItemDrawSize;
+	/*int32 ItemDrawSize = GetDefault<UGridInvSys_InventorySystemConfig>()->ItemDrawSize;
 	if (SizeBox)
 	{
-		SizeBox->SetWidthOverride(ItemDrawSize * GridSize.Y);
-		SizeBox->SetHeightOverride(ItemDrawSize * GridSize.X);
-	}
+		SizeBox->SetWidthOverride(ItemDrawSize * ContainerGridSize.Y);
+		SizeBox->SetHeightOverride(ItemDrawSize * ContainerGridSize.X);
+	}*/
 }
 
-int32 UGridInvSys_ContainerGridWidget::GetContainerGridItemIndex(const FIntPoint Position) const
+int32 UGridInvSys_ContainerGridWidget::GetItemIndex(const FIntPoint Position) const
 {
 	return IsValidPosition(Position) ? Position.X * ContainerGridSize.Y + Position.Y : -1;
 }
 
-UGridInvSys_ContainerGridItemWidget* UGridInvSys_ContainerGridWidget::GetContainerGridItem(FIntPoint Position) const
+UGridInvSys_ContainerGridItemWidget* UGridInvSys_ContainerGridWidget::GetGridItemWidget(FIntPoint Position) const
 {
-	const int32 Index = GetContainerGridItemIndex(Position);
+	const int32 Index = GetItemIndex(Position);
 	return Index >= 0 ? Cast<UGridInvSys_ContainerGridItemWidget>(ContainerGridItemPanel->GetChildAt(Index)) : nullptr;
 }
 
 UGridInvSys_ContainerGridDropWidget* UGridInvSys_ContainerGridWidget::GetContainerGridDropItem(FIntPoint Position) const
 {
-	const int32 Index = GetContainerGridItemIndex(Position);
+	const int32 Index = GetItemIndex(Position);
 	return Index >= 0 ? Cast<UGridInvSys_ContainerGridDropWidget>(ContainerGridDropPanel->GetChildAt(Index)) : nullptr;
 }
 
@@ -84,7 +87,7 @@ bool UGridInvSys_ContainerGridWidget::FindValidPosition(FIntPoint ItemSize, FInt
 	return false;
 }
 
-FName UGridInvSys_ContainerGridWidget::GetContainerGridID() const
+int32 UGridInvSys_ContainerGridWidget::GetContainerGridID() const
 {
 	return ContainerGridID;
 }
@@ -92,11 +95,6 @@ FName UGridInvSys_ContainerGridWidget::GetContainerGridID() const
 FName UGridInvSys_ContainerGridWidget::GetSlotName() const
 {
 	return SlotName;
-}
-
-void UGridInvSys_ContainerGridWidget::SetContainerGridID(FName NewContainerGridID)
-{
-	ContainerGridID = NewContainerGridID;
 }
 
 bool UGridInvSys_ContainerGridWidget::IsValidPosition(const FIntPoint Position) const
@@ -142,7 +140,7 @@ bool UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer(UGridInvSys_Con
 	UGridInvSys_ContainerGridItemWidget* FromGridItemWidget = Payload->GetGridItemWidget();*/
 	if (!FromGridItemWidget) return false;
 	
-	UGridInvSys_ContainerGridItemWidget* ToGridItemWidget = GetContainerGridItem(ToPosition);
+	UGridInvSys_ContainerGridItemWidget* ToGridItemWidget = GetGridItemWidget(ToPosition);
 	if (!ToGridItemWidget) return false;
 
 	/*FIntPoint FromItemSize = FromGridItemWidget->GetItemSize();
@@ -227,14 +225,13 @@ bool UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer(UGridInvSys_Con
 void UGridInvSys_ContainerGridWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-	/*UpdateContainerGridSize(ContainerGridSize);
-	
+
 	int32 ItemDrawSize = GetDefault<UGridInvSys_InventorySystemConfig>()->ItemDrawSize;
 	if (SizeBox)
 	{
 		SizeBox->SetWidthOverride(ItemDrawSize * ContainerGridSize.Y);
 		SizeBox->SetHeightOverride(ItemDrawSize * ContainerGridSize.X);
-	}*/
+	}
 }
 
 void UGridInvSys_ContainerGridWidget::NativePreConstruct()
@@ -242,8 +239,6 @@ void UGridInvSys_ContainerGridWidget::NativePreConstruct()
 	Super::NativePreConstruct();
 	if (IsDesignTime())
 	{
-		NativeConstruct();
-
 		// SizeBox设置大小
 		NativeConstruct();
 
@@ -256,92 +251,48 @@ void UGridInvSys_ContainerGridWidget::NativePreConstruct()
 	}
 }
 
-int32 UGridInvSys_ContainerGridWidget::NativePaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry,
-	const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId,
-	const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const
-{
-	// 创建控件的线条
-	//FPaintContext Context(AllottedGeometry, MyCullingRect, OutDrawElements, LayerId, InWidgetStyle, bParentEnabled);
-
-	/*SizeBox->
-	// MyCullingRect->
-	// 获取当前组件在屏幕控件的坐标
-	const FVector2D ScreenPosition = InDragDropEvent.GetScreenSpacePosition();
-	const FVector2D LocalPosition = AllottedGeometry.AbsoluteToLocal(ScreenPosition);
-	// DrawDashedLine()
-	UWidgetBlueprintLibrary::DrawLine(Context, )*/
-	
-	return Super::NativePaint(Args, AllottedGeometry, MyCullingRect, OutDrawElements, LayerId, InWidgetStyle,
-	                          bParentEnabled);
-}
-
 bool UGridInvSys_ContainerGridWidget::NativeOnDragOver(const FGeometry& InGeometry,
                                                        const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
 {
-	UGridInvSys_DragItemWidget* DefaultDragVisual = Cast<UGridInvSys_DragItemWidget>(InOperation->DefaultDragVisual);
-	const FVector2D ScreenPosition = InDragDropEvent.GetScreenSpacePosition();
-	const FVector2D LocalPosition = InGeometry.AbsoluteToLocal(ScreenPosition);
-	if (UGridInvSys_DragDropWidget* Payload = Cast<UGridInvSys_DragDropWidget>(InOperation->Payload))
+	UGridInvSys_DragItemWidget* DraggingItemWidget = Cast<UGridInvSys_DragItemWidget>(InOperation->DefaultDragVisual);
+	UGridInvSys_ContainerGridItemWidget* GridItemWidget = Cast<UGridInvSys_ContainerGridItemWidget>(InOperation->Payload);
+
+	if (GridItemWidget != nullptr && DraggingItemWidget != nullptr)
 	{
-		const UGridInvSys_InventoryItemInfo* ItemInfo = Payload->GetItemInfo<UGridInvSys_InventoryItemInfo>();
-		if (ItemInfo == nullptr)
-		{
-			return Super::NativeOnDragOver(InGeometry, InDragDropEvent, InOperation);
-		}
-
-		FIntPoint NormalItemSize = ItemInfo->ItemSize;
-		FIntPoint NormalOriginPosition = CalculateGridOriginPoint(LocalPosition, NormalItemSize);
+		// 拖拽目标的物品实例
+		UGridInvSys_InventoryItemInstance* DragGridItemInstance = GridItemWidget->GetItemInstance<UGridInvSys_InventoryItemInstance>();
+		check(DragGridItemInstance);
+		const FVector2D ScreenPosition = InDragDropEvent.GetScreenSpacePosition();
+		const FVector2D LocalPosition = InGeometry.AbsoluteToLocal(ScreenPosition);
 		
-		FIntPoint TargetItemSize = NormalItemSize;
-		FIntPoint TargetOriginPosition = NormalOriginPosition;
-		
-		if (NormalOriginPosition == LastDropOriginPosition)
+		auto GridItemSizeFragment = DragGridItemInstance->FindFragmentByClass<UGridInvSys_ItemFragment_GridItemSize>();
+		auto DragDropFragment = DragGridItemInstance->FindFragmentByClass<UGridInvSys_ItemFragment_DragDrop>();
+		if (GridItemSizeFragment && DragDropFragment)
 		{
-			return Super::NativeOnDragOver(InGeometry, InDragDropEvent, InOperation);
-		}
-
-		// 将上一帧的效果清除。
-		ResetDragDropData();
-
-		EDragDropType DragDropType = Payload->GetDragDropType();
-		bool bIsCanDropItem = false;
-		bool bIsNormalDirection = true;
-		if (DragDropType == EDragDropType::Container)
-		{
-			bIsCanDropItem = IsCanDropItemFromContainer(Payload->GetGridItemWidget(), NormalOriginPosition, NormalItemSize);
-			if (bIsCanDropItem == false && NormalItemSize.X != NormalItemSize.Y)
+			FIntPoint NativeItemSize = GridItemSizeFragment->ItemSize;
+			FIntPoint NativeOriginPosition = CalculateGridOriginPoint(LocalPosition, NativeItemSize);
+			if (NativeOriginPosition == LastDropOriginPosition)
 			{
-				// 大小不同的物品在无法放置时会尝试旋转方向然后放置。
-				bIsNormalDirection = false;
-				TargetItemSize = FIntPoint(ItemInfo->ItemSize.Y, ItemInfo->ItemSize.X);
-				TargetOriginPosition = CalculateGridOriginPoint(LocalPosition, TargetItemSize);
-				UE_LOG(LogInventorySystem, Log, TEXT("Target Origin Position = [%d, %d]"), TargetOriginPosition.X, TargetOriginPosition.Y);
-				bIsCanDropItem = IsCanDropItemFromContainer(Payload->GetGridItemWidget(),TargetOriginPosition, TargetItemSize);
+				return Super::NativeOnDragOver(InGeometry, InDragDropEvent, InOperation);
 			}
-		}
-		if (bIsNormalDirection == false && bIsCanDropItem)
-		{
-			LastDropOriginPosition = TargetOriginPosition;
-			DefaultDragVisual->UpdateDirection(EGridInvSys_ItemDirection::Vertical);
-			Payload->SetDirection(EGridInvSys_ItemDirection::Vertical);
-			// 获取位置范围下的所有网格项
-			GetContainerGridDragItems<UGridInvSys_ContainerGridDropWidget>(LastDropOverItems, TargetOriginPosition, TargetItemSize);
-			for (UGridInvSys_ContainerGridDropWidget* DropOverItem : LastDropOverItems)
+			// 将上一帧的效果清除。
+			ResetDragDropData();
+			// 第一次放置判断，根据物品默认的方向判断是否可以放置
+			bool bIsCanDrop = IsCanDropItemFromContainer(GridItemWidget, NativeOriginPosition, NativeItemSize);
+			if (DragDropFragment->bIsAutoRotation == true && bIsCanDrop == false && NativeItemSize.X != NativeItemSize.Y)
 			{
-				DropOverItem->NativeOnDraggingHovered(bIsCanDropItem);
+				// 第二次放置判定，切换XY
+				FIntPoint RevItemSize = FIntPoint(NativeItemSize.Y, NativeItemSize.X);
+				FIntPoint RevOriginPosition = CalculateGridOriginPoint(LocalPosition, RevItemSize);
+				if (IsCanDropItemFromContainer(GridItemWidget, RevOriginPosition, RevItemSize))
+				{
+					DraggingItemWidget->SetDirection(EGridInvSys_ItemDirection::Vertical);
+					ShowDragGridEffect(RevOriginPosition, RevItemSize, true);
+					return Super::NativeOnDragOver(InGeometry, InDragDropEvent, InOperation);
+				}
 			}
-		}
-		else
-		{
-			LastDropOriginPosition = NormalOriginPosition;
-			DefaultDragVisual->UpdateDirection(EGridInvSys_ItemDirection::Horizontal);
-			Payload->SetDirection(EGridInvSys_ItemDirection::Horizontal);
-			// 获取位置范围下的所有网格项
-			GetContainerGridDragItems<UGridInvSys_ContainerGridDropWidget>(LastDropOverItems, NormalOriginPosition, NormalItemSize);
-			for (UGridInvSys_ContainerGridDropWidget* DropOverItem : LastDropOverItems)
-			{
-				DropOverItem->NativeOnDraggingHovered(bIsCanDropItem);
-			}
+			DraggingItemWidget->SetDirection(EGridInvSys_ItemDirection::Horizontal);
+			ShowDragGridEffect(NativeOriginPosition, NativeItemSize, bIsCanDrop);
 		}
 	}
 	return Super::NativeOnDragOver(InGeometry, InDragDropEvent, InOperation);
@@ -372,7 +323,7 @@ bool UGridInvSys_ContainerGridWidget::NativeOnDrop(const FGeometry& InGeometry, 
 	UDragDropOperation* InOperation)
 {
 	ResetDragDropData();
-	UGridInvSys_DragItemWidget* DragItemWidget = Cast<UGridInvSys_DragItemWidget>(InOperation->DefaultDragVisual);
+	/*UGridInvSys_DragItemWidget* DragItemWidget = Cast<UGridInvSys_DragItemWidget>(InOperation->DefaultDragVisual);
 	const FVector2D ScreenPosition = InDragDropEvent.GetScreenSpacePosition();
 	const FVector2D LocalPosition = InGeometry.AbsoluteToLocal(ScreenPosition);
 	const UGridInvSys_DragDropWidget* Payload = Cast<UGridInvSys_DragDropWidget>(InOperation->Payload);
@@ -394,7 +345,7 @@ bool UGridInvSys_ContainerGridWidget::NativeOnDrop(const FGeometry& InGeometry, 
 	// 构建数据
 	FGridInvSys_InventoryItemPosition ToPositionData;
 	ToPositionData.Position = ToPosition;
-	ToPositionData.GridID = GetContainerGridID();
+	ToPositionData.GridID = NAME_None;
 	ToPositionData.SlotName = GetSlotName();
 	ToPositionData.Direction = DragItemWidget->GetDirection();
 	ToPositionData.ItemSize = DragItemSize;
@@ -405,7 +356,7 @@ bool UGridInvSys_ContainerGridWidget::NativeOnDrop(const FGeometry& InGeometry, 
 		DragItemSize == FromItem->GetItemSize())
 	{
 		return Super::NativeOnDragOver(InGeometry, InDragDropEvent, InOperation);;
-	}*/
+	}#1#
 	
 	if (GetInventoryComponent() == Payload->GetInventoryComponent())
 	{
@@ -418,7 +369,7 @@ bool UGridInvSys_ContainerGridWidget::NativeOnDrop(const FGeometry& InGeometry, 
 	else
 	{
 		//todo::在不同库存组件内操作
-	}
+	}*/
 	return Super::NativeOnDrop(InGeometry, InDragDropEvent, InOperation);
 }
 
@@ -464,7 +415,7 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(UGridInvSys_Conta
 	GetOccupiedGridItems(ToOccupiedItems, ToPosition, FromItemSize, FromGridItems);
 
 	// IsCanDrop == true 所以可以直接将 From 的位置修改为目标位置并记录下来。
-	UGridInvSys_ContainerGridItemWidget* ToGridItemWidget = GetContainerGridItem(ToPosition);
+	UGridInvSys_ContainerGridItemWidget* ToGridItemWidget = GetGridItemWidget(ToPosition);
 	//FGridInvSys_InventoryItem FromItemData = FromGridItemWidget->GetItemUniqueID();
 	//FromItemData.ItemPosition = ItemPositionData;
 	// todo::这里的判断太简陋了。已经修改为在上一级通过DragDrop控件获取旋转属性。
@@ -530,7 +481,7 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(UGridInvSys_Conta
 				FGridInvSys_InventoryItemPosition TempItemData;
 				TempItemData.Position = TargetPosition;
 				TempItemData.SlotName = FromContainerGrid->GetSlotName();
-				TempItemData.GridID = FromGridItemWidget->GetGridID();
+				TempItemData.GridID = NAME_None;
 				TempItemData.Direction = ToOccupiedItem->GetItemDirection(); // 方向保持不变。
 				NewItemsData.Add(TempItemData);
 				ChangedItems.Add(ToOccupiedItem->GetItemUniqueID());
@@ -556,7 +507,7 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(UGridInvSys_Conta
 			}
 			// 计算相较于 ToGridItemWidget 的相对坐标
 			// 注意：如果发生了旋转则相对位置会不准确，需要再转换一次
-			FIntPoint RelativePosition = ToOccupiedItem->CalculateRelativePosition(GetContainerGridItem(ToPosition));
+			FIntPoint RelativePosition = ToOccupiedItem->CalculateRelativePosition(GetGridItemWidget(ToPosition));
 			
 			// 转换为对角坐标
 			FIntPoint DiagonalPosition = FromGridItemWidget->GetOriginPosition();
@@ -571,7 +522,7 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(UGridInvSys_Conta
 			FGridInvSys_InventoryItemPosition TempItemData;
 			TempItemData.Position = DiagonalPosition;
 			TempItemData.SlotName = FromContainerGrid->GetSlotName();
-			TempItemData.GridID = FromGridItemWidget->GetGridID();
+			TempItemData.GridID = NAME_None;
 			TempItemData.Direction = ToOccupiedItem->GetItemDirection(); // 方向保持不变。
 			NewItemsData.Add(TempItemData);
 			ChangedItems.Add(ToOccupiedItem->GetItemUniqueID());
@@ -601,7 +552,7 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(UGridInvSys_Conta
 			FGridInvSys_InventoryItemPosition TempItemData;
 			TempItemData.Position = Position;
 			TempItemData.SlotName = FromContainerGrid->GetSlotName();
-			TempItemData.GridID = FromGridItemWidget->GetGridID();
+			TempItemData.GridID = NAME_None;
 			TempItemData.Direction = ToGridItemWidget->GetItemDirection(); // 方向保持不变。
 			NewItemsData.Add(TempItemData);
 			ChangedItems.Add(ToGridItemWidget->GetItemUniqueID());
@@ -612,23 +563,32 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(UGridInvSys_Conta
 	return false;
 }
 
-void UGridInvSys_ContainerGridWidget::ConstructGridItems(FName NewSlotName)
+void UGridInvSys_ContainerGridWidget::ShowDragGridEffect(FIntPoint Position, FIntPoint Size, bool bIsRight)
 {
-#if WITH_EDITOR
+	GetContainerGridDragItems<UGridInvSys_ContainerGridDropWidget>(LastDropOverItems, Position, Size);
+	for (UGridInvSys_ContainerGridDropWidget* DropOverItem : LastDropOverItems)
+	{
+		DropOverItem->NativeOnDraggingHovered(bIsRight);
+	}
+}
+
+void UGridInvSys_ContainerGridWidget::ConstructGridItems(UGridInvSys_ContainerGridLayoutWidget* InContainerLayout, int32 InGridID)
+{
 	if (GridItemWidgetClass == nullptr)
 	{
 		UE_LOG(LogInventorySystem, Error, TEXT("GridItemWidgetClass is nullptr."))
 		return;
 	}
-#endif
-	SlotName = NewSlotName;
-	OnConstructItems();
-	
-	if (IsDesignTime())
+	if (InContainerLayout == nullptr)
 	{
+		UE_LOG(LogInventorySystem, Error, TEXT("InContainerLayout is nullptr."))
 		return;
 	}
 	
+	SlotTag = InContainerLayout->GetSlotTag();
+	ContainerGridID = InGridID;
+	ContainerLayout = InContainerLayout;
+
 	//  清除 ContainerGrid 中所有子项。
 	if (ContainerGridItemPanel->HasAnyChildren() == true)
 	{
@@ -641,23 +601,19 @@ void UGridInvSys_ContainerGridWidget::ConstructGridItems(FName NewSlotName)
 		auto GridItemWidget = CreateWidget<UGridInvSys_ContainerGridItemWidget>(this, GridItemWidgetClass);
 		auto GridDragWidget = CreateWidget<UGridInvSys_ContainerGridDropWidget>(this, GridDropWidgetClass);
 
-		GridItemWidget->SetSlotName(NewSlotName);
-		GridItemWidget->SetGridID(ContainerGridID);
-		GridItemWidget->SetInventoryComponent(GetInventoryComponent());
-
 		const int SlotRow = i / ContainerGridSize.Y;
 		const int SlotColumn = i % ContainerGridSize.Y;
 		ContainerGridItemPanel->AddChildToGrid(GridItemWidget, SlotRow,SlotColumn);
 		ContainerGridDropPanel->AddChildToUniformGrid(GridDragWidget, SlotRow,SlotColumn);
 		
-		GridItemWidget->SetContainerGridWidget(this);
+		GridItemWidget->OnConstructGridItem(this, FIntPoint(SlotRow, SlotColumn));
 	}
 }
 
 void UGridInvSys_ContainerGridWidget::UpdateInventoryItem(const FGridInvSys_InventoryItem& InventoryItem)
 {
 	const FIntPoint ToPosition = InventoryItem.ItemPosition.Position; 
-	UGridInvSys_ContainerGridItemWidget* ToGridItemWidget = GetContainerGridItem(ToPosition);
+	UGridInvSys_ContainerGridItemWidget* ToGridItemWidget = GetGridItemWidget(ToPosition);
 	if (ToGridItemWidget == nullptr)
 	{
 		UE_LOG(LogInventorySystem, Warning, TEXT("添加物品失败：ToGridItemWidget is nullptr."));
@@ -669,7 +625,7 @@ void UGridInvSys_ContainerGridWidget::UpdateInventoryItem(const FGridInvSys_Inve
 void UGridInvSys_ContainerGridWidget::RemoveInventoryItem(const FGridInvSys_InventoryItem& InventoryItem)
 {
 	const FIntPoint ToPosition = InventoryItem.ItemPosition.Position;
-	UGridInvSys_ContainerGridItemWidget* RemoveGridItemWidget = GetContainerGridItem(ToPosition);
+	UGridInvSys_ContainerGridItemWidget* RemoveGridItemWidget = GetGridItemWidget(ToPosition);
 	if (RemoveGridItemWidget == nullptr)
 	{
 		UE_LOG(LogInventorySystem, Warning, TEXT("移除物品失败：RemoveGridItemWidget is nullptr."));
@@ -693,7 +649,7 @@ void UGridInvSys_ContainerGridWidget::RemoveAllInventoryItem()
 	TArray<UGridInvSys_ContainerGridItemWidget*> ItemWidgets = GetAllContainerGridItems();
 	for (UGridInvSys_ContainerGridItemWidget* ItemWidget : ItemWidgets)
 	{
-		ItemWidget->RemoveItemInfo();
+		ItemWidget->RemoveItemInstance();
 	}
 }
 
@@ -728,7 +684,7 @@ void UGridInvSys_ContainerGridWidget::GetContainerGridItemIndexes(TArray<int32>&
 	{
 		for (int j = 0; j < Size.Y; ++j)
 		{
-			int32 Index = GetContainerGridItemIndex(FIntPoint(Position.X + i, Position.Y + j));
+			int32 Index = GetItemIndex(FIntPoint(Position.X + i, Position.Y + j));
 			// 仅添加正确位置的索引
 			if (Index >= 0) OutArray.Add(Index);
 		}

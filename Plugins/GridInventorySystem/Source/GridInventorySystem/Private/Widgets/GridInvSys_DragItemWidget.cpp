@@ -2,37 +2,32 @@
 
 
 #include "Widgets/GridInvSys_DragItemWidget.h"
-
-#include "BaseInventorySystem.h"
 #include "GridInvSys_InventorySystemConfig.h"
 #include "Components/Image.h"
 #include "Components/SizeBox.h"
-#include "Data/GridInvSys_InventoryItemInfo.h"
+#include "Data/InvSys_InventoryItemInstance.h"
+#include "Data/GridInvSys_ItemFragment_EquippedIcon.h"
+#include "Data/GridInvSys_ItemFragment_GridItemSize.h"
 
-void UGridInvSys_DragItemWidget::UpdateItemInfo(UInvSys_InventoryItemInfo* NewItemInfo)
+void UGridInvSys_DragItemWidget::SetItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)
 {
-	GridItemInfo = Cast<UGridInvSys_InventoryItemInfo>(NewItemInfo);
-	if (const UGridInvSys_InventorySystemConfig* SystemConfig = GetDefault<UGridInvSys_InventorySystemConfig>())
+	if (NewItemInstance)
 	{
-		SizeBox_DragItem->SetHeightOverride(GridItemInfo->ItemSize.X * SystemConfig->ItemDrawSize);
-		SizeBox_DragItem->SetWidthOverride(GridItemInfo->ItemSize.Y * SystemConfig->ItemDrawSize);
+		ItemInstance = NewItemInstance;
+		auto GridItemSizeFragment = ItemInstance->FindFragmentByClass<UGridInvSys_ItemFragment_GridItemSize>();
+		auto ImageFragment = ItemInstance->FindFragmentByClass<UGridInvSys_ItemFragment_EquippedIcon>();
+		auto SystemConfig = GetDefault<UGridInvSys_InventorySystemConfig>();
+		if (GridItemSizeFragment && ImageFragment && SystemConfig)
+		{
+			SizeBox_DragItem->SetHeightOverride(GridItemSizeFragment->ItemSize.X * SystemConfig->ItemDrawSize);
+			SizeBox_DragItem->SetWidthOverride(GridItemSizeFragment->ItemSize.Y * SystemConfig->ItemDrawSize);
+
+			Image_DragItem->SetBrushFromTexture(ImageFragment->EquippedIcon);
+		}
 	}
-	ItemSize = GridItemInfo->ItemSize;
-	Image_DragItem->SetBrushFromTexture(GridItemInfo->ItemImage);
 }
 
-void UGridInvSys_DragItemWidget::UpdateDirection(EGridInvSys_ItemDirection NewDirection)
+void UGridInvSys_DragItemWidget::SetDirection(EGridInvSys_ItemDirection NewDirection)
 {
 	ItemDirection = NewDirection;
-	switch (NewDirection)
-	{
-	case EGridInvSys_ItemDirection::Horizontal:
-		ItemSize = GridItemInfo->ItemSize;
-		SetRenderTransformAngle(0);
-		break;
-	case EGridInvSys_ItemDirection::Vertical:
-		ItemSize = FIntPoint(GridItemInfo->ItemSize.Y, GridItemInfo->ItemSize.X);
-		SetRenderTransformAngle(90);
-		break;
-	}
 }

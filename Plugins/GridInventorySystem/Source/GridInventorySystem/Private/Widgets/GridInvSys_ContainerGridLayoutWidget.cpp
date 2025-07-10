@@ -15,7 +15,7 @@
 
 void UGridInvSys_ContainerGridLayoutWidget::ConstructContainerGrid(FName SlotName)
 {
-	if (ContainerInfo == nullptr)
+	/*if (ContainerInfo == nullptr)
 	{
 		UE_LOG(LogInventorySystem, Error, TEXT("[%s] 控件未设置 Container Info。"), *GetName())
 		return;
@@ -29,14 +29,13 @@ void UGridInvSys_ContainerGridLayoutWidget::ConstructContainerGrid(FName SlotNam
 	{
 		FName GridID = *FString::FromInt(i);
 		ContainerGridWidgets[i]->SetContainerGridID(GridID);
-
-		FIntPoint GridSize = ContainerInfo->ContainerGridSizeMap.FindRef(GridID);
-		ContainerGridWidgets[i]->UpdateContainerGridSize(GridSize);
+		
+		ContainerGridWidgets[i]->UpdateContainerGridSize();
 
 		ContainerGridWidgets[i]->SetInventoryComponent(GetInventoryComponent());
 		ContainerGridWidgets[i]->ConstructGridItems(SlotName);
 		ContainerGridMap.Add(ContainerGridWidgets[i]->GetContainerGridID(), ContainerGridWidgets[i]);
-	}
+	}*/
 }
 
 UGridInvSys_ContainerGridWidget* UGridInvSys_ContainerGridLayoutWidget::FindContainerGrid(FName GridID)
@@ -48,39 +47,28 @@ UGridInvSys_ContainerGridWidget* UGridInvSys_ContainerGridLayoutWidget::FindCont
 	return nullptr;
 }
 
-void UGridInvSys_ContainerGridLayoutWidget::NativeConstruct()
+void UGridInvSys_ContainerGridLayoutWidget::NativeOnInitialized()
 {
-	Super::NativeConstruct();
+	Super::NativeOnInitialized();
 
-	// 自动生成 ContainerGridID
-
+	ContainerGridWidgets.Empty();
+	GetAllContainerGridWidgets(ContainerGridWidgets);
+	for (int i = 0; i < ContainerGridWidgets.Num(); ++i)
+	{
+		ContainerGridWidgets[i]->ConstructGridItems(this, i);
+	}
 }
 
-void UGridInvSys_ContainerGridLayoutWidget::NativePreConstruct()
+UGridInvSys_ContainerGridItemWidget* UGridInvSys_ContainerGridLayoutWidget::FindGridItemWidget(const FGridInvSys_ItemPosition& ItemPosition) const
 {
-	Super::NativePreConstruct();
-	if (IsDesignTime())
+	if (SlotTag == ItemPosition.EquipSlotTag)
 	{
-		ConstructContainerGrid(NAME_None);
-#ifdef WITH_EDITOR
-		// 判断内部是否存在重读的 ContainerGridID
-		TSet<FName> TempSet;
-		TArray<UGridInvSys_ContainerGridWidget*> OutArray;
-		GetAllContainerGridWidgets(OutArray);
-		for (UGridInvSys_ContainerGridWidget* ContainerGridWidget : OutArray)
+		if (UGridInvSys_ContainerGridWidget* GridWidget = ContainerGridWidgets[ItemPosition.GridID])
 		{
-			FName GridID = ContainerGridWidget->GetContainerGridID();
-			if (TempSet.Contains(GridID))
-			{
-				FNotificationInfo Info(FText::FromString(TEXT("布局内存在重复的 Contianer Grid ID ==> " + GridID.ToString())));
-				Info.ExpireDuration = 3.f;
-				FSlateNotificationManager::Get().AddNotification(Info);
-				continue;
-			}
-			TempSet.Add(GridID);
+			return GridWidget->GetGridItemWidget(ItemPosition.Position);
 		}
-#endif
 	}
+	return nullptr;
 }
 
 void UGridInvSys_ContainerGridLayoutWidget::GetAllContainerGridWidgets(TArray<UGridInvSys_ContainerGridWidget*>& OutArray) const

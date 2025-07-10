@@ -7,13 +7,6 @@
 #include "Widgets/GridInvSys_DragDropWidget.h"
 
 
-void UGridInvSys_EquipmentSlotWidget::UpdateOccupant(const FInvSys_InventoryItem& NewOccupant)
-{
-	DragDropWidget->UpdateItemInfo(NewOccupant.ItemInfo);
-	DragDropWidget->SetDragDropType(EDragDropType::Equipment);
-	OnUpdateOccupant(NewOccupant);
-}
-
 void UGridInvSys_EquipmentSlotWidget::SetInventoryComponent(UInvSys_InventoryComponent* NewInvComp)
 {
 	Super::SetInventoryComponent(NewInvComp);

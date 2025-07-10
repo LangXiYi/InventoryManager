@@ -4,8 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "GameplayTagContainer.h"
 #include "InvSys_InventoryWidget.generated.h"
 
+class UInvSys_TagSlot;
 class UInvSys_InventoryComponent;
 /**
  * 
@@ -25,8 +27,21 @@ public:
 	{
 		return Cast<T>(InventoryComponent);		
 	}
+
+	FORCEINLINE void SetSlotTag(FGameplayTag InSlotTag)
+	{
+		SlotTag = InSlotTag;
+	}
+
+	FORCEINLINE FGameplayTag GetSlotTag() const
+	{
+		return SlotTag;
+	}
 	
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Widget")
 	TObjectPtr<UInvSys_InventoryComponent> InventoryComponent;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Container Grid Layout")
+	FGameplayTag SlotTag;
 };

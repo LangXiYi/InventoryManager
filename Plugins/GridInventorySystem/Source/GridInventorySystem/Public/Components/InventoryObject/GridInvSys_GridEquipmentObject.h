@@ -21,31 +21,16 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_GridEquipmentObject : public UInvSys_B
 public:
 	UGridInvSys_GridEquipmentObject();
 	
-	virtual void AddInventoryItemToEquipSlot(const FInvSys_InventoryItem& NewItem) override;
-
-protected:
-	virtual void TryRefreshOccupant(const FString& Reason) override;
-
-	virtual void CreateDisplayWidget(APlayerController* PC) override;
-	
 public:
 	/**
 	 * Getter Or Setter
 	 **/
 
-	virtual void CopyPropertyFromPreEdit(UInvSys_InventoryComponent* NewInventoryComponent, UObject* PreEditPayLoad) override;
+	virtual void CopyPropertyFromPreEdit(UObject* PreEditPayLoad) override;
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 protected:
-	/** 装备控件类型 */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Equipment Object")
-	TSubclassOf<UGridInvSys_EquipmentSlotWidget> EquipmentSlotWidgetClass;
-
-	/** 装备控件 */
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Equipment Object")
-	TObjectPtr<UGridInvSys_EquipmentSlotWidget> EquipmentSlotWidget;
-
 	/** 该装备槽支持装备的类型 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Equipment Object")
 	EGridInvSys_InventoryItemType EquipmentSupportType;
@@ -62,10 +47,6 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_PreEditGridEquipmentObject : public UI
 
 public:
 	CONSTRUCT_INVENTORY_OBJECT(UGridInvSys_GridEquipmentObject);
-	
-	/** 装备控件类型 */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Container Type")
-	TSubclassOf<UUserWidget> EquipmentSlotWidgetClass;
 
 	/** 该装备槽支持装备的类型 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Container Type")

@@ -3,10 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GridInvSys_InventoryWidget.h"
 #include "GridInvSys_CommonType.h"
+#include "Widgets/InvSys_InventoryWidget.h"
 #include "GridInvSys_DragDropWidget.generated.h"
 
+class UInvSys_InventoryItemInstance;
 class UGridInvSys_ContainerGridItemWidget;
 
 UENUM()
@@ -25,31 +26,24 @@ class UGridInvSys_DragItemWidget;
  * 
  */
 UCLASS()
-class GRIDINVENTORYSYSTEM_API UGridInvSys_DragDropWidget : public UGridInvSys_InventoryWidget
+class GRIDINVENTORYSYSTEM_API UGridInvSys_DragDropWidget : public UInvSys_InventoryWidget
 {
 	GENERATED_BODY()
 
 public:
-	UGridInvSys_DragDropWidget(const FObjectInitializer& ObjectInitializer);
-
-	void SetDraggingWidgetClass(TSubclassOf<UGridInvSys_DragItemWidget> NewDraggingWidgetClass);
+	void SetItemInstance(UInvSys_InventoryItemInstance* NewItemInstance);
 	
-protected:
-	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
-
-	virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
-
-public:
 	template<class T>
 	T* GetItemInfo() const
 	{
-		return Cast<T>(ItemInfo);		
+		return Cast<T>(nullptr);		
 	}
 	
-	UFUNCTION(BlueprintCallable)
-	void UpdateItemInfo(UInvSys_InventoryItemInfo* NewItemInfo);
-
-	void SetGridItemWidget(UGridInvSys_ContainerGridItemWidget* NewGridItemWidget);
+	template<class T>
+	T* GetItemInstance() const
+	{
+		return (T*)ItemInstance;
+	}
 
 	UGridInvSys_ContainerGridItemWidget* GetGridItemWidget() const;
 
@@ -59,37 +53,21 @@ public:
 
 	void SetDirection(EGridInvSys_ItemDirection NewDirection)
 	{
-		ItemDirection = NewDirection;
-	}
-
-	EGridInvSys_ItemDirection GetDirection() const
-	{
-		return ItemDirection;
+		
 	}
 	
+protected:
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+
+	virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
+
+private:
+	//void SetDragDropType(EDragDropType NewDragType);
 	
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Drag Drop Widget")
-	TObjectPtr<UInvSys_InventoryItemInfo> ItemInfo;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Drag Drop Widget")
-	TObjectPtr<UGridInvSys_ContainerGridItemWidget> GridItemWidget;
+	UInvSys_InventoryItemInstance* ItemInstance;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Drag Drop Widget")
 	EDragDropType DragDropType = EDragDropType::Container;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Drag Drop Widget")
-	EGridInvSys_ItemDirection ItemDirection;
-	
-	UPROPERTY(EditDefaultsOnly, Category = "Drag Drop Widget")
-	bool bIsOverrideDraggingWidgetClass = false;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Drag Drop Widget", meta = (EditCondition = "OverrideDraggingWidgetClass"))
-	TSubclassOf<UGridInvSys_DragItemWidget> DraggingWidgetClass;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Drag Drop Widget")
-	EDragPivot DragPivot;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Drag Drop Widget")
-	FVector2D DragOffset;
 };
