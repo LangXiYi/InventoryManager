@@ -31,6 +31,8 @@ public:
 
 	virtual bool RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance) override;
 
+	virtual bool RestoreItemInstance(UInvSys_InventoryItemInstance* InItemInstance) override;
+
 	virtual UInvSys_EquipSlotWidget* CreateDisplayWidget(APlayerController* PC) override;
 
 protected:
@@ -54,7 +56,7 @@ public:
 
 	UInvSys_InventoryItemInstance* GetEquipItemInstance() const
 	{
-		return EquipItemInstance;
+		return EquipItem;
 	}
 
 	/*bool IsEquipped() const
@@ -67,12 +69,12 @@ public:
 protected:
 	// 装备的物品
 	UPROPERTY(ReplicatedUsing=OnRep_EquipItemInstance, BlueprintReadOnly, Category = "Inventory Object")
-	TObjectPtr<UInvSys_InventoryItemInstance> EquipItemInstance;
+	TObjectPtr<UInvSys_InventoryItemInstance> EquipItem;
 	UFUNCTION()
 	virtual void OnRep_EquipItemInstance();
 	// [Client] 标记上一次装备的物品
-	UPROPERTY()
-	UInvSys_InventoryItemInstance* LastEquipItemInstance;
+	UPROPERTY(Transient)
+	TWeakObjectPtr<UInvSys_InventoryItemInstance> LastEquipItemInstance;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Container Type")
 	TObjectPtr<UInvSys_EquipSlotWidget> EquipSlotWidget;

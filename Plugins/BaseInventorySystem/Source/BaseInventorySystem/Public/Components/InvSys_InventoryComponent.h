@@ -74,6 +74,8 @@ public:
 		return nullptr;
 	}
 
+	void RestoreItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
+	
 	bool TryDragItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
 	void CancelDragItemInstance();
 	
@@ -105,11 +107,8 @@ public:
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_EquipItemInstance(UInvSys_InventoryComponent* InvComp,UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag);
 
-	/*UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_TryDragItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
-
 	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_CancelDragItemInstance(UInvSys_InventoryItemInstance* InItemInstance);*/
+	void Server_RestoreItemInstance(UInvSys_InventoryComponent* InvComp,UInvSys_InventoryItemInstance* InItemInstance);
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_TryDragItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance);
@@ -194,8 +193,8 @@ protected:
 	UPROPERTY()
 	TObjectPtr<UUserWidget> DraggingWidget;
 
-	UPROPERTY(ReplicatedUsing = OnRep_DraggingItemInstance)
-	TObjectPtr<UInvSys_InventoryItemInstance> DraggingItemInstance;
-	UFUNCTION()
-	void OnRep_DraggingItemInstance();
+	// UPROPERTY(ReplicatedUsing = OnRep_DraggingItemInstance)
+	// TObjectPtr<UInvSys_InventoryItemInstance> DraggingItemInstance;
+	// UFUNCTION()
+	// void OnRep_DraggingItemInstance();
 };

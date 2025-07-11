@@ -37,3 +37,20 @@ UGridInvSys_ContainerGridItemWidget* UGridInvSys_EquipContainerSlotWidget::FindG
 	return nullptr;
 }
 */
+void UGridInvSys_EquipContainerSlotWidget::SetEquipItemType(EGridInvSys_InventoryItemType EquipmentSupportType)
+{
+	EquipItemType = EquipmentSupportType;
+}
+
+bool UGridInvSys_EquipContainerSlotWidget::CheckIsCanDrop_Implementation(UInvSys_InventoryItemInstance* InItemInstance)
+{
+	if (InItemInstance && ItemInstance == nullptr)
+	{
+		auto ItemTypeFragment = InItemInstance->FindFragmentByClass<UGridInvSys_ItemFragment_ItemType>();
+		if (ItemTypeFragment)
+		{
+			return EquipItemType == ItemTypeFragment->ItemType;
+		}
+	}
+	return false;
+}

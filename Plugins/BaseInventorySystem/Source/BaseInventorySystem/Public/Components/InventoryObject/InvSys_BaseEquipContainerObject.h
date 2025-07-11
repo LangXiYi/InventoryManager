@@ -59,8 +59,9 @@ public:
 
 	/** 从其他容器添加物品，容器与容器间的交换，不会 RemoveReplicateObject，因为它们都在同一个Actor下 */
 	bool AddItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
-	void AddItemInstances(TArray<UInvSys_InventoryItemInstance*> ItemInstances);
+	bool AddItemInstances(TArray<UInvSys_InventoryItemInstance*> ItemInstances);
 	virtual bool RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance) override;
+	virtual bool RestoreItemInstance(UInvSys_InventoryItemInstance* InItemInstance) override;
 	bool UpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance, int32 NewStackCount);
 
 protected:
@@ -70,12 +71,12 @@ protected:
 	
 	// Begin Listen Container List Event ====
 	void NativeOnInventoryStackChange(FInvSys_InventoryStackChangeMessage ChangeInfo);
-	void NativeOnContainerEntryAdded(const FInvSys_ContainerEntry& Entry);
-	void NativeOnContainerEntryRemove(const FInvSys_ContainerEntry& Entry);
+	void NativeOnContainerEntryAdded(const FInvSys_ContainerEntry& Entry, bool bIsInit);
+	void NativeOnContainerEntryRemove(const FInvSys_ContainerEntry& Entry, bool bIsInit);
 
 	virtual void OnInventoryStackChange(const FInvSys_InventoryStackChangeMessage& ChangeInfo) {}
-	virtual void OnContainerEntryAdded(const FInvSys_ContainerEntry& Entry) {}
-	virtual void OnContainerEntryRemove(const FInvSys_ContainerEntry& Entry) {}
+	virtual void OnContainerEntryAdded(const FInvSys_ContainerEntry& Entry, bool bIsInit) {}
+	virtual void OnContainerEntryRemove(const FInvSys_ContainerEntry& Entry, bool bIsInit) {}
 	// End Listen Container List Event ====
 
 	virtual bool ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags) override;

@@ -43,8 +43,8 @@ protected:
 	
 protected:
 	UPROPERTY()
-	TObjectPtr<UInvSys_BaseInventoryObject> InvObj;
+	TWeakObjectPtr<UInvSys_BaseInventoryObject> InvObj;
 
 	UPROPERTY()
-	TObjectPtr<UInvSys_InventoryItemInstance> ItemInstance;
+	TWeakObjectPtr<UInvSys_InventoryItemInstance> ItemInstance;
 };

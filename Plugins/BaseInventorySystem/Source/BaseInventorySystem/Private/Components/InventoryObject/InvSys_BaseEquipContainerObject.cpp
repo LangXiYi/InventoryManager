@@ -16,12 +16,17 @@
 UInvSys_BaseEquipContainerObject::UInvSys_BaseEquipContainerObject()
 	:ContainerList(this)
 {
-	ContainerList.OnContainerEntryAddedDelegate().AddUObject(this,
-		&UInvSys_BaseEquipContainerObject::NativeOnContainerEntryAdded);
-	
-	ContainerList.OnContainerEntryRemoveDelegate().AddUObject(this,
-		&UInvSys_BaseEquipContainerObject::NativeOnContainerEntryRemove);
+	if (ContainerList.OnContainerEntryAddedDelegate().IsBound() == false)
+	{
+		ContainerList.OnContainerEntryAddedDelegate().BindUObject(this,
+			&UInvSys_BaseEquipContainerObject::NativeOnContainerEntryAdded);
+	}
 
+	if (ContainerList.OnContainerEntryRemoveDelegate().IsBound() == false)
+	{
+		ContainerList.OnContainerEntryRemoveDelegate().BindUObject(this,
+			&UInvSys_BaseEquipContainerObject::NativeOnContainerEntryRemove);
+	}
 	/*ContainerList.OnInventoryStackChangeDelegate().AddUObject(this,
 		&UInvSys_BaseEquipContainerObject::NativeOnInventoryStackChange);*/
 }
@@ -47,24 +52,24 @@ void UInvSys_BaseEquipContainerObject::NativeOnInventoryStackChange(FInvSys_Inve
 	OnInventoryStackChange(ChangeInfo); // 监听 Stack Count 变化
 }
 
-void UInvSys_BaseEquipContainerObject::NativeOnContainerEntryAdded(const FInvSys_ContainerEntry& Entry)
+void UInvSys_BaseEquipContainerObject::NativeOnContainerEntryAdded(const FInvSys_ContainerEntry& Entry, bool bIsInit)
 {
 	if (Entry.Instance)
 	{
 		Entry.Instance->OnInventoryStackChangeDelegate().BindUObject(this, &UInvSys_BaseEquipContainerObject::NativeOnInventoryStackChange);
 		Entry.Instance->BroadcastStackChangeMessage(0, Entry.Instance->GetStackCount());
 	}
-	OnContainerEntryAdded(Entry);// 监听 Item Instance 变化
+	OnContainerEntryAdded(Entry, bIsInit);// 监听 Item Instance 变化
 }
 
-void UInvSys_BaseEquipContainerObject::NativeOnContainerEntryRemove(const FInvSys_ContainerEntry& Entry)
+void UInvSys_BaseEquipContainerObject::NativeOnContainerEntryRemove(const FInvSys_ContainerEntry& Entry, bool bIsInit)
 {
 	if (Entry.Instance)
 	{
 		Entry.Instance->BroadcastStackChangeMessage(Entry.Instance->GetStackCount(), 0);
 		Entry.Instance->OnInventoryStackChangeDelegate().Unbind();
 	}
-	OnContainerEntryRemove(Entry); // 移除监听 Item Instance 变化
+	OnContainerEntryRemove(Entry, bIsInit); // 移除监听 Item Instance 变化
 }
 
 void UInvSys_BaseEquipContainerObject::OnConstructInventoryObject(UInvSys_InventoryComponent* NewInvComp,
@@ -120,11 +125,11 @@ void UInvSys_BaseEquipContainerObject::TryRefreshContainerItems()
 	UE_LOG(LogInventorySystem, Log, TEXT("正在刷新容器内所有物品！"))
 	for (const FInvSys_ContainerEntry& Entry : ContainerList.Entries)
 	{
-		ContainerList.BroadcastRemoveEntryMessage(Entry);
+		ContainerList.BroadcastRemoveEntryMessage(Entry, true);
 	}
 	for (const FInvSys_ContainerEntry& Entry : ContainerList.Entries)
 	{
-		ContainerList.BroadcastAddEntryMessage(Entry);
+		ContainerList.BroadcastAddEntryMessage(Entry, true);
 	}
 }
 
@@ -138,12 +143,14 @@ bool UInvSys_BaseEquipContainerObject::AddItemInstance(UInvSys_InventoryItemInst
 	return ContainerList.AddEntry(ItemInstance);
 }
 
-void UInvSys_BaseEquipContainerObject::AddItemInstances(TArray<UInvSys_InventoryItemInstance*> ItemInstances)
+bool UInvSys_BaseEquipContainerObject::AddItemInstances(TArray<UInvSys_InventoryItemInstance*> ItemInstances)
 {
+	bool bResult = true;
 	for (UInvSys_InventoryItemInstance* ItemInstance : ItemInstances)
 	{
-		AddItemInstance(ItemInstance);
+		bResult &= AddItemInstance(ItemInstance);
 	}
+	return bResult;
 }
 
 bool UInvSys_BaseEquipContainerObject::RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
@@ -152,13 +159,9 @@ bool UInvSys_BaseEquipContainerObject::RemoveItemInstance(UInvSys_InventoryItemI
 	bool LOCAL_IsRemoveEquipContainer = Super::RemoveItemInstance(InItemInstance);
 	if (LOCAL_IsRemoveEquipContainer)
 	{
-		//todo::如果是移除的容器本体，那么该怎么处理它内部的子对象呢？将所有的物品打包转移？
-		// 如何打包转移这些物品呢？
-		// 拖拽容器时，如果是移除的容器本身，那么就只移除容器本身，但是当结束拖拽时，如果是空位置就将库存对象中保存的物品转移至新的背包Actor中
-		// 如果是对应Tag的话，同理转移
-		
-		// Remove All Entries
-		
+		// 移除的是容器本体，需要将所有的物品打包转移。
+		InItemInstance->MyInstances.Empty();
+		InItemInstance->MyInstances.Reserve(ContainerList.Entries.Num());
 		for (UInvSys_InventoryItemInstance* ContainerEntry : ContainerList.GetAllItems())
 		{
 			// 将所有物品转移至容器的物品实例中保存。
@@ -168,6 +171,27 @@ bool UInvSys_BaseEquipContainerObject::RemoveItemInstance(UInvSys_InventoryItemI
 		return true;
 	}
 	return ContainerList.RemoveEntry(InItemInstance);
+}
+
+bool UInvSys_BaseEquipContainerObject::RestoreItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
+{
+	bool bResult = false;
+	check(InItemInstance);
+	if (InItemInstance)
+	{
+		bResult |= Super::RestoreItemInstance(InItemInstance);
+		if (InItemInstance->MyInstances.Num() > 0)
+		{
+			//如果内部存在其他物品则表明该物品是一个装备容器，那么就需要将内部物品全部转移进来。
+			bResult |= AddItemInstances(InItemInstance->MyInstances);
+		}
+		else if(bResult == false)
+		{
+			//内部没有其他物品，且物品不会被装备，说明它只是一个普通的物品
+			bResult |= AddItemInstance(InItemInstance);
+		}
+	}
+	return bResult;
 }
 
 bool UInvSys_BaseEquipContainerObject::UpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance, int32 NewStackCount)

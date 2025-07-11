@@ -32,7 +32,7 @@ public:
 
 	virtual void RemoveItemInfo();
 
-	void UpdateItemInstance(UInvSys_InventoryItemInstance* NewItemInstance);
+	void AddItemInstance(UInvSys_InventoryItemInstance* NewItemInstance);
 
 	void RemoveItemInstance();
 	
@@ -62,8 +62,6 @@ public:
 
 	FORCEINLINE EGridInvSys_ItemDirection GetItemDirection() const;
 
-	/** 获取Item的大小，该大小会收到方向的影响。 */
-	FIntPoint GetItemSize() const;
 
 	UFUNCTION(BlueprintPure)
 	FORCEINLINE FName GetItemUniqueID() const;
@@ -79,21 +77,27 @@ public:
 	template<class T>
 	T* GetItemInstance() const
 	{
-		return (T*)ItemInstance;
+		return nullptr;
+	}
+
+	FIntPoint GetItemSize() const
+	{
+		return GridItemSize;
 	}
 
 protected:
 	virtual void NativePreConstruct() override;
 	virtual void NativeConstruct() override;
 
-	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
-	virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
-
 	UFUNCTION(BlueprintImplementableEvent)
-	void OnItemInstanceChange(const UInvSys_InventoryItemInstance* NewItemInstance);
+	void OnAddItemInstance(const UInvSys_InventoryItemInstance* NewItemInstance);
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnRemoveItemInstance();
+
+private:
+	/** 获取Item的大小，该大小会收到方向的影响。 */
+	FIntPoint CalculateGridItemSize(UInvSys_InventoryItemInstance* InItemInstance) const;
 
 protected:
 	/*UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item", meta = (BindWidget))
@@ -115,8 +119,10 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item")
 	FIntPoint Position;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item")
-	UInvSys_InventoryItemInstance* ItemInstance;
+	FIntPoint GridItemSize = FIntPoint(1, 1);
+
+	/*UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item", meta = (DeprecatedProperty))
+	UInvSys_InventoryItemInstance* ItemInstance_DEPRECATED;*/
 
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item")
 	bool bIsOccupied;

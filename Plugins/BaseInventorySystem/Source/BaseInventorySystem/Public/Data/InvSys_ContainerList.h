@@ -29,9 +29,9 @@ struct FInvSys_InventoryStackChangeMessage
 };
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnInventoryStackChange, FInvSys_InventoryStackChangeMessage);*/
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnInventoryItemChange, UInvSys_InventoryItemInstance*);
+DECLARE_DELEGATE_TwoParams(FOnInventoryItemChange, UInvSys_InventoryItemInstance*, bool);
 // 由容器广播给外部。
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnContainerEntryChange, const FInvSys_ContainerEntry&);
+DECLARE_DELEGATE_TwoParams(FOnContainerEntryChange, const FInvSys_ContainerEntry&, bool);
 
 /** Example */
 USTRUCT()
@@ -188,15 +188,15 @@ public:
 		return FFastArraySerializer::FastArrayDeltaSerialize<FInvSys_ContainerEntry, FInvSys_ContainerList>(Entries, DeltaParms, *this);
 	}
 
-	FORCEINLINE void BroadcastAddEntryMessage(const FInvSys_ContainerEntry& Entry)
+	FORCEINLINE void BroadcastAddEntryMessage(const FInvSys_ContainerEntry& Entry, bool bIsInit = false)
 	{
-		OnContainerEntryAdded.Broadcast(Entry);
+		OnContainerEntryAdded.ExecuteIfBound(Entry, bIsInit);
 		// BroadcastStackChangeMessage(Entry, 0, Entry.StackCount);
 	}
 
-	FORCEINLINE void BroadcastRemoveEntryMessage(const FInvSys_ContainerEntry& Entry)
+	FORCEINLINE void BroadcastRemoveEntryMessage(const FInvSys_ContainerEntry& Entry, bool bIsInit = false)
 	{
-		OnContainerEntryRemove.Broadcast(Entry);
+		OnContainerEntryRemove.ExecuteIfBound(Entry, bIsInit);
 		// BroadcastStackChangeMessage(Entry, Entry.StackCount, 0);
 	}
 

@@ -9,15 +9,17 @@
 #include "Data/InvSys_ItemFragment_DragDrop.h"
 #include "Data/InvSys_InventoryItemInstance.h"
 #include "Widgets/GridInvSys_DragItemWidget.h"
-#include "Widgets/GridInvSys_DragDropWidget.h"
 
 
 bool UGridInvSys_EquipmentSlotWidget::CheckIsCanDrop_Implementation(UInvSys_InventoryItemInstance* InItemInstance)
 {
-	auto ItemTypeFragment = InItemInstance->FindFragmentByClass<UGridInvSys_ItemFragment_ItemType>();
-	if (ItemTypeFragment)
+	if (InItemInstance && ItemInstance == nullptr)
 	{
-		return EquipItemType == ItemTypeFragment->ItemType;
+		auto ItemTypeFragment = InItemInstance->FindFragmentByClass<UGridInvSys_ItemFragment_ItemType>();
+		if (ItemTypeFragment)
+		{
+			return EquipItemType == ItemTypeFragment->ItemType;
+		}
 	}
-	return Super::CheckIsCanDrop_Implementation(InItemInstance);
+	return false;
 }

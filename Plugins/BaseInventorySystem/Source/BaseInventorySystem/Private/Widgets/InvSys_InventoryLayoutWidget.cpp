@@ -51,7 +51,9 @@ bool UInvSys_InventoryLayoutWidget::NativeOnDrop(const FGeometry& InGeometry, co
 			if (From_InvComp && PlayerInvComp)
 			{
 				PlayerInvComp->Server_CancelDragItemInstance(From_InvComp);
-				PlayerInvComp->Server_EquipItemInstance(From_InvComp, LOCAL_ItemInstance, LOCAL_ItemInstance->GetSlotTag());
+				// 通知当前控件的库存对象，装备新物品？添加新物品？将物品放回原来位置。
+				//PlayerInvComp->Server_AddItemInstance()
+				PlayerInvComp->Server_RestoreItemInstance(From_InvComp, LOCAL_ItemInstance);
 				return true;
 			}
 		}

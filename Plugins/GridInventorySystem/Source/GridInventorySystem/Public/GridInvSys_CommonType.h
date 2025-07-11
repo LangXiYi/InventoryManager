@@ -80,6 +80,23 @@ struct FGridInvSys_ItemPosition
 	// 物品方向会影响贴图方向以及占据的网格大小。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
 	EGridInvSys_ItemDirection Direction = EGridInvSys_ItemDirection::Horizontal;
+
+	FString ToString() const
+	{
+		FString StrDirection = "None";
+		switch (Direction)
+		{
+		case EGridInvSys_ItemDirection::Horizontal:
+			StrDirection = "Horizontal";
+			break;
+		case EGridInvSys_ItemDirection::Vertical:
+			StrDirection = "Vertical";
+			break;
+		default: ;
+		}
+		return EquipSlotTag.ToString() + "_" + FString::FromInt(GridID) +
+			":[" + FString::FromInt(Position.X) + ", " + FString::FromInt(Position.Y) + ":" + StrDirection + "]";
+	}
 };
 
 USTRUCT(BlueprintType)

@@ -3,6 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Components/InventoryObject/GridInvSys_GridEquipContainerObject.h"
+#include "Data/GridInvSys_ItemFragment_ItemType.h"
 #include "Widgets/InvSys_EquipContainerSlotWidget.h"
 #include "GridInvSys_EquipContainerSlotWidget.generated.h"
 
@@ -22,4 +24,13 @@ public:
 	/*UGridInvSys_ContainerGridItemWidget* FindGridItemWidget(const FGridInvSys_ItemPosition& ItemPosition) const;
 
 	UGridInvSys_ContainerGridItemWidget* FindGridItemWidget(const UInvSys_InventoryItemInstance* NewItemInstance) const;*/
+
+	void SetEquipItemType(EGridInvSys_InventoryItemType EquipmentSupportType);
+
+protected:
+	virtual bool CheckIsCanDrop_Implementation(UInvSys_InventoryItemInstance* InItemInstance) override;
+	
+protected:
+	UPROPERTY(BlueprintReadOnly, Category = "Equip Slot")
+	EGridInvSys_InventoryItemType EquipItemType;
 };

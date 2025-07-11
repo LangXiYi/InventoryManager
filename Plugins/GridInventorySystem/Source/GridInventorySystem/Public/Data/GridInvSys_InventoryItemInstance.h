@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "BaseInventorySystem.h"
 #include "GridInvSys_CommonType.h"
+#include "Components/InvSys_InventoryComponent.h"
 #include "Data/InvSys_InventoryItemInstance.h"
 #include "GridInvSys_InventoryItemInstance.generated.h"
 
@@ -69,7 +70,8 @@ public:
 
 		if (OnItemPositionChange.ExecuteIfBound(ItemPositionChangeMessage))
 		{
-			UE_LOG(LogInventorySystem, Log, TEXT("广播物品位置变化事件 ===> %s:%d[%d,%d]"),
+			UE_LOG(LogInventorySystem, Log, TEXT("[%s]广播物品位置变化事件 ===> %s:%d[%d,%d]"),
+				InvComp->HasAuthority() ? TEXT("Server") : TEXT("Client"),
 				*ItemPosition.EquipSlotTag.ToString(), NewPosition.GridID, NewPosition.Position.X, NewPosition.Position.Y);
 		}
 	}
@@ -88,8 +90,9 @@ protected:
 	UFUNCTION()
 	void OnRep_ItemPosition()
 	{
-		UE_LOG(LogInventorySystem, Log, TEXT("OnRep_ItemPosition"))
-		BroadcastItemPositionChangeMessage(ItemPosition, LastItemPosition);
+		UE_LOG(LogInventorySystem, Warning, TEXT("=== OnRep_ItemPosition [%s:Begin] ==="),
+			InvComp->HasAuthority() ? TEXT("Server"):TEXT("Client"))
+		BroadcastItemPositionChangeMessage(LastItemPosition, ItemPosition);
 		LastItemPosition = ItemPosition;
 	}
 

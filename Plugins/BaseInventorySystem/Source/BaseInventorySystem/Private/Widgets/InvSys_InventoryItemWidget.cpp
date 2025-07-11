@@ -17,7 +17,7 @@ void UInvSys_InventoryItemWidget::SetItemInstance(UInvSys_InventoryItemInstance*
 
 FReply UInvSys_InventoryItemWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
-	if (ItemInstance)
+	if (ItemInstance.Get())
 	{
 		FEventReply EventReply = UWidgetBlueprintLibrary::DetectDragIfPressed(InMouseEvent, this, EKeys::LeftMouseButton);
 		return EventReply.NativeReply;
@@ -30,7 +30,7 @@ void UInvSys_InventoryItemWidget::NativeOnDragDetected(const FGeometry& InGeomet
 {
 	Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
 
-	if (IsValid(ItemInstance) == false)
+	if (ItemInstance.IsValid() == false)
 	{
 		return;
 	}
@@ -42,12 +42,13 @@ void UInvSys_InventoryItemWidget::NativeOnDragDetected(const FGeometry& InGeomet
 	auto DragDropFragment = ItemInstance->FindFragmentByClass<UInvSys_ItemFragment_DragDrop>();
 	if (DragDropFragment && PlayerInvComp && FromInvComp)
 	{
+		check(DragDropFragment->DraggingWidgetClass)
 		// 创建 Dragging 控件
 		UUserWidget* DraggingWidget = CreateWidget<UUserWidget>(this, DragDropFragment->DraggingWidgetClass);
 		if (DraggingWidget && DraggingWidget->Implements<UInvSys_DraggingItemInterface>())
 		{
 			PlayerInvComp->SetDraggingWidget(DraggingWidget); //更新库存组件中被拖拽的物品控件，方便更新最新的物品实例。
-			IInvSys_DraggingItemInterface::Execute_UpdateItemInstance(DraggingWidget, ItemInstance);
+			IInvSys_DraggingItemInterface::Execute_UpdateItemInstance(DraggingWidget, ItemInstance.Get());
 
 
 			UDragDropOperation* DragDropOperation = NewObject<UDragDropOperation>();
@@ -57,7 +58,7 @@ void UInvSys_InventoryItemWidget::NativeOnDragDetected(const FGeometry& InGeomet
 			DragDropOperation->Offset = DragDropFragment->DragOffset;
 			OutOperation = DragDropOperation;
 
-			PlayerInvComp->Server_TryDragItemInstance(FromInvComp, ItemInstance); //通知服务器: 玩家正在拖拽物品
+			PlayerInvComp->Server_TryDragItemInstance(FromInvComp, ItemInstance.Get()); //通知服务器: 玩家正在拖拽物品
 		}
 	}
 }

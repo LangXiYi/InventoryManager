@@ -49,6 +49,12 @@ bool UInvSys_BaseInventoryObject::RemoveItemInstance(UInvSys_InventoryItemInstan
 	return false; 
 }
 
+bool UInvSys_BaseInventoryObject::RestoreItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
+{
+	checkNoEntry()
+	return false; 
+}
+
 UInvSys_EquipSlotWidget* UInvSys_BaseInventoryObject::CreateDisplayWidget(APlayerController* PC)
 {
 	return nullptr;

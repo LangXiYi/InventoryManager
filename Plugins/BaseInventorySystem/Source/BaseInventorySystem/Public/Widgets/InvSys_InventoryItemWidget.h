@@ -30,7 +30,7 @@ public:
 	template<class T>
 	T* GetItemInstance() const
 	{
-		return (T*)ItemInstance;
+		return (T*)ItemInstance.Get();
 	}
 
 	template<class T>
@@ -41,5 +41,5 @@ public:
 
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Item", meta = (ExposeOnSpawn))
-	TObjectPtr<UInvSys_InventoryItemInstance> ItemInstance;
+	TWeakObjectPtr<UInvSys_InventoryItemInstance> ItemInstance;
 };

@@ -30,8 +30,8 @@ protected:
 	virtual bool CheckIsCanDrop_Implementation(UInvSys_InventoryItemInstance* InItemInstance) override;
 	
 protected:
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
-	TObjectPtr<UGridInvSys_DragDropWidget> DragDropWidget;
+	/*UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
+	TObjectPtr<UGridInvSys_DragDropWidget> DragDropWidget;*/
 
 	UPROPERTY(BlueprintReadOnly, Category = "Equip Slot")
 	EGridInvSys_InventoryItemType EquipItemType;

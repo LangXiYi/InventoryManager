@@ -4,6 +4,7 @@
 #include "Widgets/InvSys_InventoryWidget.h"
 
 #include "Blueprint/WidgetTree.h"
+#include "Components/InvSys_InventoryComponent.h"
 #include "Widgets/Components/InvSys_TagSlot.h"
 
 void UInvSys_InventoryWidget::SetInventoryComponent(UInvSys_InventoryComponent* NewInvComp)
@@ -13,7 +14,7 @@ void UInvSys_InventoryWidget::SetInventoryComponent(UInvSys_InventoryComponent* 
 
 UInvSys_InventoryComponent* UInvSys_InventoryWidget::GetInventoryComponent() const
 {
-	return InventoryComponent;
+	return InventoryComponent.Get();
 }
 
 

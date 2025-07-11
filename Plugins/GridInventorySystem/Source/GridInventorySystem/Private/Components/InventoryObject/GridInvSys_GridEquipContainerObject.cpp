@@ -84,6 +84,17 @@ void UGridInvSys_GridEquipContainerObject::UpdateInventoryItemFromContainer_DEPR
 	}
 }
 
+UInvSys_EquipSlotWidget* UGridInvSys_GridEquipContainerObject::CreateDisplayWidget(APlayerController* PC)
+{
+	UInvSys_EquipSlotWidget* LOCAL_EquipSlotWidget = Super::CreateDisplayWidget(PC);
+	if (LOCAL_EquipSlotWidget && LOCAL_EquipSlotWidget->IsA<UGridInvSys_EquipContainerSlotWidget>())
+	{
+		UGridInvSys_EquipContainerSlotWidget* LOCAL_GridEquipSlowWidget = Cast<UGridInvSys_EquipContainerSlotWidget>(LOCAL_EquipSlotWidget);
+		LOCAL_GridEquipSlowWidget->SetEquipItemType(EquipmentSupportType);
+	}
+	return LOCAL_EquipSlotWidget;
+}
+
 void UGridInvSys_GridEquipContainerObject::CopyPropertyFromPreEdit(UObject* PreEditPayLoad)
 {
 	Super::CopyPropertyFromPreEdit(PreEditPayLoad);
@@ -107,18 +118,19 @@ void UGridInvSys_GridEquipContainerObject::OnItemPositionChange(const FGridInvSy
 	}
 	if (LOCAL_ContainerLayout == nullptr) return; //目标控件类型不匹配。
 
-	UE_LOG(LogInventorySystem, Log, TEXT("==== 正在处理物品位置变化事件 ===="))
+	UE_LOG(LogInventorySystem, Warning, TEXT("==== OnItemPositionChange [%s:Begin] ===="), HasAuthority() ? TEXT("Server"):TEXT("Client"))
 	if (UGridInvSys_ContainerGridItemWidget* ItemWidget = LOCAL_ContainerLayout->FindGridItemWidget(Message.OldPosition)) 
 	{
-		UE_LOG(LogInventorySystem, Log, TEXT("正在移除旧位置的物品"))
+		UE_LOG(LogInventorySystem, Log, TEXT("正在移除旧位置的物品==>[%s]"), *Message.OldPosition.ToString())
 		ItemWidget->RemoveItemInstance();
 	}
 	
 	if (UGridInvSys_ContainerGridItemWidget* ItemWidget = LOCAL_ContainerLayout->FindGridItemWidget(Message.NewPosition))
 	{
-		UE_LOG(LogInventorySystem, Log, TEXT("正在为新位置添加物品"))
-		ItemWidget->UpdateItemInstance(Message.Instance);
+		UE_LOG(LogInventorySystem, Log, TEXT("正在为新位置添加物品==>[%s]"), *Message.NewPosition.ToString())
+		ItemWidget->AddItemInstance(Message.Instance);
 	}
+	UE_LOG(LogInventorySystem, Warning, TEXT("==== OnItemPositionChange [%s:End] ===="), HasAuthority() ? TEXT("Server"):TEXT("Client"))
 }
 
 void UGridInvSys_GridEquipContainerObject::OnInventoryStackChange(const FInvSys_InventoryStackChangeMessage& ChangeInfo)
@@ -135,27 +147,35 @@ void UGridInvSys_GridEquipContainerObject::OnInventoryStackChange(const FInvSys_
 	if (UGridInvSys_ContainerGridItemWidget* ItemWidget = LOCAL_ContainerLayout->FindGridItemWidget(ChangeInfo.ItemInstance)) 
 	{
 		//todo::更新数量显示
-		UE_LOG(LogInventorySystem, Warning, TEXT("正在更新物品数量 ==> [%d]"), ChangeInfo.StackCount);
+		// UE_LOG(LogInventorySystem, Warning, TEXT("正在更新物品数量 ==> [%d]"), ChangeInfo.StackCount);
 		// ItemWidget->RemoveItemInstance();
 	}
 }
 
-void UGridInvSys_GridEquipContainerObject::OnContainerEntryAdded(const FInvSys_ContainerEntry& Entry)
+void UGridInvSys_GridEquipContainerObject::OnContainerEntryAdded(const FInvSys_ContainerEntry& Entry, bool bIsInit)
 {
-	UE_LOG(LogInventorySystem, Log, TEXT("正在为新添加的物品绑定回调，并调用物品的位置改变广播，添加新物品。"))
+	UE_LOG(LogInventorySystem, Log, TEXT("[%s]正在为新添加的物品绑定回调，并调用物品的位置改变广播，添加新物品。"), HasAuthority() ? TEXT("Server"):TEXT("Client"))
 	UGridInvSys_InventoryItemInstance* Instance = Entry.GetInstance<UGridInvSys_InventoryItemInstance>();
+	check(Instance)
 	if (Instance->OnItemPositionChangeDelegate().IsBound() == false)
 	{
 		Instance->OnItemPositionChangeDelegate().BindUObject(this, &UGridInvSys_GridEquipContainerObject::OnItemPositionChange);
 	}
 	//此时 ItemInstance 处于新添加的状态，所以传入的 OldItemPosition 需要为空
-	Instance->BroadcastItemPositionChangeMessage(FGridInvSys_ItemPosition(), Instance->GetItemPosition());
+	if (bIsInit || HasAuthority())
+	{
+		// Client：!!!客户端环境下复制的对象值优于该对象的属性到达客户端，即先执行该函数然后再执行对象的OnRep函数。
+		// Server: !!!服务器环境则于客户端相反，对象属性的OnRep函数先执行，然后再执行该函数。
+		// 所以为了实现正确的效果，同时避免客户端重复广播位置改变事件，所以限制条件为初始化阶段或服务器环境下才广播
+		Instance->BroadcastItemPositionChangeMessage(FGridInvSys_ItemPosition(), Instance->GetItemPosition());
+	}
 }
 
-void UGridInvSys_GridEquipContainerObject::OnContainerEntryRemove(const FInvSys_ContainerEntry& Entry)
+void UGridInvSys_GridEquipContainerObject::OnContainerEntryRemove(const FInvSys_ContainerEntry& Entry, bool bIsInit)
 {
-	UE_LOG(LogInventorySystem, Log, TEXT("正在移除目标物品的绑定回调，并调用物品的位置改变广播，将物品移除。"))
+	UE_LOG(LogInventorySystem, Log, TEXT("[%s]正在移除目标物品的绑定回调，并调用物品的位置改变广播，将物品移除。"), HasAuthority() ? TEXT("Server"):TEXT("Client"))
 	UGridInvSys_InventoryItemInstance* Instance = Entry.GetInstance<UGridInvSys_InventoryItemInstance>();
+	check(Instance)
 	//此时 ItemInstance 处于待移除的状态，所以传入的 NewItemPosition 需要为空
 	Instance->BroadcastItemPositionChangeMessage(Instance->GetItemPosition(), FGridInvSys_ItemPosition());
 	Instance->OnItemPositionChangeDelegate().Unbind();

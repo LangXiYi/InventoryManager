@@ -21,7 +21,6 @@
 #include "Widgets/GridInvSys_ContainerGridDropWidget.h"
 #include "Widgets/GridInvSys_ContainerGridItemWidget.h"
 #include "Widgets/GridInvSys_ContainerGridLayoutWidget.h"
-#include "Widgets/GridInvSys_DragDropWidget.h"
 #include "Widgets/GridInvSys_DragItemWidget.h"
 #include "Widgets/Notifications/SNotificationList.h"
 
@@ -323,6 +322,7 @@ void UGridInvSys_ContainerGridWidget::NativeOnDragCancelled(const FDragDropEvent
 bool UGridInvSys_ContainerGridWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent,
 	UDragDropOperation* InOperation)
 {
+	UE_LOG(LogInventorySystem, Error, TEXT("Drop To Container!!!"))
 	ResetDragDropData();
 	/*UGridInvSys_DragItemWidget* DragItemWidget = Cast<UGridInvSys_DragItemWidget>(InOperation->DefaultDragVisual);
 	const FVector2D ScreenPosition = InDragDropEvent.GetScreenSpacePosition();

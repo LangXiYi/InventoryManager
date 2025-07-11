@@ -33,9 +33,28 @@ UInvSys_InventoryComponent::UInvSys_InventoryComponent(const FObjectInitializer&
 	//bReplicateUsingRegisteredSubObjectList = true; // 不推荐使用，否则可能会出现子对象与FastArray的属性同步失序的问题。
 }
 
+void UInvSys_InventoryComponent::RestoreItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
+{
+	// 还原拖拽的物品信息
+	// DraggingItemInstance = nullptr;
+	
+	check(InItemInstance)
+	check(InItemInstance->GetInventoryComponent() == this)
+	if (InItemInstance && InItemInstance->GetInventoryComponent() == this)
+	{
+		FGameplayTag EquipSlotTag = InItemInstance->GetSlotTag();
+		UInvSys_BaseInventoryObject* InventoryObject = GetInventoryObject(EquipSlotTag);
+		if (InventoryObject)
+		{
+			bool bIsSuccess = InventoryObject->RestoreItemInstance(InItemInstance);
+			check(bIsSuccess);
+		}
+	}
+}
+
 bool UInvSys_InventoryComponent::TryDragItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
 {
-	if (DraggingItemInstance != nullptr || InItemInstance == nullptr) return false; // 仅在未拖拽其它物品时可以拖拽。
+	if (InItemInstance == nullptr) return false; // 仅在未拖拽其它物品时可以拖拽。
 
 	auto DragDropFragment = InItemInstance->FindFragmentByClass<UInvSys_ItemFragment_DragDrop>();
 	if (DragDropFragment == nullptr)
@@ -49,30 +68,30 @@ bool UInvSys_InventoryComponent::TryDragItemInstance(UInvSys_InventoryItemInstan
 
 	//将物品从它所在的容器中移除
 	LOCAL_InvComp->RemoveItemInstance(InItemInstance);
-	if (LOCAL_InvComp != this) //不同库存组件的物品拖拽会生成一个新的物品给客户端，然后销毁传入的物品实例
+	/*if (LOCAL_InvComp != this) //不同库存组件的物品拖拽会生成一个新的物品给客户端，然后销毁传入的物品实例
 	{
 		UInvSys_InventoryItemInstance* LOCAL_ItemInstance = InItemInstance; // 暂存目标指针
 		InItemInstance = DuplicateObject(InItemInstance, GetOwner()); // 复制一个新的物品实例，将其Outer指定为当前组件的Owner
 		LOCAL_ItemInstance->ConditionalBeginDestroy(); //标记目标物品待销毁
-	}
-	DraggingItemInstance = InItemInstance; //通过RepNotify通知客户端
-	if (GetNetMode() != NM_DedicatedServer)
+	}*/
+	//DraggingItemInstance = InItemInstance; //通过RepNotify通知客户端
+	/*if (GetNetMode() != NM_DedicatedServer)
 	{
 		OnRep_DraggingItemInstance();
-	}
+	}*/
 	return true;
 }
 
 void UInvSys_InventoryComponent::CancelDragItemInstance()
 {
-	if (DraggingItemInstance)
+	/*if (DraggingItemInstance)
 	{
 		DraggingItemInstance = nullptr;
 		if (GetNetMode() != NM_DedicatedServer)
 		{
 			OnRep_DraggingItemInstance();
 		}
-	}
+	}*/
 }
 
 void UInvSys_InventoryComponent::NativeOnDiscardItemInstance(UInvSys_InventoryItemInstance* InDraggingItemInstance)
@@ -119,26 +138,53 @@ void UInvSys_InventoryComponent::EquipItemDefinition(TSubclassOf<UInvSys_Invento
 
 void UInvSys_InventoryComponent::EquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag)
 {
-	if (InItemInstance)
+	UInvSys_InventoryItemInstance* TargetItemInstance = InItemInstance;
+	//装备的物品如果是来自其他库存组件
+	if (TargetItemInstance == nullptr)
 	{
-		UInvSys_BaseEquipmentObject* EquipObj = GetInventoryObject<UInvSys_BaseEquipmentObject>(SlotTag);
-		if (EquipObj != nullptr && EquipObj->GetEquipItemInstance() == nullptr)
-		{
-			InItemInstance->SetSlotTag(SlotTag);
-			InItemInstance->SetInventoryComponent(this);
+		return;
+	}
 
-			EquipObj->EquipInventoryItem(InItemInstance);
-			// 检查目标内部是否存在其他的物品
-			if (InItemInstance->MyInstances.Num() > 0)
+	if (this != TargetItemInstance->GetInventoryComponent())
+	{
+		UE_LOG(LogInventorySystem, Warning, TEXT("物品是从其他库存组件中转移至当前组件中的，现在正在进行所有权的转移。"))
+		// 复制新的目标对象，并重设他的 Outer 为当前组件的所有者
+		TargetItemInstance = DuplicateObject(InItemInstance, GetOwner());
+		if (TargetItemInstance->MyInstances.Num() > 0)
+		{
+			UE_LOG(LogInventorySystem, Warning, TEXT("\t物品内部还包含了其他物品，正在一起转移。"))
+			TargetItemInstance->MyInstances.Empty();
+			TargetItemInstance->MyInstances.Reserve(InItemInstance->MyInstances.Num());
+			for (UInvSys_InventoryItemInstance* ContainerEntry : InItemInstance->MyInstances)
 			{
-				UInvSys_BaseEquipContainerObject* ContainerObject = GetInventoryObject<UInvSys_BaseEquipContainerObject>(SlotTag);
-				check(ContainerObject)
-				UE_LOG(LogInventorySystem, Log, TEXT("物品内部包含了[%d]个其他物品，现在正在对其内部物品进行转移。"), InItemInstance->MyInstances.Num())
-				ContainerObject->AddItemInstances(InItemInstance->MyInstances);
-				InItemInstance->MyInstances.Empty();
+				UInvSys_InventoryItemInstance* TempEntry = DuplicateObject(ContainerEntry, GetOwner());
+				TargetItemInstance->MyInstances.Add(TempEntry);
+				ContainerEntry->ConditionalBeginDestroy(); // 通知 GC 清理对象
 			}
-			OnEquipItemInstance(InItemInstance);
 		}
+		InItemInstance->MyInstances.Empty();
+		InItemInstance->ConditionalBeginDestroy(); // 通知 GC 清理对象
+	}
+
+	UInvSys_BaseEquipmentObject* EquipObj = GetInventoryObject<UInvSys_BaseEquipmentObject>(SlotTag);
+	if (EquipObj != nullptr && EquipObj->GetEquipItemInstance() == nullptr)
+	{
+		TargetItemInstance->SetSlotTag(SlotTag);
+		TargetItemInstance->SetInventoryComponent(this);
+		
+		UE_LOG(LogInventorySystem, Log, TEXT("正在装备物品"))
+
+		EquipObj->EquipInventoryItem(TargetItemInstance);
+		// 检查目标内部是否存在其他的物品
+		if (TargetItemInstance->MyInstances.Num() > 0)
+		{
+			UInvSys_BaseEquipContainerObject* ContainerObject = GetInventoryObject<UInvSys_BaseEquipContainerObject>(SlotTag);
+			check(ContainerObject)
+			UE_LOG(LogInventorySystem, Log, TEXT("物品内部包含了[%d]个其他物品，现在正在对其内部物品进行转移。"), TargetItemInstance->MyInstances.Num())
+			ContainerObject->AddItemInstances(TargetItemInstance->MyInstances);
+			TargetItemInstance->MyInstances.Empty();
+		}
+		OnEquipItemInstance(TargetItemInstance);
 	}
 }
 
@@ -263,24 +309,29 @@ void UInvSys_InventoryComponent::Server_CancelDragItemInstance_Implementation(
 void UInvSys_InventoryComponent::Server_EquipItemInstance_Implementation(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag)
 {
 	check(InvComp);
-	InvComp->EquipItemInstance(InItemInstance, SlotTag);
+	if (InvComp)
+	{
+		InvComp->EquipItemInstance(InItemInstance, SlotTag);
+	}
 }
 
 void UInvSys_InventoryComponent::Server_EquipItemDefinition_Implementation(
 	UInvSys_InventoryComponent* InvComp, TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, FGameplayTag SlotTag)
 {
 	check(InvComp);
-	InvComp->EquipItemDefinition(ItemDef, SlotTag);
+	if (InvComp)
+	{
+		InvComp->EquipItemDefinition(ItemDef, SlotTag);
+	}
 }
 
 void UInvSys_InventoryComponent::Server_TryDragItemInstance_Implementation(UInvSys_InventoryComponent* InvComp,
 	UInvSys_InventoryItemInstance* InItemInstance)
 {
 	check(InvComp)
-	bool LOCAL_IsSuccess = InvComp->TryDragItemInstance(InItemInstance);
-	if (LOCAL_IsSuccess == false)
+	if (InvComp)
 	{
-		UE_LOG(LogInventorySystem, Error, TEXT("[Server] 服务器尝试拽起目标物品失败，可能是目标物品为NULL或服务器未生成该物品。"))
+		InvComp->TryDragItemInstance(InItemInstance);
 	}
 }
 
@@ -288,6 +339,16 @@ void UInvSys_InventoryComponent::Server_CancelDragItemInstance_Implementation(UI
 {
 	check(InvComp)
 	InvComp->CancelDragItemInstance();
+}
+
+void UInvSys_InventoryComponent::Server_RestoreItemInstance_Implementation(UInvSys_InventoryComponent* InvComp,
+	UInvSys_InventoryItemInstance* InItemInstance)
+{
+	check(InvComp)
+	if (InvComp)
+	{
+		InvComp->RestoreItemInstance(InItemInstance);
+	}
 }
 
 void UInvSys_InventoryComponent::SetDraggingWidget(UUserWidget* NewDraggingWidget)
@@ -330,10 +391,10 @@ bool UInvSys_InventoryComponent::ReplicateSubobjects(UActorChannel* Channel, FOu
 		WroteSomething |= Channel->ReplicateSubobject(InventoryObject, *Bunch, *RepFlags);
 	}
 
-	if (DraggingItemInstance && IsValid(DraggingItemInstance))
-	{
-		WroteSomething |= Channel->ReplicateSubobject(DraggingItemInstance, *Bunch, *RepFlags);
-	}
+	// if (DraggingItemInstance && IsValid(DraggingItemInstance))
+	// {
+	// 	WroteSomething |= Channel->ReplicateSubobject(DraggingItemInstance, *Bunch, *RepFlags);
+	// }
 	return WroteSomething;
 }
 
@@ -376,7 +437,7 @@ void UInvSys_InventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProp
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(UInvSys_InventoryComponent, InventoryObjectList);
-	DOREPLIFETIME(UInvSys_InventoryComponent, DraggingItemInstance);
+	// DOREPLIFETIME(UInvSys_InventoryComponent, DraggingItemInstance);
 }
 
 void UInvSys_InventoryComponent::OnRep_InventoryObjectList()
@@ -458,12 +519,12 @@ void UInvSys_InventoryComponent::Client_TryRefreshInventoryObject_Implementation
 }
 
 
-void UInvSys_InventoryComponent::OnRep_DraggingItemInstance()
-{
+// void UInvSys_InventoryComponent::OnRep_DraggingItemInstance()
+// {
 	// Server端DraggingWidget一定是为空的，且DraggingInstance大概率是存在的
 	// Client端则不会为空
 	// 修正拖拽的物品实例
-	if (IsValid(DraggingWidget))
+	/*if (IsValid(DraggingWidget))
 	{
 		// 客户端同步更新DraggingItem
 		if (IsValid(DraggingItemInstance))
@@ -479,5 +540,5 @@ void UInvSys_InventoryComponent::OnRep_DraggingItemInstance()
 	{
 		// 除非用户手动调用丢弃至世界，否则不会执行其他操作。
 		// NativeOnDiscardItemInstance(DraggingItemInstance); //丢弃物品至世界。
-	}
-}
+	}*/
+// }

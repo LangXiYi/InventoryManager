@@ -40,34 +40,34 @@ bool UInvSys_EquipSlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FD
 	UDragDropOperation* InOperation)
 {
 	UInvSys_InventoryComponent* PlayerInvComp = GetOwningPlayer()->GetComponentByClass<UInvSys_InventoryComponent>();
-
-	if (ItemInstance == nullptr && InOperation->Payload && InOperation->Payload->IsA<UInvSys_InventoryItemWidget>())
+	check(PlayerInvComp)
+	if (PlayerInvComp == nullptr || InOperation->Payload == nullptr ||
+		InOperation->Payload->IsA<UInvSys_InventoryItemWidget>() == false)
 	{
-		UInvSys_InventoryItemWidget* ItemWidget = Cast<UInvSys_InventoryItemWidget>(InOperation->Payload);
-		UInvSys_InventoryItemInstance* LOCAL_ItemInstance = ItemWidget->GetItemInstance<UInvSys_InventoryItemInstance>();
-		if (LOCAL_ItemInstance && CheckIsCanDrop(LOCAL_ItemInstance))
+		return Super::NativeOnDrop(InGeometry, InDragDropEvent, InOperation);
+	}
+	
+	UInvSys_InventoryItemWidget* ItemWidget = Cast<UInvSys_InventoryItemWidget>(InOperation->Payload);
+	UInvSys_InventoryItemInstance* LOCAL_ItemInstance = ItemWidget->GetItemInstance<UInvSys_InventoryItemInstance>();
+	check(LOCAL_ItemInstance)
+	if (LOCAL_ItemInstance)
+	{
+		if (CheckIsCanDrop(LOCAL_ItemInstance))
 		{
-			//todo::在操作不同的库存组件时，如果将目标物品从其他库存组件拖拽我自身的库存组件中那么就需要额外操作
+			// 将物品装备至指定槽
+			PlayerInvComp->Server_EquipItemInstance(InventoryComponent.Get(), LOCAL_ItemInstance, SlotTag);
+		}
+		else
+		{
+			// 还原目标物品
 			UInvSys_InventoryComponent* From_InvComp = LOCAL_ItemInstance->GetInventoryComponent();
-			if (InventoryComponent == From_InvComp)
-			{
-				PlayerInvComp->Server_CancelDragItemInstance(From_InvComp);
-				PlayerInvComp->Server_EquipItemInstance(From_InvComp, LOCAL_ItemInstance, SlotTag);
-			}
-			else
-			{
-				//todo::这里逻辑应该有问题，DraggingItem的值未被处理
-				// auto ItemDefinition = LOCAL_ItemInstance->GetItemDefinition();
-				// From_InvComp->UnEquipItemInstance(LOCAL_ItemInstance);
-				// InventoryComponent->EquipItemDefinition(ItemDefinition, SlotTag);
-			}
-			return true;
+			PlayerInvComp->Server_RestoreItemInstance(From_InvComp, LOCAL_ItemInstance); 
 		}
 	}
-	return Super::NativeOnDrop(InGeometry, InDragDropEvent, InOperation);
+	return true;
 }
 
 bool UInvSys_EquipSlotWidget::CheckIsCanDrop_Implementation(UInvSys_InventoryItemInstance* InItemInstance)
 {
-	return true;
+	return false;
 }

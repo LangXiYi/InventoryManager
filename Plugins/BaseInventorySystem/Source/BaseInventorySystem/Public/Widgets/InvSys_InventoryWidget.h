@@ -43,7 +43,7 @@ public:
 	
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Widget")
-	TObjectPtr<UInvSys_InventoryComponent> InventoryComponent;
+	TWeakObjectPtr<UInvSys_InventoryComponent> InventoryComponent;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Container Grid Layout")
 	FGameplayTag SlotTag;

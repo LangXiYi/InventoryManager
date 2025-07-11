@@ -43,6 +43,8 @@ public:
 	/** 移除目标物品实例在库存对象中的引用。注意：Remove不会强制摧毁该目标。 */
 	virtual bool RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
 
+	virtual bool RestoreItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
+	
 	virtual UInvSys_EquipSlotWidget* CreateDisplayWidget(APlayerController* PC);
 
 protected:

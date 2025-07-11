@@ -44,12 +44,14 @@ public:
 	virtual void AddInventoryItemToContainer_DEPRECATED(const FGridInvSys_InventoryItem& InventoryItem);
 	virtual void RemoveInventoryItemFromContainer_DEPRECATED(FGridInvSys_InventoryItem InventoryItem);
 	virtual void UpdateInventoryItemFromContainer_DEPRECATED(FName ItemUniqueID, FGridInvSys_InventoryItemPosition NewPosition);
+
+	virtual UInvSys_EquipSlotWidget* CreateDisplayWidget(APlayerController* PC) override;
 	
 protected:
 	void OnItemPositionChange(const FGridInvSys_ItemPositionChangeMessage& Message);
 	virtual void OnInventoryStackChange(const FInvSys_InventoryStackChangeMessage& ChangeInfo) override;
-	virtual void OnContainerEntryAdded(const FInvSys_ContainerEntry& Entry) override;
-	virtual void OnContainerEntryRemove(const FInvSys_ContainerEntry& Entry) override;
+	virtual void OnContainerEntryAdded(const FInvSys_ContainerEntry& Entry, bool bIsInit) override;
+	virtual void OnContainerEntryRemove(const FInvSys_ContainerEntry& Entry, bool bIsInit) override;
 	
 private:
 	int32 FindContainerItemIndex(FName ItemUniqueID);

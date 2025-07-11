@@ -16,7 +16,6 @@
 #include "Data/InvSys_InventoryItemInstance.h"
 #include "Framework/Notifications/NotificationManager.h"
 #include "Widgets/GridInvSys_ContainerGridWidget.h"
-#include "Widgets/GridInvSys_DragDropWidget.h"
 #include "Widgets/Notifications/SNotificationList.h"
 
 void UGridInvSys_ContainerGridItemWidget::OnConstructGridItem(UGridInvSys_ContainerGridWidget* InContainerGrid,
@@ -39,7 +38,7 @@ void UGridInvSys_ContainerGridItemWidget::RemoveItemInfo()
 {
 }
 
-void UGridInvSys_ContainerGridItemWidget::UpdateItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)
+void UGridInvSys_ContainerGridItemWidget::AddItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)
 {
 	UGridSlot* GridSlot = Cast<UGridSlot>(Slot);
 	if (GridSlot == nullptr)
@@ -53,26 +52,23 @@ void UGridInvSys_ContainerGridItemWidget::UpdateItemInstance(UInvSys_InventoryIt
 		return;
 	}
 
+	GridItemSize = CalculateGridItemSize(NewItemInstance);
 	bIsOccupied = true;
-	ItemInstance = NewItemInstance;
-	//DragDropWidget->SetItemInstance(NewItemInstance);
-
 	OriginGridItemWidget = this;
 
-	GridSlot->SetRowSpan(GetItemSize().X);
-	GridSlot->SetColumnSpan(GetItemSize().Y);
+	GridSlot->SetRowSpan(GridItemSize.X);
+	GridSlot->SetColumnSpan(GridItemSize.Y);
 	GridSlot->SetLayer(100);
 
-	TArray<UGridInvSys_ContainerGridItemWidget*> OutArray;
-	ContainerGridWidget->GetContainerGridItems<UGridInvSys_ContainerGridItemWidget>(OutArray, GetPosition(), GetItemSize(), {this});
+	/*TArray<UGridInvSys_ContainerGridItemWidget*> OutArray;
+	ContainerGridWidget->GetContainerGridItems<UGridInvSys_ContainerGridItemWidget>(OutArray, GetPosition(), GridItemSize, {this});
 	for (UGridInvSys_ContainerGridItemWidget* GridItemWidget : OutArray)
 	{
 		GridItemWidget->RemoveItemInstance();
-		
 		GridItemWidget->bIsOccupied = true;
 		GridItemWidget->OriginGridItemWidget = this;
-	}
-	OnItemInstanceChange(NewItemInstance);
+	}*/
+	OnAddItemInstance(NewItemInstance);
 }
 
 void UGridInvSys_ContainerGridItemWidget::RemoveItemInstance()
@@ -84,20 +80,16 @@ void UGridInvSys_ContainerGridItemWidget::RemoveItemInstance()
 		return;
 	}
 	// 先临时缓存，避免清除数据后数据丢失。
-	const FIntPoint ItemSize = GetItemSize();
-
 	bIsOccupied = true;
-	ItemInstance = nullptr;
-	//DragDropWidget->SetItemInstance(nullptr);
-	
 	OriginGridItemWidget = this;
+	GridItemSize = FIntPoint(1, 1);
 
 	GridSlot->SetRowSpan(0);
 	GridSlot->SetColumnSpan(0);
 	GridSlot->SetLayer(0);
 
-	TArray<UGridInvSys_ContainerGridItemWidget*> OutArray;
-	ContainerGridWidget->FindContainerGridItems(OutArray, GetPosition(), ItemSize, {this});
+	/*TArray<UGridInvSys_ContainerGridItemWidget*> OutArray;
+	ContainerGridWidget->FindContainerGridItems(OutArray, GetPosition(), GridItemSize, {this});
 	for (UGridInvSys_ContainerGridItemWidget* GridItemWidget : OutArray)
 	{
 		// 确保被删除的网格的拥有者是自己而不是其他物品
@@ -105,7 +97,7 @@ void UGridInvSys_ContainerGridItemWidget::RemoveItemInstance()
 		{
 			GridItemWidget->RemoveItemInfo();
 		}
-	}
+	}*/
 	OnRemoveItemInstance();
 }
 
@@ -141,12 +133,12 @@ EGridInvSys_ItemDirection UGridInvSys_ContainerGridItemWidget::GetItemDirection(
 	return EGridInvSys_ItemDirection::Horizontal;
 }
 
-FIntPoint UGridInvSys_ContainerGridItemWidget::GetItemSize() const
+FIntPoint UGridInvSys_ContainerGridItemWidget::CalculateGridItemSize(UInvSys_InventoryItemInstance* InItemInstance) const
 {
 	FIntPoint Result = FIntPoint(1, 1);
-	if (ItemInstance && ItemInstance->IsA(UGridInvSys_InventoryItemInstance::StaticClass()))
+	if (InItemInstance && InItemInstance->IsA(UGridInvSys_InventoryItemInstance::StaticClass()))
 	{
-		UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(ItemInstance);
+		UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(InItemInstance);
 		check(GridItemInstance);
 		FGridInvSys_ItemPosition ItemPosition = GridItemInstance->GetItemPosition();
 		if (auto SizeFragment = GridItemInstance->FindFragmentByClass<UGridInvSys_ItemFragment_GridItemSize>())
@@ -231,43 +223,4 @@ void UGridInvSys_ContainerGridItemWidget::NativeConstruct()
 		SizeBox->SetWidthOverride(ItemDrawSize);
 		SizeBox->SetHeightOverride(ItemDrawSize);
 	}
-	//DragDropWidget->SetInventoryComponent(GetInventoryComponent());
-	//DragDropWidget->SetGridItemWidget(this);
-}
-
-FReply UGridInvSys_ContainerGridItemWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
-{
-	/*if (ItemInstance)
-	{
-		FEventReply EventReply = UWidgetBlueprintLibrary::DetectDragIfPressed(InMouseEvent, this, EKeys::LeftMouseButton);
-		return EventReply.NativeReply;
-	}*/
-	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
-}
-
-void UGridInvSys_ContainerGridItemWidget::NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent,
-	UDragDropOperation*& OutOperation)
-{
-	Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
-
-	/*if (UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(ItemInstance))
-	{
-		auto DragDropFragment = GridItemInstance->FindFragmentByClass<UGridInvSys_ItemFragment_DragDrop>();
-		if (DragDropFragment)
-		{
-			// 创建 Dragging 控件
-			UGridInvSys_DragItemWidget* DraggingWidget =
-				CreateWidget<UGridInvSys_DragItemWidget>(this, DragDropFragment->DraggingWidgetClass);
-			
-			DraggingWidget->UpdateItemInstance(GridItemInstance);
-	
-			UDragDropOperation* DragDropOperation = NewObject<UDragDropOperation>();
-			DragDropOperation->Payload = this;
-			DragDropOperation->DefaultDragVisual = DraggingWidget;
-			DragDropOperation->Pivot = DragDropFragment->DragPivot;
-			DragDropOperation->Offset = DragDropFragment->DragOffset;
-
-			OutOperation = DragDropOperation;
-		}
-	}*/
 }

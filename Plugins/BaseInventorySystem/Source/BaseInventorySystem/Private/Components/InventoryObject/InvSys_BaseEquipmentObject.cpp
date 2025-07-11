@@ -40,7 +40,7 @@ void UInvSys_BaseEquipmentObject::EquipInventoryItem(UInvSys_InventoryItemInstan
 {
 	if (HasAuthority())
 	{
-		EquipItemInstance = NewItemInstance;
+		EquipItem = NewItemInstance;
 		if (GetNetMode() != NM_DedicatedServer)
 		{
 			OnRep_EquipItemInstance();
@@ -53,7 +53,7 @@ void UInvSys_BaseEquipmentObject::UnEquipInventoryItem()
 	if (HasAuthority())
 	{
 		// EquipItemInstance->RemoveFromInventory();
-		EquipItemInstance = nullptr;
+		EquipItem = nullptr;
 		if (GetNetMode() != NM_DedicatedServer)
 		{
 			OnRep_EquipItemInstance();
@@ -66,9 +66,20 @@ bool UInvSys_BaseEquipmentObject::RemoveItemInstance(UInvSys_InventoryItemInstan
 	UE_LOG(LogInventorySystem, Log, TEXT("正在删除装备槽中的物品"))
 
 	// Super::RemoveItemInstance(InItemInstance);
-	if (InItemInstance == EquipItemInstance)
+	if (InItemInstance == EquipItem)
 	{
 		UnEquipInventoryItem();
+		return true;
+	}
+	return false;
+}
+
+bool UInvSys_BaseEquipmentObject::RestoreItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
+{
+	check(InItemInstance)
+	if (InItemInstance && EquipItem == nullptr)
+	{
+		EquipInventoryItem(InItemInstance);
 		return true;
 	}
 	return false;
@@ -91,7 +102,7 @@ void UInvSys_BaseEquipmentObject::GetLifetimeReplicatedProps(TArray<FLifetimePro
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UInvSys_BaseEquipmentObject, EquipItemInstance);
+	DOREPLIFETIME(UInvSys_BaseEquipmentObject, EquipItem);
 }
 
 void UInvSys_BaseEquipmentObject::TryRefreshEquipSlot(const FString& Reason)
@@ -120,7 +131,7 @@ void UInvSys_BaseEquipmentObject::CopyPropertyFromPreEdit(UObject* PreEditPayLoa
 void UInvSys_BaseEquipmentObject::NativeOnEquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
 {
 	check(EquipSlotWidget);
-	check(EquipItemInstance);
+	check(EquipItem);
 	EquipSlotWidget->EquipItemInstance(InItemInstance);
 }
 
@@ -141,9 +152,9 @@ bool UInvSys_BaseEquipmentObject::ReplicateSubobjects(UActorChannel* Channel, FO
 {
 	bool WroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
 
-	if (EquipItemInstance && IsValid(EquipItemInstance))
+	if (EquipItem && IsValid(EquipItem))
 	{
-		WroteSomething |= Channel->ReplicateSubobject(EquipItemInstance, *Bunch, *RepFlags);
+		WroteSomething |= Channel->ReplicateSubobject(EquipItem, *Bunch, *RepFlags);
 	}
 	return WroteSomething;
 }
@@ -152,15 +163,14 @@ void UInvSys_BaseEquipmentObject::OnRep_EquipItemInstance()
 {
 	if (EquipSlotWidget)
 	{
-		if (EquipItemInstance)
+		if (EquipItem)
 		{
-			NativeOnEquipItemInstance(EquipItemInstance);
+			NativeOnEquipItemInstance(EquipItem);
 		}
-		else if(LastEquipItemInstance != nullptr)
+		else if(LastEquipItemInstance.IsValid())
 		{
 			NativeOnUnEquipItemInstance();
 		}
 	}
-	LastEquipItemInstance = EquipItemInstance;
-	// TryRefreshEquipSlot();
+	LastEquipItemInstance = EquipItem;
 }
