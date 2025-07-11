@@ -8,6 +8,7 @@
 #include "UObject/Object.h"
 #include "InvSys_BaseInventoryObject.generated.h"
 
+class UInvSys_InventoryItemInstance;
 class UInvSys_EquipSlotWidget;
 class UInvSys_InventoryComponent;
 
@@ -38,6 +39,11 @@ public:
 	virtual void InitInventoryObject(UInvSys_InventoryComponent* NewInventoryComponent, UObject* PreEditPayLoad);
 
 	virtual void RefreshInventoryObject(const FString& Reason = "");
+
+	/** 移除目标物品实例在库存对象中的引用。注意：Remove不会强制摧毁该目标。 */
+	virtual bool RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
+
+	virtual UInvSys_EquipSlotWidget* CreateDisplayWidget(APlayerController* PC);
 
 protected:
 	virtual bool ReplicateSubobjects(UActorChannel *Channel, FOutBunch *Bunch, FReplicationFlags *RepFlags);

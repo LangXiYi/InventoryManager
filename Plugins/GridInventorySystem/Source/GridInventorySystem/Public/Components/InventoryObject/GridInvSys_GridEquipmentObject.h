@@ -29,6 +29,8 @@ public:
 	virtual void CopyPropertyFromPreEdit(UObject* PreEditPayLoad) override;
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	virtual UInvSys_EquipSlotWidget* CreateDisplayWidget(APlayerController* PC) override;
 	
 protected:
 	/** 该装备槽支持装备的类型 */

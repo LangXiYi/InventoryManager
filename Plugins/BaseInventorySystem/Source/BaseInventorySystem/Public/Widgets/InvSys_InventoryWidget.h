@@ -22,6 +22,9 @@ public:
 
 	UInvSys_InventoryComponent* GetInventoryComponent() const;
 
+	/*UFUNCTION(BlueprintImplementableEvent)
+	UInvSys_InventoryComponent* GetPlayerInventoryComponent() const;*/
+
 	template<class T>
 	T* GetInventoryComponent() const
 	{

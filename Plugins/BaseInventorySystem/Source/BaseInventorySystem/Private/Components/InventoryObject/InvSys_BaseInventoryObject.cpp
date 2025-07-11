@@ -43,8 +43,19 @@ void UInvSys_BaseInventoryObject::RefreshInventoryObject(const FString& Reason)
 	UE_LOG(LogInventorySystem, Warning, TEXT("正在执行 RefreshInventoryObject() 操作。\n\tREASON: %s"), *Reason);
 }
 
+bool UInvSys_BaseInventoryObject::RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
+{
+	checkNoEntry()
+	return false; 
+}
+
+UInvSys_EquipSlotWidget* UInvSys_BaseInventoryObject::CreateDisplayWidget(APlayerController* PC)
+{
+	return nullptr;
+}
+
 bool UInvSys_BaseInventoryObject::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch,
-	FReplicationFlags* RepFlags)
+                                                      FReplicationFlags* RepFlags)
 {
 	UActorChannel::SetCurrentSubObjectOwner(InventoryComponent);
 	return false;

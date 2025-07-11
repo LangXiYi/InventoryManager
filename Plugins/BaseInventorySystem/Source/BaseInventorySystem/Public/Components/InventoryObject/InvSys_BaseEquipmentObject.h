@@ -20,20 +20,18 @@ class BASEINVENTORYSYSTEM_API UInvSys_BaseEquipmentObject : public UInvSys_BaseI
 
 public:
 	UInvSys_BaseEquipmentObject();
-
-	virtual void RefreshInventoryObject(const FString& Reason = "") override;
-
-	virtual void InitInventoryObject(UInvSys_InventoryComponent* NewInventoryComponent, UObject* PreEditPayLoad) override;
 	
 	virtual void AddInventoryItemToEquipSlot_DEPRECATED(const FInvSys_InventoryItem& NewItem);
 
-	virtual void EquipInventoryItem(UInvSys_InventoryItemInstance* NewItemInstance);
+	virtual UInvSys_InventoryItemInstance* EquipItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef);
 
-	virtual void EquipInventoryItem(TSubclassOf<UInvSys_InventoryItemDefinition> NewItemDefinition);
+	virtual void EquipInventoryItem(UInvSys_InventoryItemInstance* NewItemInstance);
 
 	virtual void UnEquipInventoryItem();
 
-	virtual UInvSys_EquipSlotWidget* CreateEquipSlotWidget(APlayerController* PC);
+	virtual bool RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance) override;
+
+	virtual UInvSys_EquipSlotWidget* CreateDisplayWidget(APlayerController* PC) override;
 
 protected:
 	/**	刷新显示效果 */
@@ -41,6 +39,12 @@ protected:
 
 	virtual void CopyPropertyFromPreEdit(UObject* PreEditPayLoad) override;
 
+	virtual void NativeOnEquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
+
+	virtual void NativeOnUnEquipItemInstance();
+
+	virtual bool ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags) override;
+	
 public:
 	/**
 	 * Getter Or Setter
@@ -48,21 +52,27 @@ public:
 
 	virtual bool ContainsItem(FName UniqueID) override;
 
+	UInvSys_InventoryItemInstance* GetEquipItemInstance() const
+	{
+		return EquipItemInstance;
+	}
+
 	/*bool IsEquipped() const
 	{
 		return false;
 	}*/
 
-	virtual bool ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags) override;
-	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 protected:
 	// 装备的物品
 	UPROPERTY(ReplicatedUsing=OnRep_EquipItemInstance, BlueprintReadOnly, Category = "Inventory Object")
-	UInvSys_InventoryItemInstance* EquipItemInstance;
+	TObjectPtr<UInvSys_InventoryItemInstance> EquipItemInstance;
 	UFUNCTION()
 	virtual void OnRep_EquipItemInstance();
+	// [Client] 标记上一次装备的物品
+	UPROPERTY()
+	UInvSys_InventoryItemInstance* LastEquipItemInstance;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Container Type")
 	TObjectPtr<UInvSys_EquipSlotWidget> EquipSlotWidget;

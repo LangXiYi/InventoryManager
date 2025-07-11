@@ -40,7 +40,7 @@ public:
 
 	virtual void OnConstructInventoryObject(UInvSys_InventoryComponent* NewInvComp, UObject* PreEditPayLoad) override;
 
-	virtual UInvSys_EquipSlotWidget* CreateEquipSlotWidget(APlayerController* PC) override;
+	virtual UInvSys_EquipSlotWidget* CreateDisplayWidget(APlayerController* PC) override;
 
 	virtual void TryRefreshEquipSlot(const FString& Reason) override;
 	virtual void TryRefreshContainerItems();
@@ -58,12 +58,15 @@ public:
 	}
 
 	/** 从其他容器添加物品，容器与容器间的交换，不会 RemoveReplicateObject，因为它们都在同一个Actor下 */
-	bool AddItemInstance(UInvSys_InventoryItemInstance* ItemInstance, int32 StackCount);
-	bool RemoveItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
+	bool AddItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
+	void AddItemInstances(TArray<UInvSys_InventoryItemInstance*> ItemInstances);
+	virtual bool RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance) override;
 	bool UpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance, int32 NewStackCount);
 
 protected:
-	virtual bool ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags) override;
+	virtual void NativeOnEquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance) override;
+
+	virtual void NativeOnUnEquipItemInstance() override;
 	
 	// Begin Listen Container List Event ====
 	void NativeOnInventoryStackChange(FInvSys_InventoryStackChangeMessage ChangeInfo);
@@ -75,6 +78,8 @@ protected:
 	virtual void OnContainerEntryRemove(const FInvSys_ContainerEntry& Entry) {}
 	// End Listen Container List Event ====
 
+	virtual bool ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags) override;
+
 public:
 	/**
 	 * Getter Or Setter
@@ -84,15 +89,12 @@ public:
 
 	virtual void CopyPropertyFromPreEdit(UObject* PreEditPayLoad) override;
 
+	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	const UInvSys_InventoryItemInstance* FindItemInstance(FGuid ItemUniqueID) const;
 
-
 protected:
-	/** [Server] 当前容器内的所有物品的 UniqueID */// Deprecated
-	TSet<FName> ContainerItems;
-
 	UPROPERTY(Replicated)
 	FInvSys_ContainerList ContainerList;
 

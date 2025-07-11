@@ -25,3 +25,14 @@ void UGridInvSys_GridEquipmentObject::GetLifetimeReplicatedProps(TArray<FLifetim
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 }
+
+UInvSys_EquipSlotWidget* UGridInvSys_GridEquipmentObject::CreateDisplayWidget(APlayerController* PC)
+{
+	UInvSys_EquipSlotWidget* LOCAL_EquipSlotWidget = Super::CreateDisplayWidget(PC);
+	if (LOCAL_EquipSlotWidget && LOCAL_EquipSlotWidget->IsA<UGridInvSys_EquipmentSlotWidget>())
+	{
+		UGridInvSys_EquipmentSlotWidget* LOCAL_GridEquipSlowWidget = Cast<UGridInvSys_EquipmentSlotWidget>(LOCAL_EquipSlotWidget);
+		LOCAL_GridEquipSlowWidget->SetEquipItemType(EquipmentSupportType);
+	}
+	return LOCAL_EquipSlotWidget;
+}

@@ -40,10 +40,13 @@ public:
 		SetItemPosition(NewItemPosition);
 	}
 
+	virtual void RemoveFromInventory() override;
+	
 	void SetItemPosition(const FGridInvSys_ItemPosition& NewItemPosition)
 	{
-		const FGridInvSys_ItemPosition OldItemPosition = ItemPosition;
 		ItemPosition = NewItemPosition;
+
+		SetSlotTag(ItemPosition.EquipSlotTag);
 
 		UWorld* World = GetWorld();
 		if (World && World->GetNetMode() != NM_DedicatedServer)

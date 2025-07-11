@@ -7,6 +7,7 @@
 #include "Widgets/InvSys_InventoryWidget.h"
 #include "GridInvSys_DragItemWidget.generated.h"
 
+class UGridInvSys_EquipmentSlotWidget;
 class UGridInvSys_ContainerGridItemWidget;
 class UGridInvSys_DragDropWidget;
 class UInvSys_InventoryItemInstance;
@@ -22,25 +23,6 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_DragItemWidget : public UInvSys_Invent
 {
 	GENERATED_BODY()
 
-	friend UGridInvSys_DragDropWidget;
-	friend UGridInvSys_ContainerGridItemWidget;
-
 public:
-	void SetDirection(EGridInvSys_ItemDirection NewDirection);
 
-private:
-	void SetItemInstance(UInvSys_InventoryItemInstance* NewItemInstance);
-
-protected:
-	UPROPERTY(BlueprintReadOnly, Category = "Dragging Widget")
-	EGridInvSys_ItemDirection ItemDirection = EGridInvSys_ItemDirection::Horizontal;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Dragging Widget")
-	TObjectPtr<UInvSys_InventoryItemInstance> ItemInstance = nullptr;
-
-	UPROPERTY(BlueprintReadWrite, Category = "Drag Item Widget", meta = (BindWidget))
-	TObjectPtr<USizeBox> SizeBox_DragItem;
-
-	UPROPERTY(BlueprintReadWrite, Category = "Drag Item Widget", meta = (BindWidget))
-	TObjectPtr<UImage> Image_DragItem;
 };

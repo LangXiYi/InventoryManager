@@ -7,6 +7,10 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/InventoryObject/GridInvSys_GridEquipContainerObject.h"
 #include "Data/GridInvSys_InventoryItemInstance.h"
+#include "Engine/ActorChannel.h"
+#include "Net/UnrealNetwork.h"
+#include "Widgets/GridInvSys_DragItemWidget.h"
+#include "Widgets/InvSys_EquipSlotWidget.h"
 
 
 // Sets default values for this component's properties
@@ -46,16 +50,12 @@ void UGridInvSys_InventoryComponent::AddInventoryItemToGridContainer(FGridInvSys
 	}*/
 }
 
-void UGridInvSys_InventoryComponent::AddItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
+void UGridInvSys_InventoryComponent::AddItemDefinitionToContainerPos(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
 	int32 StackCount, FGridInvSys_ItemPosition Pos)
 {
-	if (HasAuthority())
+	if (ItemDef)
 	{
-		UGridInvSys_GridEquipContainerObject* ContainerObj = GetInventoryObject<UGridInvSys_GridEquipContainerObject>(Pos.EquipSlotTag);
-		if (ContainerObj)
-		{
-			ContainerObj->AddItemDefinition<UGridInvSys_InventoryItemInstance>(ItemDef, StackCount, Pos);
-		}
+		AddItemDefinitionToContainer<UGridInvSys_InventoryItemInstance>(ItemDef, Pos.EquipSlotTag, StackCount, Pos);
 	}
 }
 
@@ -170,21 +170,6 @@ bool UGridInvSys_InventoryComponent::FindEnoughFreeSpace(FName SlotName, FIntPoi
 	return false;
 }
 
-// Called when the game starts
-void UGridInvSys_InventoryComponent::BeginPlay()
-{
-	Super::BeginPlay();
-}
-
-/*void UGridInvSys_InventoryComponent::NativeOnInitInventoryObjects(APlayerController* InController)
-{
-	//Super::NativeOnInitInventoryObjects(InController);
-	check(InController)
-	InventoryLayoutWidget = CreateWidget(InController, InventoryLayoutWidgetClass);
-
-	GetNetMode();
-}*/
-
 bool UGridInvSys_InventoryComponent::FindInventoryItem(FName SlotName, const FIntPoint& ItemPosition, FGridInvSys_InventoryItem& OutItem)
 {
 	/*if (InventoryObjectMap_DEPRECATED.Contains(SlotName))
@@ -234,5 +219,4 @@ void UGridInvSys_InventoryComponent::GetAllContainerSlotName(TArray<FName>& OutA
 void UGridInvSys_InventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
 }

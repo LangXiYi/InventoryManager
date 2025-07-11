@@ -18,6 +18,9 @@ public:
 	UInvSys_TagSlot* FindTagSlot(FGameplayTag InSlotTag);
 
 	void CollectAllTagSlots();
+
+protected:
+	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 	
 protected:
 	UPROPERTY(Transient)

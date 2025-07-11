@@ -19,16 +19,27 @@ class BASEINVENTORYSYSTEM_API UInvSys_EquipSlotWidget : public UInvSys_Inventory
 	GENERATED_BODY()
 
 public:
-	virtual void UpdateEquipItem(UInvSys_InventoryItemInstance* NewItemInstance);
+	virtual void EquipItemInstance(UInvSys_InventoryItemInstance* NewItemInstance);
+	virtual void UnEquipItemInstance();
 	
 	void SetInventoryObject(UInvSys_BaseEquipmentObject* NewInvObj);
 
 protected:
-	UFUNCTION(BlueprintImplementableEvent)
-	void OnUnEquipInventoryItem();
-	
+	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
+
+protected:
+	/**
+	 * 创建 InventoryItemWidget 
+	 * @param NewItemInstance 
+	 */
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnEquipInventoryItem(UInvSys_InventoryItemInstance* NewItemInstance);
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnUnEquipInventoryItem();
+
+	UFUNCTION(BlueprintNativeEvent)
+	bool CheckIsCanDrop(UInvSys_InventoryItemInstance* InItemInstance);
 	
 protected:
 	UPROPERTY()

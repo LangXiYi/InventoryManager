@@ -40,6 +40,7 @@ public class BaseInventorySystem : ModuleRules
 				"Slate",
 				"NetCore",
 				"SlateCore",
+				"InputCore",
 				"UMG",
 				"DeveloperSettings",
 				"GameplayTags",

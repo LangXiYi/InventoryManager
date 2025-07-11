@@ -98,23 +98,23 @@ void UGridInvSys_GridEquipContainerObject::GetLifetimeReplicatedProps(TArray<FLi
 
 void UGridInvSys_GridEquipContainerObject::OnItemPositionChange(const FGridInvSys_ItemPositionChangeMessage& Message)
 {
-	if (EquipSlotWidget == nullptr) return;
+	if (ContainerLayout == nullptr) return;
 
-	UGridInvSys_EquipContainerSlotWidget* LOCAL_ContainerSlot = nullptr;
-	if (EquipSlotWidget->IsA(UGridInvSys_EquipContainerSlotWidget::StaticClass()))
+	UGridInvSys_ContainerGridLayoutWidget* LOCAL_ContainerLayout = nullptr;
+	if (ContainerLayout->IsA(UGridInvSys_ContainerGridLayoutWidget::StaticClass()))
 	{
-		LOCAL_ContainerSlot = Cast<UGridInvSys_EquipContainerSlotWidget>(EquipSlotWidget);
+		LOCAL_ContainerLayout = Cast<UGridInvSys_ContainerGridLayoutWidget>(ContainerLayout);
 	}
-	if (LOCAL_ContainerSlot == nullptr) return; //目标控件类型不匹配。
+	if (LOCAL_ContainerLayout == nullptr) return; //目标控件类型不匹配。
 
 	UE_LOG(LogInventorySystem, Log, TEXT("==== 正在处理物品位置变化事件 ===="))
-	if (UGridInvSys_ContainerGridItemWidget* ItemWidget = LOCAL_ContainerSlot->FindGridItemWidget(Message.OldPosition)) 
+	if (UGridInvSys_ContainerGridItemWidget* ItemWidget = LOCAL_ContainerLayout->FindGridItemWidget(Message.OldPosition)) 
 	{
 		UE_LOG(LogInventorySystem, Log, TEXT("正在移除旧位置的物品"))
 		ItemWidget->RemoveItemInstance();
 	}
 	
-	if (UGridInvSys_ContainerGridItemWidget* ItemWidget = LOCAL_ContainerSlot->FindGridItemWidget(Message.NewPosition))
+	if (UGridInvSys_ContainerGridItemWidget* ItemWidget = LOCAL_ContainerLayout->FindGridItemWidget(Message.NewPosition))
 	{
 		UE_LOG(LogInventorySystem, Log, TEXT("正在为新位置添加物品"))
 		ItemWidget->UpdateItemInstance(Message.Instance);
@@ -123,16 +123,16 @@ void UGridInvSys_GridEquipContainerObject::OnItemPositionChange(const FGridInvSy
 
 void UGridInvSys_GridEquipContainerObject::OnInventoryStackChange(const FInvSys_InventoryStackChangeMessage& ChangeInfo)
 {
-	if (EquipSlotWidget == nullptr) return;
+	if (ContainerLayout == nullptr) return;
 
-	UGridInvSys_EquipContainerSlotWidget* LOCAL_ContainerSlot = nullptr;
-	if (EquipSlotWidget.IsA(UGridInvSys_EquipContainerSlotWidget::StaticClass()))
+	UGridInvSys_ContainerGridLayoutWidget* LOCAL_ContainerLayout = nullptr;
+	if (ContainerLayout.IsA(UGridInvSys_ContainerGridLayoutWidget::StaticClass()))
 	{
-		LOCAL_ContainerSlot = Cast<UGridInvSys_EquipContainerSlotWidget>(EquipSlotWidget);
+		LOCAL_ContainerLayout = Cast<UGridInvSys_ContainerGridLayoutWidget>(ContainerLayout);
 	}
-	if (LOCAL_ContainerSlot == nullptr) return; //目标控件类型不匹配。
+	if (LOCAL_ContainerLayout == nullptr) return; //目标控件类型不匹配。
 
-	if (UGridInvSys_ContainerGridItemWidget* ItemWidget = LOCAL_ContainerSlot->FindGridItemWidget(ChangeInfo.ItemInstance)) 
+	if (UGridInvSys_ContainerGridItemWidget* ItemWidget = LOCAL_ContainerLayout->FindGridItemWidget(ChangeInfo.ItemInstance)) 
 	{
 		//todo::更新数量显示
 		UE_LOG(LogInventorySystem, Warning, TEXT("正在更新物品数量 ==> [%d]"), ChangeInfo.StackCount);

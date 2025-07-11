@@ -43,16 +43,15 @@ FString FInvSys_ContainerEntry::GetDebugString() const
 	return FString::Printf(TEXT("%s (%d x %s)"), *GetNameSafe(Instance), StackCount, *GetNameSafe(ItemDef));
 }
 
-bool FInvSys_ContainerList::AddEntry(UInvSys_InventoryItemInstance* Instance, int32 StackCount)
+bool FInvSys_ContainerList::AddEntry(UInvSys_InventoryItemInstance* Instance)
 {
-	if (Instance == nullptr || StackCount <= 0)
+	if (Instance == nullptr)
 	{
 		return false;
 	}
 	
 	FInvSys_ContainerEntry& NewEntry = Entries.AddDefaulted_GetRef();
 	NewEntry.Instance = Instance;
-	NewEntry.StackCount = StackCount;
 
 	MarkItemDirty(NewEntry);
 
@@ -83,7 +82,7 @@ bool FInvSys_ContainerList::RemoveEntry(UInvSys_InventoryItemInstance* Instance)
 	return false;
 }
 
-bool FInvSys_ContainerList::UpdateEntryStackCount(UInvSys_InventoryItemInstance* Instance, int32 NewCount)
+/*bool FInvSys_ContainerList::UpdateEntryStackCount(UInvSys_InventoryItemInstance* Instance, int32 NewCount)
 {
 	for (auto EntryIt = Entries.CreateIterator(); EntryIt; ++EntryIt)
 	{
@@ -101,7 +100,7 @@ bool FInvSys_ContainerList::UpdateEntryStackCount(UInvSys_InventoryItemInstance*
 		}
 	}
 	return false;
-}
+}*/
 
 UInvSys_InventoryItemInstance* FInvSys_ContainerList::FindItem(FGuid ItemUniqueID) const
 {

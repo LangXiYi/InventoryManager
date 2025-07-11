@@ -6,6 +6,8 @@
 #include "BaseInventorySystem.h"
 #include "Components/PanelWidget.h"
 #include "Data/GridInvSys_InventoryContainerInfo.h"
+#include "Data/GridInvSys_InventoryItemInstance.h"
+#include "Data/InvSys_InventoryItemInstance.h"
 #include "Widgets/GridInvSys_ContainerGridWidget.h"
 
 #if WITH_EDITOR
@@ -67,6 +69,18 @@ UGridInvSys_ContainerGridItemWidget* UGridInvSys_ContainerGridLayoutWidget::Find
 		{
 			return GridWidget->GetGridItemWidget(ItemPosition.Position);
 		}
+	}
+	return nullptr;
+}
+
+UGridInvSys_ContainerGridItemWidget* UGridInvSys_ContainerGridLayoutWidget::FindGridItemWidget(
+	const UInvSys_InventoryItemInstance* InItemInstance) const
+{
+	if (InItemInstance && InItemInstance->IsA(UGridInvSys_InventoryItemInstance::StaticClass()))
+	{
+		UGridInvSys_InventoryItemInstance* TempItemInstance = (UGridInvSys_InventoryItemInstance*)InItemInstance;
+		check(TempItemInstance);
+		return FindGridItemWidget(TempItemInstance->GetItemPosition());
 	}
 	return nullptr;
 }

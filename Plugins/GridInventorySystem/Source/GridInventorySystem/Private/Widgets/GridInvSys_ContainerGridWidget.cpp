@@ -14,9 +14,10 @@
 #include "Components/UniformGridPanel.h"
 #include "Data/GridInvSys_InventoryItemInfo.h"
 #include "Data/GridInvSys_InventoryItemInstance.h"
-#include "Data/GridInvSys_ItemFragment_DragDrop.h"
+#include "Data/InvSys_ItemFragment_DragDrop.h"
 #include "Data/GridInvSys_ItemFragment_GridItemSize.h"
 #include "Framework/Notifications/NotificationManager.h"
+#include "Interface/GridInvSys_DraggingItemInterface.h"
 #include "Widgets/GridInvSys_ContainerGridDropWidget.h"
 #include "Widgets/GridInvSys_ContainerGridItemWidget.h"
 #include "Widgets/GridInvSys_ContainerGridLayoutWidget.h"
@@ -266,7 +267,7 @@ bool UGridInvSys_ContainerGridWidget::NativeOnDragOver(const FGeometry& InGeomet
 		const FVector2D LocalPosition = InGeometry.AbsoluteToLocal(ScreenPosition);
 		
 		auto GridItemSizeFragment = DragGridItemInstance->FindFragmentByClass<UGridInvSys_ItemFragment_GridItemSize>();
-		auto DragDropFragment = DragGridItemInstance->FindFragmentByClass<UGridInvSys_ItemFragment_DragDrop>();
+		auto DragDropFragment = DragGridItemInstance->FindFragmentByClass<UInvSys_ItemFragment_DragDrop>();
 		if (GridItemSizeFragment && DragDropFragment)
 		{
 			FIntPoint NativeItemSize = GridItemSizeFragment->ItemSize;
@@ -286,12 +287,12 @@ bool UGridInvSys_ContainerGridWidget::NativeOnDragOver(const FGeometry& InGeomet
 				FIntPoint RevOriginPosition = CalculateGridOriginPoint(LocalPosition, RevItemSize);
 				if (IsCanDropItemFromContainer(GridItemWidget, RevOriginPosition, RevItemSize))
 				{
-					DraggingItemWidget->SetDirection(EGridInvSys_ItemDirection::Vertical);
+					IGridInvSys_DraggingItemInterface::Execute_UpdateItemDirection(DraggingItemWidget, EGridInvSys_ItemDirection::Vertical);
 					ShowDragGridEffect(RevOriginPosition, RevItemSize, true);
 					return Super::NativeOnDragOver(InGeometry, InDragDropEvent, InOperation);
 				}
 			}
-			DraggingItemWidget->SetDirection(EGridInvSys_ItemDirection::Horizontal);
+			IGridInvSys_DraggingItemInterface::Execute_UpdateItemDirection(DraggingItemWidget, EGridInvSys_ItemDirection::Horizontal);
 			ShowDragGridEffect(NativeOriginPosition, NativeItemSize, bIsCanDrop);
 		}
 	}

@@ -6,6 +6,7 @@
 #include "Widgets/InvSys_InventoryWidget.h"
 #include "GridInvSys_ContainerGridLayoutWidget.generated.h"
 
+class UInvSys_InventoryItemInstance;
 class UGridInvSys_ContainerGridItemWidget;
 struct FGridInvSys_ItemPosition;
 class UGridInvSys_InventoryContainerInfo;
@@ -27,6 +28,7 @@ public:
 	UGridInvSys_ContainerGridWidget* FindContainerGrid(FName GridID);
 
 	UGridInvSys_ContainerGridItemWidget* FindGridItemWidget(const FGridInvSys_ItemPosition& ItemPosition) const;
+	UGridInvSys_ContainerGridItemWidget* FindGridItemWidget(const UInvSys_InventoryItemInstance* InItemInstance) const;
 
 protected:
 	virtual void NativeOnInitialized() override;

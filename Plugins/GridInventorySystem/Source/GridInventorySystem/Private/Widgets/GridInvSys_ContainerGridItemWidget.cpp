@@ -10,7 +10,7 @@
 #include "Components/SizeBox.h"
 #include "Data/GridInvSys_InventoryItemInfo.h"
 #include "Data/GridInvSys_InventoryItemInstance.h"
-#include "Data/GridInvSys_ItemFragment_DragDrop.h"
+#include "Data/InvSys_ItemFragment_DragDrop.h"
 #include "Data/GridInvSys_ItemFragment_GridItemSize.h"
 #include "Widgets/GridInvSys_DragItemWidget.h"
 #include "Data/InvSys_InventoryItemInstance.h"
@@ -237,11 +237,11 @@ void UGridInvSys_ContainerGridItemWidget::NativeConstruct()
 
 FReply UGridInvSys_ContainerGridItemWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
-	if (ItemInstance)
+	/*if (ItemInstance)
 	{
 		FEventReply EventReply = UWidgetBlueprintLibrary::DetectDragIfPressed(InMouseEvent, this, EKeys::LeftMouseButton);
 		return EventReply.NativeReply;
-	}
+	}*/
 	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 }
 
@@ -250,7 +250,7 @@ void UGridInvSys_ContainerGridItemWidget::NativeOnDragDetected(const FGeometry& 
 {
 	Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
 
-	if (UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(ItemInstance))
+	/*if (UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(ItemInstance))
 	{
 		auto DragDropFragment = GridItemInstance->FindFragmentByClass<UGridInvSys_ItemFragment_DragDrop>();
 		if (DragDropFragment)
@@ -259,7 +259,7 @@ void UGridInvSys_ContainerGridItemWidget::NativeOnDragDetected(const FGeometry& 
 			UGridInvSys_DragItemWidget* DraggingWidget =
 				CreateWidget<UGridInvSys_DragItemWidget>(this, DragDropFragment->DraggingWidgetClass);
 			
-			DraggingWidget->SetItemInstance(GridItemInstance);
+			DraggingWidget->UpdateItemInstance(GridItemInstance);
 	
 			UDragDropOperation* DragDropOperation = NewObject<UDragDropOperation>();
 			DragDropOperation->Payload = this;
@@ -269,5 +269,5 @@ void UGridInvSys_ContainerGridItemWidget::NativeOnDragDetected(const FGeometry& 
 
 			OutOperation = DragDropOperation;
 		}
-	}
+	}*/
 }

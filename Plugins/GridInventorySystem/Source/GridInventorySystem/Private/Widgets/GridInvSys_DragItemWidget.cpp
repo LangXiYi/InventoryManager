@@ -9,7 +9,7 @@
 #include "Data/GridInvSys_ItemFragment_EquippedIcon.h"
 #include "Data/GridInvSys_ItemFragment_GridItemSize.h"
 
-void UGridInvSys_DragItemWidget::SetItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)
+/*void UGridInvSys_DragItemWidget::UpdateItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)
 {
 	if (NewItemInstance)
 	{
@@ -27,7 +27,7 @@ void UGridInvSys_DragItemWidget::SetItemInstance(UInvSys_InventoryItemInstance* 
 	}
 }
 
-void UGridInvSys_DragItemWidget::SetDirection(EGridInvSys_ItemDirection NewDirection)
+void UGridInvSys_DragItemWidget::UpdateItemDirection(EGridInvSys_ItemDirection NewDirection)
 {
 	ItemDirection = NewDirection;
-}
+}*/

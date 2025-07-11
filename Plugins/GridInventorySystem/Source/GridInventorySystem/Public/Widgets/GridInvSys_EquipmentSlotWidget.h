@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Data/GridInvSys_ItemFragment_ItemType.h"
 #include "Widgets/InvSys_EquipSlotWidget.h"
 #include "GridInvSys_EquipmentSlotWidget.generated.h"
 
@@ -20,9 +21,18 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_EquipmentSlotWidget : public UInvSys_E
 	GENERATED_BODY()
 
 public:
-	virtual void SetInventoryComponent(UInvSys_InventoryComponent* NewInvComp) override;
+	void SetEquipItemType(EGridInvSys_InventoryItemType NewEquipItemType)
+	{
+		EquipItemType = NewEquipItemType;
+	}
+	
+protected:
+	virtual bool CheckIsCanDrop_Implementation(UInvSys_InventoryItemInstance* InItemInstance) override;
 	
 protected:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
 	TObjectPtr<UGridInvSys_DragDropWidget> DragDropWidget;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Equip Slot")
+	EGridInvSys_InventoryItemType EquipItemType;
 };

@@ -3,12 +3,31 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "InvSys_InventoryItemDefinition.h"
 #include "UObject/Object.h"
 #include "InvSys_InventoryItemInstance.generated.h"
 
+class UInvSys_InventoryComponent;
 class UInvSys_InventoryItemFragment;
 class UGridInvSys_InventoryItemDefinition;
+
+USTRUCT(BlueprintType)
+struct FInvSys_InventoryStackChangeMessage
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = Inventory)
+	UInvSys_InventoryItemInstance* ItemInstance = nullptr;
+
+	UPROPERTY(BlueprintReadOnly, Category = Inventory)
+	int32 StackCount;
+
+	UPROPERTY(BlueprintReadOnly, Category = Inventory)
+	int32 Delta;
+};
+
+DECLARE_DELEGATE_OneParam(FOnInventoryStackChange, FInvSys_InventoryStackChangeMessage);
 
 /**
  * 
@@ -26,13 +45,39 @@ public:
 	 * 那么你就必须在你的子类中定义一个与该属性类型一致的 InitItemInstanceProps 函数。*/
 	 void InitItemInstanceProps(const int32& Data) {}
 
+	virtual void RemoveFromInventory();
+
 	//~UObject interface
 	virtual bool IsSupportedForNetworking() const override { return true; }
 	//~End of UObject interface
 
-	TSubclassOf<UInvSys_InventoryItemDefinition> GetItemDefinition() const
+	FORCEINLINE FOnInventoryStackChange& OnInventoryStackChangeDelegate()
 	{
-		return ItemDefinition;
+		return OnInventoryStackChange;
+	}
+
+	FORCEINLINE void BroadcastStackChangeMessage(int32 OldCount, int32 NewCount) // 广播堆叠数量变化事件
+	{
+		FInvSys_InventoryStackChangeMessage StackChangeMessage;
+		StackChangeMessage.ItemInstance = this;
+		StackChangeMessage.StackCount = NewCount;
+		StackChangeMessage.Delta = NewCount - OldCount;
+
+		if (OnInventoryStackChange.ExecuteIfBound(StackChangeMessage))
+		{
+			//广播物品堆叠数量变化
+		}
+	}
+	
+	/**
+	 * Getter or Setter
+	 */
+public:
+	UFUNCTION(BlueprintPure)
+	FText GetItemDisplayName() const
+	{
+		check(ItemDefinition);
+		return GetDefault<UInvSys_InventoryItemDefinition>(ItemDefinition)->GetItemDisplayName();
 	}
 	
 	UFUNCTION(BlueprintCallable, BlueprintPure=false, meta=(DeterminesOutputType=FragmentClass))
@@ -44,28 +89,82 @@ public:
 		return (ResultClass*)FindFragmentByClass(ResultClass::StaticClass());
 	}
 
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
 	void SetItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> NewItemDef);
 
+	void SetInventoryComponent(UInvSys_InventoryComponent* NewInvComp);
+
 	void SetItemUniqueID(FGuid Guid);
+	
+	void SetSlotTag(FGameplayTag Tag);
+
+	void SetStackCount(int32 NewStackCount)
+	{
+		StackCount = NewStackCount;
+
+		UWorld* World = GetWorld();
+		if (World && World->GetNetMode() != NM_DedicatedServer)
+		{
+			OnRep_StackCount();
+		}
+	}
+
+	TSubclassOf<UInvSys_InventoryItemDefinition> GetItemDefinition() const
+	{
+		return ItemDefinition;
+	}
+
+	template<class T = UInvSys_InventoryComponent>
+	T* GetInventoryComponent() const
+	{
+		return (T*)InvComp;
+	}
 
 	const FGuid& GetItemUniqueID() const
 	{
 		return ItemUniqueID;
 	}
 
-	UFUNCTION(BlueprintPure)
-	FText GetItemDisplayName() const
+
+	FGameplayTag GetSlotTag() const
 	{
-		check(ItemDefinition);
-		return GetDefault<UInvSys_InventoryItemDefinition>(ItemDefinition)->GetItemDisplayName();
+		return SlotTag;
 	}
 
+	int32 GetStackCount() const
+	{
+		return StackCount;
+	}
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+
+public:
+	/**
+	 * 供容器使用，如果物品实例是一个容器，那么这个数组就会保存它拥有的所有物品。
+	 * 主要是为了在拖拽容器这类对象时，保存其内部储存所有物品，方便在结束拖拽时统一操作其内部物品。
+	 */
+	UPROPERTY()
+	TArray<UInvSys_InventoryItemInstance*> MyInstances;
+	
 protected:
-	UPROPERTY(Replicated)
+	UPROPERTY(Replicated, BlueprintReadOnly)
 	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDefinition = nullptr;
 
-	UPROPERTY(Replicated)
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	TObjectPtr<UInvSys_InventoryComponent> InvComp = nullptr;
+	
+	UPROPERTY(Replicated, BlueprintReadOnly)
 	FGuid ItemUniqueID = FGuid();
+
+	UPROPERTY(ReplicatedUsing = OnRep_StackCount, BlueprintReadOnly)
+	int32 StackCount = 0;
+	UFUNCTION()
+	void OnRep_StackCount();
+	int32 LastStackCount = 0;
+
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	FGameplayTag  SlotTag;
+
+private:
+	FOnInventoryStackChange OnInventoryStackChange;
 };

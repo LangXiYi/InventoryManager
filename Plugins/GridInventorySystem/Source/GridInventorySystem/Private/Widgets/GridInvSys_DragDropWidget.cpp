@@ -6,7 +6,7 @@
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Data/GridInvSys_InventoryItemInstance.h"
 #include "Data/InvSys_InventoryItemInstance.h"
-#include "Data/GridInvSys_ItemFragment_DragDrop.h"
+#include "Data/InvSys_ItemFragment_DragDrop.h"
 #include "Widgets/GridInvSys_DragItemWidget.h"
 #include "Data/InvSys_InventoryItemInfo.h"
 
@@ -47,7 +47,7 @@ void UGridInvSys_DragDropWidget::NativeOnDragDetected(const FGeometry& InGeometr
 {
 	Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
 
-	if (UGridInvSys_InventoryItemInstance* GridItemInstance = GetItemInstance<UGridInvSys_InventoryItemInstance>())
+	/*if (UGridInvSys_InventoryItemInstance* GridItemInstance = GetItemInstance<UGridInvSys_InventoryItemInstance>())
 	{
 		auto DragDropFragment = GridItemInstance->FindFragmentByClass<UGridInvSys_ItemFragment_DragDrop>();
 		if (DragDropFragment)
@@ -65,5 +65,5 @@ void UGridInvSys_DragDropWidget::NativeOnDragDetected(const FGeometry& InGeometr
 
 			OutOperation = DragDropOperation;
 		}
-	}
+	}*/
 }

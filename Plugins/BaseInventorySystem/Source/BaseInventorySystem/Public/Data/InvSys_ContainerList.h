@@ -13,7 +13,7 @@ class UInvSys_InventoryComponent;
 class UInvSys_InventoryItemInstance;
 struct FInvSys_ContainerEntry;
 
-USTRUCT(BlueprintType)
+/*USTRUCT(BlueprintType)
 struct FInvSys_InventoryStackChangeMessage
 {
 	GENERATED_BODY()
@@ -28,7 +28,7 @@ struct FInvSys_InventoryStackChangeMessage
 	int32 Delta;
 };
 
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnInventoryStackChange, FInvSys_InventoryStackChangeMessage);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnInventoryStackChange, FInvSys_InventoryStackChangeMessage);*/
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnInventoryItemChange, UInvSys_InventoryItemInstance*);
 // 由容器广播给外部。
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnContainerEntryChange, const FInvSys_ContainerEntry&);
@@ -100,6 +100,10 @@ public:
 		T* Result = NewObject<T>(OwnerObject->GetOwner());
 		Result->SetItemDefinition(ItemDef);
 		Result->SetItemUniqueID(FGuid::NewGuid());
+		Result->SetSlotTag(OwnerObject->GetSlotTag());
+		Result->SetStackCount(StackCount);
+		Result->SetInventoryComponent(OwnerObject->GetInventoryComponent());
+
 		for (const UInvSys_InventoryItemFragment* Fragment : GetDefault<UInvSys_InventoryItemDefinition>(ItemDef)->GetFragments())
 		{
 			if (Fragment != nullptr)
@@ -109,7 +113,7 @@ public:
 		}
 		
 		NewEntry.Instance = Result;
-		NewEntry.StackCount = StackCount;
+		//NewEntry.StackCount = StackCount;
 		//执行可变参数模板，将参数列表中的值赋予目标对象。
 		int32 Arr[] = {(InitItemInstanceProps(Result, Args), 0)...}; 
 		
@@ -128,11 +132,11 @@ public:
 	 * @param Instance 
 	 * @param StackCount 
 	 */
-	bool AddEntry(UInvSys_InventoryItemInstance* Instance, int32 StackCount);
+	bool AddEntry(UInvSys_InventoryItemInstance* Instance);
 	
 	bool RemoveEntry(UInvSys_InventoryItemInstance* Instance);
 
-	bool UpdateEntryStackCount(UInvSys_InventoryItemInstance* Instance, int32 NewCount);
+	// bool UpdateEntryStackCount(UInvSys_InventoryItemInstance* Instance, int32 NewCount);
 
 	template<class T = UInvSys_InventoryItemInstance>
 	TArray<T*> GetAllItems() const
@@ -174,7 +178,7 @@ public:
 		for (int32 Index : ChangedIndices)
 		{
 			FInvSys_ContainerEntry& Entry = Entries[Index];
-			BroadcastStackChangeMessage(Entry, Entry.LastObservedCount, Entry.StackCount);
+			//BroadcastStackChangeMessage(Entry, Entry.LastObservedCount, Entry.StackCount);
 		}
 	}
 	//~End of FFastArraySerializer contract
@@ -187,13 +191,13 @@ public:
 	FORCEINLINE void BroadcastAddEntryMessage(const FInvSys_ContainerEntry& Entry)
 	{
 		OnContainerEntryAdded.Broadcast(Entry);
-		BroadcastStackChangeMessage(Entry, 0, Entry.StackCount);
+		// BroadcastStackChangeMessage(Entry, 0, Entry.StackCount);
 	}
 
 	FORCEINLINE void BroadcastRemoveEntryMessage(const FInvSys_ContainerEntry& Entry)
 	{
 		OnContainerEntryRemove.Broadcast(Entry);
-		BroadcastStackChangeMessage(Entry, Entry.StackCount, 0);
+		// BroadcastStackChangeMessage(Entry, Entry.StackCount, 0);
 	}
 
 	FORCEINLINE FOnContainerEntryChange& OnContainerEntryAddedDelegate()
@@ -206,13 +210,13 @@ public:
 		return OnContainerEntryRemove;
 	}
 
-	FORCEINLINE FOnInventoryStackChange& OnInventoryStackChangeDelegate()
+	/*FORCEINLINE FOnInventoryStackChange& OnInventoryStackChangeDelegate()
 	{
 		return OnInventoryStackChange;
-	}
+	}*/
 
 protected:
-	FORCEINLINE void BroadcastStackChangeMessage(const FInvSys_ContainerEntry& Entry, int32 OldCount, int32 NewCount) // 广播堆叠数量变化事件
+	/*FORCEINLINE void BroadcastStackChangeMessage(const FInvSys_ContainerEntry& Entry, int32 OldCount, int32 NewCount) // 广播堆叠数量变化事件
 	{
 		FInvSys_InventoryStackChangeMessage StackChangeMessage;
 		StackChangeMessage.ItemInstance = Entry.Instance;
@@ -220,7 +224,7 @@ protected:
 		StackChangeMessage.Delta = NewCount - OldCount;
 
 		OnInventoryStackChange.Broadcast(StackChangeMessage);
-	}
+	}*/
 
 private:
 	template<class C, class V>
@@ -237,7 +241,7 @@ protected:
 
 	FOnContainerEntryChange OnContainerEntryRemove;
 
-	FOnInventoryStackChange OnInventoryStackChange;
+	/*FOnInventoryStackChange OnInventoryStackChange;*/
 };
 
 template<>

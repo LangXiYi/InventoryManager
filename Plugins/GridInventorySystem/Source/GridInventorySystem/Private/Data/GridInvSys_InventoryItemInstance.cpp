@@ -11,3 +11,10 @@ void UGridInvSys_InventoryItemInstance::GetLifetimeReplicatedProps(TArray<FLifet
 
 	DOREPLIFETIME(UGridInvSys_InventoryItemInstance, ItemPosition);
 }
+
+void UGridInvSys_InventoryItemInstance::RemoveFromInventory()
+{
+	Super::RemoveFromInventory();
+
+	//SetItemPosition(FGridInvSys_ItemPosition());
+}

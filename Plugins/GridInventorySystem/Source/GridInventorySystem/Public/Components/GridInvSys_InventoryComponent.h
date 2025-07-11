@@ -8,6 +8,7 @@
 #include "GridInvSys_InventoryComponent.generated.h"
 
 
+class UGridInvSys_DragItemWidget;
 class UInvSys_InventoryItemDefinition;
 class UGridInvSys_InventoryItemInfo;
 /***
@@ -24,20 +25,19 @@ public:
 	// Sets default values for this component's properties
 	UGridInvSys_InventoryComponent();
 
-	UFUNCTION(BlueprintCallable)
+	// 可根据项目需要资源扩展该函数
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
+	virtual void AddItemDefinitionToContainerPos(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, FGridInvSys_ItemPosition Pos);
+
+	UFUNCTION(BlueprintCallable, meta = (DeprecatedFunction))
 	virtual void AddInventoryItemToGridContainer(FGridInvSys_InventoryItem GridContainerItem);
 
-
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
-	virtual void AddItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, FGridInvSys_ItemPosition Pos);
-
-	
 	/**
 	 * 仅适用于同容器组件下的物品转移
 	 * @param ChangedItems 旧物品的唯一ID
 	 * @param NewItemData 
 	 */
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintCallable, meta = (DeprecatedFunction))
 	virtual void UpdateContainerItemsPosition(TArray<FName> ChangedItems, TArray<FGridInvSys_InventoryItemPosition> NewItemData);
 
 	/**
@@ -46,18 +46,12 @@ public:
 	 * @param FromItemData 本组件需要传给目标组件的数据
 	 * @param ToItemData 目标组件需要传给本组件的数据
 	 */
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintCallable, meta = (DeprecatedFunction))
 	virtual void UpdateOtherContainerItemsPosition(UGridInvSys_InventoryComponent* ToInvCom,
 		TArray<FGridInvSys_InventoryItem> FromItemData, TArray<FGridInvSys_InventoryItem> ToItemData);
 
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintCallable, meta = (DeprecatedFunction))
 	bool FindEnoughFreeSpace(FName SlotName, FIntPoint ItemSize, FGridInvSys_InventoryItemPosition& OutPosition) const;
-
-protected:
-	// Called when the game starts
-	virtual void BeginPlay() override;
-
-	//virtual void NativeOnInitInventoryObjects(APlayerController* InController) override;
 
 public:
 	/**

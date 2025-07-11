@@ -8,8 +8,12 @@
 #include "Components/InventoryObject/InvSys_BaseEquipmentObject.h"
 #include "Components/InventoryObject/InvSys_BaseInventoryObject.h"
 #include "Data/InvSys_InventoryContentMapping.h"
+#include "Data/InvSys_InventoryItemInstance.h"
+#include "Data/InvSys_ItemFragment_DragDrop.h"
+#include "Data/InvSys_ItemFragment_PickUpItem.h"
 #include "Engine/ActorChannel.h"
 #include "Engine/AssetManager.h"
+#include "Interface/InvSys_DraggingItemInterface.h"
 #include "Net/UnrealNetwork.h"
 #include "Widgets/InvSys_EquipSlotWidget.h"
 #include "Widgets/InvSys_InventoryLayoutWidget.h"
@@ -25,39 +29,146 @@ UInvSys_InventoryComponent::UInvSys_InventoryComponent(const FObjectInitializer&
 {
 	SetIsReplicatedByDefault(true);
 	// 不开启该属性，开启该属性可能会出现子对象与FastArray的属性同步失序的问题。
-	check(bReplicateUsingRegisteredSubObjectList == false);
-	//bReplicateUsingRegisteredSubObjectList = true; // 不推荐使用，会出现子对象与FastArray的属性同步失序的问题。
+	bReplicateUsingRegisteredSubObjectList = false;
+	//bReplicateUsingRegisteredSubObjectList = true; // 不推荐使用，否则可能会出现子对象与FastArray的属性同步失序的问题。
 }
 
-void UInvSys_InventoryComponent::AddInventoryItemToEquipSlot(const FInvSys_InventoryItem& NewItem)
+bool UInvSys_InventoryComponent::TryDragItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
 {
-	/*if (InventoryObjectMap_DEPRECATED.Contains(NewItem.SlotName) == false)
+	if (DraggingItemInstance != nullptr || InItemInstance == nullptr) return false; // 仅在未拖拽其它物品时可以拖拽。
+
+	auto DragDropFragment = InItemInstance->FindFragmentByClass<UInvSys_ItemFragment_DragDrop>();
+	if (DragDropFragment == nullptr)
 	{
-		UE_LOG(LogInventorySystem, Log, TEXT("%s 必须在 InventoryObjectMap 中存在的。"), *NewItem.SlotName.ToString());
-		return;
+		UE_LOG(LogInventorySystem, Log, TEXT("目标物品不支持拖拽功能"))
+		return false;
 	}
+	
+	UInvSys_InventoryComponent* LOCAL_InvComp = InItemInstance->GetInventoryComponent<UInvSys_InventoryComponent>();
+	if (LOCAL_InvComp == nullptr) return false;
 
-	if (InventoryObjectMap_DEPRECATED[NewItem.SlotName]->IsA(UInvSys_BaseEquipmentObject::StaticClass()))
+	//将物品从它所在的容器中移除
+	LOCAL_InvComp->RemoveItemInstance(InItemInstance);
+	if (LOCAL_InvComp != this) //不同库存组件的物品拖拽会生成一个新的物品给客户端，然后销毁传入的物品实例
 	{
-		UE_LOG(LogInventorySystem, Log, TEXT("[%s:%s] EquipSlot add item [%s] to [%s]."),
-			HasAuthority() ? TEXT("Server") : TEXT("Client"), *GetOwner()->GetName(),
-			*NewItem.ItemID.ToString(), *NewItem.SlotName.ToString());
-
-		UInvSys_BaseEquipmentObject* EquipmentObj = Cast<UInvSys_BaseEquipmentObject>(InventoryObjectMap_DEPRECATED[NewItem.SlotName]);
-		EquipmentObj->AddInventoryItemToEquipSlot_DEPRECATED(NewItem);
-	}*/
+		UInvSys_InventoryItemInstance* LOCAL_ItemInstance = InItemInstance; // 暂存目标指针
+		InItemInstance = DuplicateObject(InItemInstance, GetOwner()); // 复制一个新的物品实例，将其Outer指定为当前组件的Owner
+		LOCAL_ItemInstance->ConditionalBeginDestroy(); //标记目标物品待销毁
+	}
+	DraggingItemInstance = InItemInstance; //通过RepNotify通知客户端
+	if (GetNetMode() != NM_DedicatedServer)
+	{
+		OnRep_DraggingItemInstance();
+	}
+	return true;
 }
 
-void UInvSys_InventoryComponent::EquipInventoryItem(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDefinition, FGameplayTag SlotTag)
+void UInvSys_InventoryComponent::CancelDragItemInstance()
 {
-	if (HasAuthority())
+	if (DraggingItemInstance)
 	{
-		UInvSys_BaseEquipmentObject* EquipObj = GetInventoryObject<UInvSys_BaseEquipmentObject>(SlotTag);
-		if (EquipObj != nullptr)
+		DraggingItemInstance = nullptr;
+		if (GetNetMode() != NM_DedicatedServer)
 		{
-			EquipObj->EquipInventoryItem(ItemDefinition);
+			OnRep_DraggingItemInstance();
 		}
 	}
+}
+
+void UInvSys_InventoryComponent::NativeOnDiscardItemInstance(UInvSys_InventoryItemInstance* InDraggingItemInstance)
+{
+	UE_LOG(LogInventorySystem, Error, TEXT("正在尝试丢弃该物品"))
+	auto PickUpItemFragment = InDraggingItemInstance->FindFragmentByClass<UInvSys_ItemFragment_PickUpItem>();
+	if (PickUpItemFragment)
+	{
+		//todo::创建可拾取的物品
+		// 广播创建可拾取物品
+	}
+}
+
+void UInvSys_InventoryComponent::NativeOnDraggingItemInstance(UInvSys_InventoryItemInstance* InDraggingItemInstance)
+{
+	if (InDraggingItemInstance && DraggingWidget)
+	{
+		UE_LOG(LogInventorySystem, Log, TEXT("修正客户端的拖拽的目标物品"))
+		IInvSys_DraggingItemInterface::Execute_UpdateItemInstance(DraggingWidget, InDraggingItemInstance);
+	}
+}
+
+void UInvSys_InventoryComponent::NativeOnCancelDragItemInstance()
+{
+	if (DraggingWidget)
+	{
+		UE_LOG(LogInventorySystem, Warning, TEXT("客户端取消拖拽了"))
+		IInvSys_DraggingItemInterface::Execute_OnCancelDragItemInstance(DraggingWidget);
+	}
+}
+
+void UInvSys_InventoryComponent::EquipItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, FGameplayTag SlotTag)
+{
+	UInvSys_BaseEquipmentObject* EquipObj = GetInventoryObject<UInvSys_BaseEquipmentObject>(SlotTag);
+	if (EquipObj != nullptr)
+	{
+		UInvSys_InventoryItemInstance* LOCAL_ItemInstance = EquipObj->EquipItemDefinition(ItemDef);
+		if (LOCAL_ItemInstance)
+		{
+			OnEquipItemInstance(LOCAL_ItemInstance);
+		}
+	}
+}
+
+void UInvSys_InventoryComponent::EquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag)
+{
+	if (InItemInstance)
+	{
+		UInvSys_BaseEquipmentObject* EquipObj = GetInventoryObject<UInvSys_BaseEquipmentObject>(SlotTag);
+		if (EquipObj != nullptr && EquipObj->GetEquipItemInstance() == nullptr)
+		{
+			InItemInstance->SetSlotTag(SlotTag);
+			InItemInstance->SetInventoryComponent(this);
+
+			EquipObj->EquipInventoryItem(InItemInstance);
+			// 检查目标内部是否存在其他的物品
+			if (InItemInstance->MyInstances.Num() > 0)
+			{
+				UInvSys_BaseEquipContainerObject* ContainerObject = GetInventoryObject<UInvSys_BaseEquipContainerObject>(SlotTag);
+				check(ContainerObject)
+				UE_LOG(LogInventorySystem, Log, TEXT("物品内部包含了[%d]个其他物品，现在正在对其内部物品进行转移。"), InItemInstance->MyInstances.Num())
+				ContainerObject->AddItemInstances(InItemInstance->MyInstances);
+				InItemInstance->MyInstances.Empty();
+			}
+			OnEquipItemInstance(InItemInstance);
+		}
+	}
+}
+
+void UInvSys_InventoryComponent::UnEquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
+{
+	if (InItemInstance)
+	{
+		FGameplayTag EquipSlotTag = InItemInstance->GetSlotTag();
+		UInvSys_BaseEquipmentObject* EquipObj = GetInventoryObject<UInvSys_BaseEquipmentObject>(EquipSlotTag);
+		if (EquipObj != nullptr && EquipObj->GetEquipItemInstance() == InItemInstance)
+		{
+			EquipObj->UnEquipInventoryItem();
+			OnUnEquipItemInstance(InItemInstance);
+		}
+	}
+}
+
+bool UInvSys_InventoryComponent::RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
+{
+	if (InItemInstance)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("正在删除目标：%s"), *InItemInstance->GetName());
+		FGameplayTag EquipSlotTag = InItemInstance->GetSlotTag();
+		// 这里的InvObject为最最基础的Object
+		if (UInvSys_BaseInventoryObject* LOCAL_InvObj = GetInventoryObject(EquipSlotTag))
+		{
+			return LOCAL_InvObj->RemoveItemInstance(InItemInstance);
+		}
+	}
+	return false;
 }
 
 bool UInvSys_InventoryComponent::HasAuthority() const
@@ -88,18 +199,6 @@ bool UInvSys_InventoryComponent::IsLocalController() const
 {
 	ensure(OwningPlayer);
 	return OwningPlayer ? OwningPlayer->IsLocalController() : false;
-}
-
-// Called when the game starts
-void UInvSys_InventoryComponent::BeginPlay()
-{
-	Super::BeginPlay();
-
-	// ...
-	if (HasAuthority())
-	{
-		ConstructInventoryObjects();
-	}
 }
 
 void UInvSys_InventoryComponent::ConstructInventoryObjects()
@@ -145,8 +244,59 @@ void UInvSys_InventoryComponent::ConstructInventoryObjects()
 	}
 }
 
+/*void UInvSys_InventoryComponent::Server_TryDragItemInstance_Implementation(
+	UInvSys_InventoryItemInstance* InItemInstance)
+{
+	bool LOCAL_IsSuccess = TryDragItemInstance(InItemInstance);
+	if (LOCAL_IsSuccess == false)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("[Server] 服务器尝试拽起目标物品失败，可能是目标物品为NULL或服务器未生成该物品。"))
+	}
+}
+
+void UInvSys_InventoryComponent::Server_CancelDragItemInstance_Implementation(
+	UInvSys_InventoryItemInstance* InItemInstance)
+{
+	CancelDragItemInstance();
+}*/
+
+void UInvSys_InventoryComponent::Server_EquipItemInstance_Implementation(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag)
+{
+	check(InvComp);
+	InvComp->EquipItemInstance(InItemInstance, SlotTag);
+}
+
+void UInvSys_InventoryComponent::Server_EquipItemDefinition_Implementation(
+	UInvSys_InventoryComponent* InvComp, TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, FGameplayTag SlotTag)
+{
+	check(InvComp);
+	InvComp->EquipItemDefinition(ItemDef, SlotTag);
+}
+
+void UInvSys_InventoryComponent::Server_TryDragItemInstance_Implementation(UInvSys_InventoryComponent* InvComp,
+	UInvSys_InventoryItemInstance* InItemInstance)
+{
+	check(InvComp)
+	bool LOCAL_IsSuccess = InvComp->TryDragItemInstance(InItemInstance);
+	if (LOCAL_IsSuccess == false)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("[Server] 服务器尝试拽起目标物品失败，可能是目标物品为NULL或服务器未生成该物品。"))
+	}
+}
+
+void UInvSys_InventoryComponent::Server_CancelDragItemInstance_Implementation(UInvSys_InventoryComponent* InvComp)
+{
+	check(InvComp)
+	InvComp->CancelDragItemInstance();
+}
+
+void UInvSys_InventoryComponent::SetDraggingWidget(UUserWidget* NewDraggingWidget)
+{
+	DraggingWidget = NewDraggingWidget;
+}
+
 UInvSys_BaseInventoryObject* UInvSys_InventoryComponent::GetInventoryObject(FGameplayTag Tag,
-	TSubclassOf<UInvSys_BaseInventoryObject> OutClass) const
+                                                                            TSubclassOf<UInvSys_BaseInventoryObject> OutClass) const
 {
 	return GetInventoryObject<UInvSys_BaseInventoryObject>(Tag);
 }
@@ -178,6 +328,11 @@ bool UInvSys_InventoryComponent::ReplicateSubobjects(UActorChannel* Channel, FOu
 
 		//UActorChannel::SetCurrentSubObjectOwner(GetOwner());
 		WroteSomething |= Channel->ReplicateSubobject(InventoryObject, *Bunch, *RepFlags);
+	}
+
+	if (DraggingItemInstance && IsValid(DraggingItemInstance))
+	{
+		WroteSomething |= Channel->ReplicateSubobject(DraggingItemInstance, *Bunch, *RepFlags);
 	}
 	return WroteSomething;
 }
@@ -220,7 +375,8 @@ void UInvSys_InventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProp
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME_CONDITION(UInvSys_InventoryComponent, InventoryObjectList, COND_None);
+	DOREPLIFETIME(UInvSys_InventoryComponent, InventoryObjectList);
+	DOREPLIFETIME(UInvSys_InventoryComponent, DraggingItemInstance);
 }
 
 void UInvSys_InventoryComponent::OnRep_InventoryObjectList()
@@ -266,6 +422,7 @@ UInvSys_InventoryLayoutWidget* UInvSys_InventoryComponent::CreateDisplayWidget(A
 		LayoutWidget = CreateWidget<UInvSys_InventoryLayoutWidget>(NewPlayerController, LayoutWidgetClass);
 		check(LayoutWidget)
 		LayoutWidget->CollectAllTagSlots();
+		LayoutWidget->SetInventoryComponent(this);
 		
 		for (int i = 0; i < InventoryObjectList.Num(); ++i)
 		{
@@ -278,7 +435,7 @@ UInvSys_InventoryLayoutWidget* UInvSys_InventoryComponent::CreateDisplayWidget(A
 			UInvSys_BaseEquipmentObject* EquipObj = Cast<UInvSys_BaseEquipmentObject>(InventoryObjectList[i]);
 			check(EquipObj)
 			// 将库存对象的控件插入对应位置的插槽。
-			UInvSys_EquipSlotWidget* EquipSlotWidget = EquipObj->CreateEquipSlotWidget(NewPlayerController);
+			UInvSys_EquipSlotWidget* EquipSlotWidget = EquipObj->CreateDisplayWidget(NewPlayerController);
 			FGameplayTag SlotTag = EquipObj->GetSlotTag();
 			UInvSys_TagSlot* TagSlot = LayoutWidget->FindTagSlot(SlotTag); // 根据槽标签，查找对应的槽控件。
 			if (TagSlot)
@@ -300,3 +457,27 @@ void UInvSys_InventoryComponent::Client_TryRefreshInventoryObject_Implementation
 	}
 }
 
+
+void UInvSys_InventoryComponent::OnRep_DraggingItemInstance()
+{
+	// Server端DraggingWidget一定是为空的，且DraggingInstance大概率是存在的
+	// Client端则不会为空
+	// 修正拖拽的物品实例
+	if (IsValid(DraggingWidget))
+	{
+		// 客户端同步更新DraggingItem
+		if (IsValid(DraggingItemInstance))
+		{
+			NativeOnDraggingItemInstance(DraggingItemInstance);
+		}
+		else
+		{
+			NativeOnCancelDragItemInstance();
+		}
+	}
+	else if(IsValid(DraggingItemInstance))
+	{
+		// 除非用户手动调用丢弃至世界，否则不会执行其他操作。
+		// NativeOnDiscardItemInstance(DraggingItemInstance); //丢弃物品至世界。
+	}
+}
