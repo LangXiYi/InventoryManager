@@ -52,24 +52,30 @@ void UInvSys_BaseEquipContainerObject::NativeOnInventoryStackChange(FInvSys_Inve
 	OnInventoryStackChange(ChangeInfo); // 监听 Stack Count 变化
 }
 
-void UInvSys_BaseEquipContainerObject::NativeOnContainerEntryAdded(const FInvSys_ContainerEntry& Entry, bool bIsInit)
+void UInvSys_BaseEquipContainerObject::NativeOnContainerEntryAdded(const FInvSys_ContainerEntry& Entry, bool bIsForceRep)
 {
 	if (Entry.Instance)
 	{
 		Entry.Instance->OnInventoryStackChangeDelegate().BindUObject(this, &UInvSys_BaseEquipContainerObject::NativeOnInventoryStackChange);
-		Entry.Instance->BroadcastStackChangeMessage(0, Entry.Instance->GetStackCount());
+		// Client：!!!客户端环境下复制的对象值优于该对象的属性到达客户端，即先执行该函数然后再执行对象的OnRep函数。
+		// Server: !!!服务器环境则于客户端相反，对象属性的OnRep函数先执行，然后再执行该函数。
+		// 所以为了实现正确的效果，同时避免客户端重复广播改变事件，所以限制条件为初始化阶段或服务器环境下才广播
+		if (bIsForceRep || HasAuthority())
+		{
+			Entry.Instance->BroadcastStackChangeMessage(0, Entry.Instance->GetStackCount());
+		}
 	}
-	OnContainerEntryAdded(Entry, bIsInit);// 监听 Item Instance 变化
+	OnContainerEntryAdded(Entry, bIsForceRep);// 监听 Item Instance 变化
 }
 
-void UInvSys_BaseEquipContainerObject::NativeOnContainerEntryRemove(const FInvSys_ContainerEntry& Entry, bool bIsInit)
+void UInvSys_BaseEquipContainerObject::NativeOnContainerEntryRemove(const FInvSys_ContainerEntry& Entry, bool bIsForceRep)
 {
 	if (Entry.Instance)
 	{
 		Entry.Instance->BroadcastStackChangeMessage(Entry.Instance->GetStackCount(), 0);
 		Entry.Instance->OnInventoryStackChangeDelegate().Unbind();
 	}
-	OnContainerEntryRemove(Entry, bIsInit); // 移除监听 Item Instance 变化
+	OnContainerEntryRemove(Entry, bIsForceRep); // 移除监听 Item Instance 变化
 }
 
 void UInvSys_BaseEquipContainerObject::OnConstructInventoryObject(UInvSys_InventoryComponent* NewInvComp,
@@ -123,10 +129,10 @@ void UInvSys_BaseEquipContainerObject::TryRefreshEquipSlot(const FString& Reason
 void UInvSys_BaseEquipContainerObject::TryRefreshContainerItems()
 {
 	UE_LOG(LogInventorySystem, Log, TEXT("正在刷新容器内所有物品！"))
-	for (const FInvSys_ContainerEntry& Entry : ContainerList.Entries)
-	{
-		ContainerList.BroadcastRemoveEntryMessage(Entry, true);
-	}
+	// for (const FInvSys_ContainerEntry& Entry : ContainerList.Entries)
+	// {
+	// 	ContainerList.BroadcastRemoveEntryMessage(Entry, true);
+	// }
 	for (const FInvSys_ContainerEntry& Entry : ContainerList.Entries)
 	{
 		ContainerList.BroadcastAddEntryMessage(Entry, true);
@@ -140,7 +146,7 @@ bool UInvSys_BaseEquipContainerObject::AddItemInstance(UInvSys_InventoryItemInst
 	ItemInstance->SetSlotTag(EquipSlotTag);
 	ItemInstance->SetInventoryComponent(InventoryComponent);
 	
-	return ContainerList.AddEntry(ItemInstance);
+	return ContainerList.AddEntry(ItemInstance, true);
 }
 
 bool UInvSys_BaseEquipContainerObject::AddItemInstances(TArray<UInvSys_InventoryItemInstance*> ItemInstances)
@@ -155,10 +161,10 @@ bool UInvSys_BaseEquipContainerObject::AddItemInstances(TArray<UInvSys_Inventory
 
 bool UInvSys_BaseEquipContainerObject::RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
 {
-	UE_LOG(LogInventorySystem, Log, TEXT("正在删除容器内的所有物品"))
 	bool LOCAL_IsRemoveEquipContainer = Super::RemoveItemInstance(InItemInstance);
 	if (LOCAL_IsRemoveEquipContainer)
 	{
+		UE_LOG(LogInventorySystem, Log, TEXT("正在删除容器内的所有物品"))
 		// 移除的是容器本体，需要将所有的物品打包转移。
 		InItemInstance->MyInstances.Empty();
 		InItemInstance->MyInstances.Reserve(ContainerList.Entries.Num());
@@ -206,11 +212,25 @@ void UInvSys_BaseEquipContainerObject::NativeOnEquipItemInstance(UInvSys_Invento
 	Super::NativeOnEquipItemInstance(InItemInstance);
 	if (EquipSlotWidget && InItemInstance)
 	{
-		auto Fragment = InItemInstance->FindFragmentByClass<UInvSys_ItemFragment_ContainerLayout>();
+		//将布局控件的创建交给蓝图完成。
+		if (EquipSlotWidget->IsA(UInvSys_EquipContainerSlotWidget::StaticClass()))
+		{
+			UInvSys_EquipContainerSlotWidget* ContainerSlotWidget = Cast<UInvSys_EquipContainerSlotWidget>(EquipSlotWidget);
+			ContainerLayout = ContainerSlotWidget->GetContainerLayoutWidget();
+			GetWorld()->GetTimerManager().SetTimerForNextTick([this]()
+			{
+				// 延迟到下一帧执行，确保ContainerLayout创建完成
+				UE_LOG(LogInventorySystem, Error, TEXT("尝试刷新容器所有物品"))
+				TryRefreshContainerItems();
+			});
+		}
+		// EquipSlotWidget->
+		/*auto Fragment = InItemInstance->FindFragmentByClass<UInvSys_ItemFragment_ContainerLayout>();
 		if (Fragment)
 		{
 			ContainerLayout = CreateWidget<UInvSys_InventoryWidget>(EquipSlotWidget, Fragment->ContainerLayout);
 			ContainerLayout->SetInventoryComponent(InventoryComponent);
+			ContainerLayout->SetSlotTag(EquipSlotTag);
 			if (EquipSlotWidget->IsA(UInvSys_EquipContainerSlotWidget::StaticClass()))
 			{
 				UInvSys_EquipContainerSlotWidget* TempContainerSlotWidget = Cast<UInvSys_EquipContainerSlotWidget>(EquipSlotWidget);
@@ -218,7 +238,7 @@ void UInvSys_BaseEquipContainerObject::NativeOnEquipItemInstance(UInvSys_Invento
 				TempContainerSlotWidget->AddContainerLayout(ContainerLayout);
 				TryRefreshContainerItems();
 			}
-		}
+		}*/
 	}
 }
 
@@ -250,9 +270,9 @@ const UInvSys_InventoryItemInstance* UInvSys_BaseEquipContainerObject::FindItemI
 	return nullptr;
 }
 
-bool UInvSys_BaseEquipContainerObject::ContainsItem(FName UniqueID)
+bool UInvSys_BaseEquipContainerObject::ContainsItem(FGuid ItemUniqueID)
 {
-	return Super::ContainsItem(UniqueID)/* || ContainerItems.Contains(UniqueID)*/;
+	return Super::ContainsItem(ItemUniqueID) || ContainerList.Contains(ItemUniqueID);
 }
 
 void UInvSys_BaseEquipContainerObject::CopyPropertyFromPreEdit(UObject* PreEditPayLoad)

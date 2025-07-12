@@ -23,19 +23,20 @@ void UGridInvSys_ContainerGridItemWidget::OnConstructGridItem(UGridInvSys_Contai
 {
 	ContainerGridWidget = InContainerGrid;
 	Position = InPosition;
-}
-
-void UGridInvSys_ContainerGridItemWidget::SetContainerGridWidget(UGridInvSys_ContainerGridWidget* InContainerGridWidget)
-{
-	ContainerGridWidget = InContainerGridWidget;
+	OriginGridItemWidget = this;
+	GridItemSize = FIntPoint(1, 1);
+	bIsOccupied = false;
+	InventoryComponent = InContainerGrid->GetInventoryComponent();
 }
 
 void UGridInvSys_ContainerGridItemWidget::UpdateItemInfo(const FGridInvSys_InventoryItem& NewInventoryItem)
 {
+	checkNoEntry()
 }
 
 void UGridInvSys_ContainerGridItemWidget::RemoveItemInfo()
 {
+	checkNoEntry()
 }
 
 void UGridInvSys_ContainerGridItemWidget::AddItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)
@@ -52,22 +53,23 @@ void UGridInvSys_ContainerGridItemWidget::AddItemInstance(UInvSys_InventoryItemI
 		return;
 	}
 
-	GridItemSize = CalculateGridItemSize(NewItemInstance);
 	bIsOccupied = true;
 	OriginGridItemWidget = this;
+	ItemInstance = NewItemInstance;
+	GridItemSize = CalculateGridItemSize(NewItemInstance);
 
 	GridSlot->SetRowSpan(GridItemSize.X);
 	GridSlot->SetColumnSpan(GridItemSize.Y);
 	GridSlot->SetLayer(100);
 
-	/*TArray<UGridInvSys_ContainerGridItemWidget*> OutArray;
+	TArray<UGridInvSys_ContainerGridItemWidget*> OutArray;
 	ContainerGridWidget->GetContainerGridItems<UGridInvSys_ContainerGridItemWidget>(OutArray, GetPosition(), GridItemSize, {this});
 	for (UGridInvSys_ContainerGridItemWidget* GridItemWidget : OutArray)
 	{
 		GridItemWidget->RemoveItemInstance();
 		GridItemWidget->bIsOccupied = true;
 		GridItemWidget->OriginGridItemWidget = this;
-	}*/
+	}
 	OnAddItemInstance(NewItemInstance);
 }
 
@@ -79,25 +81,24 @@ void UGridInvSys_ContainerGridItemWidget::RemoveItemInstance()
 		UE_LOG(LogInventorySystem, Warning, TEXT("更新 ItemInfo 失败 InventoryItemWidget 父级类型不是 GridPanel 。"));
 		return;
 	}
-	// 先临时缓存，避免清除数据后数据丢失。
-	bIsOccupied = true;
-	OriginGridItemWidget = this;
+
+	// 先移除下级网格的信息
+	TArray<UGridInvSys_ContainerGridItemWidget*> OutArray;
+	ContainerGridWidget->FindContainerGridItems(OutArray, GetPosition(), GridItemSize, {this});
+	for (UGridInvSys_ContainerGridItemWidget* GridItemWidget : OutArray)
+	{
+		GridItemWidget->RemoveItemInstance();
+	}
+
+	ItemInstance = nullptr;
 	GridItemSize = FIntPoint(1, 1);
+	bIsOccupied = false;
+	OriginGridItemWidget = this;
 
 	GridSlot->SetRowSpan(0);
 	GridSlot->SetColumnSpan(0);
 	GridSlot->SetLayer(0);
 
-	/*TArray<UGridInvSys_ContainerGridItemWidget*> OutArray;
-	ContainerGridWidget->FindContainerGridItems(OutArray, GetPosition(), GridItemSize, {this});
-	for (UGridInvSys_ContainerGridItemWidget* GridItemWidget : OutArray)
-	{
-		// 确保被删除的网格的拥有者是自己而不是其他物品
-		if (GridItemWidget->GetOriginGridItemWidget() == this)
-		{
-			GridItemWidget->RemoveItemInfo();
-		}
-	}*/
 	OnRemoveItemInstance();
 }
 

@@ -32,7 +32,7 @@ DECLARE_DELEGATE_OneParam(FOnInventoryStackChange, FInvSys_InventoryStackChangeM
 /**
  * 
  */
-UCLASS()
+UCLASS(BlueprintType)
 class BASEINVENTORYSYSTEM_API UInvSys_InventoryItemInstance : public UObject
 {
 	GENERATED_BODY()
@@ -43,7 +43,7 @@ public:
 	/**
 	 * 如果在 ItemInstance 中定义了一个需要同步的属性，且该属性在 AddItemDefinition 时传入了该类型的属性
 	 * 那么你就必须在你的子类中定义一个与该属性类型一致的 InitItemInstanceProps 函数。*/
-	 void InitItemInstanceProps(const int32& Data) {}
+	void InitItemInstanceProps(const int32& Data) {}
 
 	virtual void RemoveFromInventory();
 
@@ -119,6 +119,13 @@ public:
 		return (T*)InvComp;
 	}
 
+	template<class T = UInvSys_InventoryComponent>
+	T* GetLastInventoryComponent() const
+	{
+		check(LastInvComp);
+		return (T*)LastInvComp;
+	}
+
 	const FGuid& GetItemUniqueID() const
 	{
 		return ItemUniqueID;
@@ -152,6 +159,9 @@ protected:
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	TObjectPtr<UInvSys_InventoryComponent> InvComp = nullptr;
+
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	TObjectPtr<UInvSys_InventoryComponent> LastInvComp = nullptr;
 	
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	FGuid ItemUniqueID = FGuid();

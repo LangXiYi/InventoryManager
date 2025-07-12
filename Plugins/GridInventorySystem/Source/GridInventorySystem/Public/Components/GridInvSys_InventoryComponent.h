@@ -27,10 +27,18 @@ public:
 
 	// 可根据项目需要资源扩展该函数
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
-	virtual void AddItemDefinitionToContainerPos(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, FGridInvSys_ItemPosition Pos);
+	void AddItemDefinitionToContainerPos(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, FGridInvSys_ItemPosition Pos);
 
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
+	void AddItemInstanceToContainerPos(UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos);
+
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
+	void RestoreItemInstanceToPos(UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos);
+	
 	UFUNCTION(BlueprintCallable, meta = (DeprecatedFunction))
 	virtual void AddInventoryItemToGridContainer(FGridInvSys_InventoryItem GridContainerItem);
+
+	
 
 	/**
 	 * 仅适用于同容器组件下的物品转移
@@ -53,6 +61,23 @@ public:
 	UFUNCTION(BlueprintCallable, meta = (DeprecatedFunction))
 	bool FindEnoughFreeSpace(FName SlotName, FIntPoint ItemSize, FGridInvSys_InventoryItemPosition& OutPosition) const;
 
+public:
+	/**
+	 * RPC Function
+	 **/
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_TryDropItemInstanceToPos(UInvSys_InventoryComponent* InvComp,
+		UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos);
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_AddItemInstancesToContainerPos(UInvSys_InventoryComponent* InvComp,
+		const TArray<UInvSys_InventoryItemInstance*>& InItemInstances, const TArray<FGridInvSys_ItemPosition>& InPosArray);
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_RestoreItemInstanceToPos(UInvSys_InventoryComponent* InvComp,
+		UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos);
+	
 public:
 	/**
 	 * Getter Or Setter

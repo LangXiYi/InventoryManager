@@ -6,7 +6,7 @@
 #include "Components/NamedSlot.h"
 
 
-void UInvSys_EquipContainerSlotWidget::AddContainerLayout(
+/*void UInvSys_EquipContainerSlotWidget::AddContainerLayout(
 	TObjectPtr<UInvSys_InventoryWidget> ContainerLayout)
 {
 	if (NS_ContainerGridLayout != nullptr && NS_ContainerGridLayout->HasAnyChildren() == false)
@@ -15,4 +15,4 @@ void UInvSys_EquipContainerSlotWidget::AddContainerLayout(
 		ContainerLayoutWidget->SetSlotTag(SlotTag);
 		NS_ContainerGridLayout->AddChild(ContainerLayout);
 	}
-}
+}*/

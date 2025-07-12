@@ -55,7 +55,44 @@ void UGridInvSys_InventoryComponent::AddItemDefinitionToContainerPos(TSubclassOf
 {
 	if (ItemDef)
 	{
-		AddItemDefinitionToContainer<UGridInvSys_InventoryItemInstance>(ItemDef, Pos.EquipSlotTag, StackCount, Pos);
+		AddItemDefinition<UGridInvSys_InventoryItemInstance>(ItemDef, Pos.EquipSlotTag, StackCount, Pos);
+	}
+}
+
+void UGridInvSys_InventoryComponent::AddItemInstanceToContainerPos(UInvSys_InventoryItemInstance* InItemInstance,
+	const FGridInvSys_ItemPosition& InPos)
+{
+	if (InItemInstance && InItemInstance->IsA<UGridInvSys_InventoryItemInstance>())
+	{
+		UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(InItemInstance);
+		check(GridItemInstance)
+		if (GridItemInstance)
+		{
+			GridItemInstance->SetItemPosition(InPos);
+			bool bIsSuccess = AddItemInstance(GridItemInstance);
+			check(bIsSuccess)
+			UE_LOG(LogInventorySystem, Log, TEXT("【%s】添加物品：%s"), bIsSuccess ? TEXT("成功"):TEXT("失败"), *InPos.ToString())
+		}
+	}
+}
+
+void UGridInvSys_InventoryComponent::RestoreItemInstanceToPos(UInvSys_InventoryItemInstance* InItemInstance,
+	const FGridInvSys_ItemPosition& InPos)
+{
+	check(InItemInstance)
+	if (InItemInstance && InItemInstance->IsA<UGridInvSys_InventoryItemInstance>())
+	{
+		UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(InItemInstance);
+		if (GridItemInstance)
+		{
+			GridItemInstance->SetItemPosition(InPos);
+			bool bIsSuccess = RestoreItemInstance(GridItemInstance);
+			if (bIsSuccess == false)
+			{
+				check(false);
+				// todo::丢弃物品至世界？
+			}
+		}
 	}
 }
 
@@ -168,6 +205,59 @@ bool UGridInvSys_InventoryComponent::FindEnoughFreeSpace(FName SlotName, FIntPoi
 		}
 	}*/
 	return false;
+}
+
+void UGridInvSys_InventoryComponent::Server_TryDropItemInstanceToPos_Implementation(
+	UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance,
+	const FGridInvSys_ItemPosition& InPos)
+{
+	if (bIsSuccessDragItem)
+	{
+		check(InvComp)
+		if (InvComp && InvComp->IsA<UGridInvSys_InventoryComponent>())
+		{
+			UGridInvSys_InventoryComponent* GridInvComp = Cast<UGridInvSys_InventoryComponent>(InvComp);
+			check(GridInvComp)
+			if (GridInvComp)
+			{
+				GridInvComp->AddItemInstanceToContainerPos(InItemInstance, InPos);
+			}
+		}
+	}
+}
+
+void UGridInvSys_InventoryComponent::Server_AddItemInstancesToContainerPos_Implementation(
+	UInvSys_InventoryComponent* InvComp, const TArray<UInvSys_InventoryItemInstance*>& InItemInstances,
+	const TArray<FGridInvSys_ItemPosition>& InPosArray)
+{
+	check(InvComp)
+	if (InvComp && InvComp->IsA<UGridInvSys_InventoryComponent>())
+	{
+		UGridInvSys_InventoryComponent* GridInvComp = Cast<UGridInvSys_InventoryComponent>(InvComp);
+		int32 ItemNum = InItemInstances.Num();
+		int32 PosNum = InPosArray.Num();
+
+		check(GridInvComp)
+		check(ItemNum == PosNum)
+		if (GridInvComp && ItemNum == PosNum)
+		{
+			for (int i = 0; i < ItemNum; ++i)
+			{
+				GridInvComp->AddItemInstanceToContainerPos(InItemInstances[i], InPosArray[i]);
+			}
+		}
+	}
+}
+
+void UGridInvSys_InventoryComponent::Server_RestoreItemInstanceToPos_Implementation(UInvSys_InventoryComponent* InvComp,
+	UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos)
+{
+	check(InvComp)
+	if (InvComp && InvComp->IsA<UGridInvSys_InventoryComponent>())
+	{
+		UGridInvSys_InventoryComponent* GridInvComp = Cast<UGridInvSys_InventoryComponent>(InvComp);
+		GridInvComp->RestoreItemInstanceToPos(InItemInstance, InPos);
+	}
 }
 
 bool UGridInvSys_InventoryComponent::FindInventoryItem(FName SlotName, const FIntPoint& ItemPosition, FGridInvSys_InventoryItem& OutItem)

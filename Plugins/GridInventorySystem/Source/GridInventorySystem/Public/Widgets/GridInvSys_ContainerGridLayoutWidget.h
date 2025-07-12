@@ -32,12 +32,18 @@ public:
 
 protected:
 	virtual void NativeOnInitialized() override;
+	virtual void NativeConstruct() override;
 
 public:
 	TArray<UGridInvSys_ContainerGridWidget*> GetContainerGridWidgets() const
 	{
 		return ContainerGridWidgets;
 	}
+
+	/*FORCEINLINE FGameplayTag GetContainerTag() const
+	{
+		return ContainerTag;
+	}*/
 
 private:
 	void GetAllContainerGridWidgets(TArray<UGridInvSys_ContainerGridWidget*>& OutArray) const;
@@ -53,4 +59,7 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Container Grid Layout")
 	TObjectPtr<UGridInvSys_InventoryContainerInfo> ContainerInfo;
+
+	/*UPROPERTY(BlueprintReadOnly, meta = (ExposeOnSpawn))
+	FGameplayTag ContainerTag;*/
 };

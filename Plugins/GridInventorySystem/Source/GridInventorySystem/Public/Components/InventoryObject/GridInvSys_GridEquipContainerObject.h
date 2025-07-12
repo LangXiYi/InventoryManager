@@ -50,8 +50,8 @@ public:
 protected:
 	void OnItemPositionChange(const FGridInvSys_ItemPositionChangeMessage& Message);
 	virtual void OnInventoryStackChange(const FInvSys_InventoryStackChangeMessage& ChangeInfo) override;
-	virtual void OnContainerEntryAdded(const FInvSys_ContainerEntry& Entry, bool bIsInit) override;
-	virtual void OnContainerEntryRemove(const FInvSys_ContainerEntry& Entry, bool bIsInit) override;
+	virtual void OnContainerEntryAdded(const FInvSys_ContainerEntry& Entry, bool bIsForceRep) override;
+	virtual void OnContainerEntryRemove(const FInvSys_ContainerEntry& Entry, bool bIsForceRep) override;
 	
 private:
 	int32 FindContainerItemIndex(FName ItemUniqueID);

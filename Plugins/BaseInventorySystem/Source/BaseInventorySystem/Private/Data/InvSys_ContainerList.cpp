@@ -43,7 +43,7 @@ FString FInvSys_ContainerEntry::GetDebugString() const
 	return FString::Printf(TEXT("%s (%d x %s)"), *GetNameSafe(Instance), StackCount, *GetNameSafe(ItemDef));
 }
 
-bool FInvSys_ContainerList::AddEntry(UInvSys_InventoryItemInstance* Instance)
+bool FInvSys_ContainerList::AddEntry(UInvSys_InventoryItemInstance* Instance, bool bIsForceRep)
 {
 	if (Instance == nullptr)
 	{
@@ -58,7 +58,7 @@ bool FInvSys_ContainerList::AddEntry(UInvSys_InventoryItemInstance* Instance)
 	check(OwnerObject)
 	if (OwnerObject && OwnerObject->GetNetMode() != NM_DedicatedServer)
 	{
-		BroadcastAddEntryMessage(NewEntry);
+		BroadcastAddEntryMessage(NewEntry, bIsForceRep);
 	}
 	return true;
 }
@@ -70,12 +70,13 @@ bool FInvSys_ContainerList::RemoveEntry(UInvSys_InventoryItemInstance* Instance)
 		FInvSys_ContainerEntry& Entry = *EntryIt;
 		if (Entry.Instance == Instance)
 		{
-			EntryIt.RemoveCurrent();
-			MarkArrayDirty();
 			if (OwnerObject->GetNetMode() != NM_DedicatedServer)
 			{
 				BroadcastRemoveEntryMessage(Entry);
 			}
+			
+			EntryIt.RemoveCurrent(); //这里Remove后，Entry的值会同步改变
+			MarkArrayDirty();
 			return true;
 		}
 	}

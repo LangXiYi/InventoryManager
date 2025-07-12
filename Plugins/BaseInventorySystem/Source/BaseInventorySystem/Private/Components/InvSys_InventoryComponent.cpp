@@ -33,23 +33,22 @@ UInvSys_InventoryComponent::UInvSys_InventoryComponent(const FObjectInitializer&
 	//bReplicateUsingRegisteredSubObjectList = true; // 不推荐使用，否则可能会出现子对象与FastArray的属性同步失序的问题。
 }
 
-void UInvSys_InventoryComponent::RestoreItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
+bool UInvSys_InventoryComponent::RestoreItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
 {
 	// 还原拖拽的物品信息
 	// DraggingItemInstance = nullptr;
 	
 	check(InItemInstance)
-	check(InItemInstance->GetInventoryComponent() == this)
-	if (InItemInstance && InItemInstance->GetInventoryComponent() == this)
+	if (InItemInstance)
 	{
 		FGameplayTag EquipSlotTag = InItemInstance->GetSlotTag();
 		UInvSys_BaseInventoryObject* InventoryObject = GetInventoryObject(EquipSlotTag);
 		if (InventoryObject)
 		{
-			bool bIsSuccess = InventoryObject->RestoreItemInstance(InItemInstance);
-			check(bIsSuccess);
+			return InventoryObject->RestoreItemInstance(InItemInstance);
 		}
 	}
+	return false;
 }
 
 bool UInvSys_InventoryComponent::TryDragItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
@@ -62,12 +61,37 @@ bool UInvSys_InventoryComponent::TryDragItemInstance(UInvSys_InventoryItemInstan
 		UE_LOG(LogInventorySystem, Log, TEXT("目标物品不支持拖拽功能"))
 		return false;
 	}
+
+	/***
+	 * 这部分代码主要是为了避免出现物品复制，比如：
+	 * 客户端放置物品至箱子中，服务器玩家把物品拿走后，客户端在收到服务器拿走物品之前，将物品重新放回自己的背包
+	 * 此情况下会导致客户端与服务器玩家同时拥有一个物品！！！
+	 * 所以在添加之前，需要判断物品是否在正确的位置
+	 */
+	//判断移动这个物品之前判断物品在它之前的位置中是否存在
+	UInvSys_InventoryComponent* LastInvComp = InItemInstance->GetInventoryComponent();
+	if (LastInvComp)
+	{
+		UInvSys_BaseInventoryObject* LastInvObj = LastInvComp->GetInventoryObject(InItemInstance->GetSlotTag());
+		if (LastInvObj)
+		{
+			if (LastInvObj->ContainsItem(InItemInstance->GetItemUniqueID()) == false)
+			{
+				UE_LOG(LogInventorySystem, Error, TEXT("尝试拖拽的目标在他的容器内不存在，请检查网络环境是否良好。"))
+				return false;
+				//return;
+			} 
+		}
+	}
+	
 	
 	UInvSys_InventoryComponent* LOCAL_InvComp = InItemInstance->GetInventoryComponent<UInvSys_InventoryComponent>();
 	if (LOCAL_InvComp == nullptr) return false;
 
 	//将物品从它所在的容器中移除
+	// UE_LOG(LogInventorySystem, Error, TEXT("拖拽目标的名称为在:%s"), *InItemInstance->GetItemUniqueID().ToString());
 	LOCAL_InvComp->RemoveItemInstance(InItemInstance);
+	
 	/*if (LOCAL_InvComp != this) //不同库存组件的物品拖拽会生成一个新的物品给客户端，然后销毁传入的物品实例
 	{
 		UInvSys_InventoryItemInstance* LOCAL_ItemInstance = InItemInstance; // 暂存目标指针
@@ -202,6 +226,32 @@ void UInvSys_InventoryComponent::UnEquipItemInstance(UInvSys_InventoryItemInstan
 	}
 }
 
+bool UInvSys_InventoryComponent::AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
+{
+	// todo::如果物品
+	if (InItemInstance)
+	{
+		UInvSys_BaseEquipContainerObject* InvObj = GetInventoryObject<UInvSys_BaseEquipContainerObject>(InItemInstance->GetSlotTag());
+		if (InvObj)
+		{
+			if (this == InItemInstance->GetInventoryComponent()) // 是相同库存组件
+			{
+				InvObj->AddItemInstance(InItemInstance);
+				return true;
+			}
+			else // 是不同库存组件
+			{
+				UInvSys_InventoryItemInstance* TempItemInstance = DuplicateObject<UInvSys_InventoryItemInstance>(InItemInstance, GetOwner());
+				InItemInstance->ConditionalBeginDestroy();//标记目标待删除
+
+				InvObj->AddItemInstance(TempItemInstance);
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 bool UInvSys_InventoryComponent::RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
 {
 	if (InItemInstance)
@@ -233,10 +283,10 @@ bool UInvSys_InventoryComponent::IsContainsInventoryItem(const FName ItemUniqueI
 {
 	for (UInvSys_BaseInventoryObject* InventoryObject : InventoryObjectList)
 	{
-		if (InventoryObject->ContainsItem(ItemUniqueID))
+		/*if (InventoryObject->ContainsItem(ItemUniqueID))
 		{
 			return true;
-		}
+		}*/
 	}
 	return false;
 }
@@ -331,7 +381,7 @@ void UInvSys_InventoryComponent::Server_TryDragItemInstance_Implementation(UInvS
 	check(InvComp)
 	if (InvComp)
 	{
-		InvComp->TryDragItemInstance(InItemInstance);
+		bIsSuccessDragItem = InvComp->TryDragItemInstance(InItemInstance);
 	}
 }
 
@@ -347,7 +397,12 @@ void UInvSys_InventoryComponent::Server_RestoreItemInstance_Implementation(UInvS
 	check(InvComp)
 	if (InvComp)
 	{
-		InvComp->RestoreItemInstance(InItemInstance);
+		bool bIsSuccess = InvComp->RestoreItemInstance(InItemInstance);
+		if (bIsSuccess == false)
+		{
+			check(false);
+			//todo::丢弃至世界？
+		}
 	}
 }
 
@@ -517,28 +572,3 @@ void UInvSys_InventoryComponent::Client_TryRefreshInventoryObject_Implementation
 		InvObj->RefreshInventoryObject("客户端数据与服务器数据不匹配，请求刷新客户端显示效果。");
 	}
 }
-
-
-// void UInvSys_InventoryComponent::OnRep_DraggingItemInstance()
-// {
-	// Server端DraggingWidget一定是为空的，且DraggingInstance大概率是存在的
-	// Client端则不会为空
-	// 修正拖拽的物品实例
-	/*if (IsValid(DraggingWidget))
-	{
-		// 客户端同步更新DraggingItem
-		if (IsValid(DraggingItemInstance))
-		{
-			NativeOnDraggingItemInstance(DraggingItemInstance);
-		}
-		else
-		{
-			NativeOnCancelDragItemInstance();
-		}
-	}
-	else if(IsValid(DraggingItemInstance))
-	{
-		// 除非用户手动调用丢弃至世界，否则不会执行其他操作。
-		// NativeOnDiscardItemInstance(DraggingItemInstance); //丢弃物品至世界。
-	}*/
-// }

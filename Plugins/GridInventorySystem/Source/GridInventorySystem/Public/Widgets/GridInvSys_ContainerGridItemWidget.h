@@ -26,8 +26,6 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_ContainerGridItemWidget : public UInvS
 public:
 	void OnConstructGridItem(UGridInvSys_ContainerGridWidget* InContainerGrid, FIntPoint InPosition);
 	
-	void SetContainerGridWidget(UGridInvSys_ContainerGridWidget* InContainerGridWidget);
-
 	virtual void UpdateItemInfo(const FGridInvSys_InventoryItem&);
 
 	virtual void RemoveItemInfo();
@@ -35,7 +33,6 @@ public:
 	void AddItemInstance(UInvSys_InventoryItemInstance* NewItemInstance);
 
 	void RemoveItemInstance();
-	
 
 	FORCEINLINE UGridInvSys_ContainerGridWidget* GetContainerGridWidget() const;
 
@@ -62,7 +59,6 @@ public:
 
 	FORCEINLINE EGridInvSys_ItemDirection GetItemDirection() const;
 
-
 	UFUNCTION(BlueprintPure)
 	FORCEINLINE FName GetItemUniqueID() const;
 	
@@ -74,10 +70,10 @@ public:
 
 	int32 GetGridID() const;
 
-	template<class T>
+	template<class T = UInvSys_InventoryItemInstance>
 	T* GetItemInstance() const
 	{
-		return nullptr;
+		return (T*)ItemInstance.Get();
 	}
 
 	FIntPoint GetItemSize() const
@@ -121,8 +117,8 @@ protected:
 
 	FIntPoint GridItemSize = FIntPoint(1, 1);
 
-	/*UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item", meta = (DeprecatedProperty))
-	UInvSys_InventoryItemInstance* ItemInstance_DEPRECATED;*/
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item")
+	TWeakObjectPtr<UInvSys_InventoryItemInstance> ItemInstance;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item")
 	bool bIsOccupied;

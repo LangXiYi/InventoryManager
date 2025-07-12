@@ -53,11 +53,26 @@ void UGridInvSys_ContainerGridLayoutWidget::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
 
-	ContainerGridWidgets.Empty();
+	// ToDo::初始化网格ID
+	/*ContainerGridWidgets.Empty();
 	GetAllContainerGridWidgets(ContainerGridWidgets);
 	for (int i = 0; i < ContainerGridWidgets.Num(); ++i)
 	{
 		ContainerGridWidgets[i]->ConstructGridItems(this, i);
+	}*/
+}
+
+void UGridInvSys_ContainerGridLayoutWidget::NativeConstruct()
+{
+	Super::NativeConstruct();
+	ContainerGridWidgets.Empty();
+	GetAllContainerGridWidgets(ContainerGridWidgets);
+	UE_LOG(LogInventorySystem, Error, TEXT("布局控件的构建函数"))
+	for (int i = 0; i < ContainerGridWidgets.Num(); ++i)
+	{
+		ContainerGridWidgets[i]->SetInventoryComponent(InventoryComponent.Get());
+		ContainerGridWidgets[i]->SetSlotTag(SlotTag);
+		ContainerGridWidgets[i]->ConstructGridItems(i);
 	}
 }
 
@@ -65,9 +80,12 @@ UGridInvSys_ContainerGridItemWidget* UGridInvSys_ContainerGridLayoutWidget::Find
 {
 	if (SlotTag == ItemPosition.EquipSlotTag)
 	{
-		if (UGridInvSys_ContainerGridWidget* GridWidget = ContainerGridWidgets[ItemPosition.GridID])
+		if (ContainerGridWidgets.IsValidIndex(ItemPosition.GridID))
 		{
-			return GridWidget->GetGridItemWidget(ItemPosition.Position);
+			if (UGridInvSys_ContainerGridWidget* GridWidget = ContainerGridWidgets[ItemPosition.GridID])
+			{
+				return GridWidget->GetGridItemWidget(ItemPosition.Position);
+			}
 		}
 	}
 	return nullptr;

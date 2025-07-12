@@ -9,6 +9,7 @@
 #include "Widgets/InvSys_InventoryWidget.h"
 #include "GridInvSys_ContainerGridWidget.generated.h"
 
+class UInvSys_InventoryItemInstance;
 class UGridInvSys_ContainerGridLayoutWidget;
 class UGridInvSys_DragItemWidget;
 class UGridInvSys_ContainerGridDropWidget;
@@ -22,7 +23,7 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_ContainerGridWidget : public UInvSys_I
 	GENERATED_BODY()
 
 public:
-	void ConstructGridItems(UGridInvSys_ContainerGridLayoutWidget* InContainerLayout, int32 InGridID);
+	void ConstructGridItems(int32 InGridID);
 
 	void UpdateInventoryItem(const FGridInvSys_InventoryItem& InventoryItem);
 
@@ -48,8 +49,8 @@ protected:
 	virtual void ResetDragDropData();
 
 	/** 放下物品至容器的目标位置，From必须是来自容器对象而非装备槽，仅在同容器组件下有效！！ */
-	bool TryDropItemFromContainer(UGridInvSys_ContainerGridItemWidget* FromGridItemWidget, FIntPoint FromItemSize,
-		FGridInvSys_InventoryItemPosition ItemPositionData) const;
+	bool TryDropItemFromContainer(UGridInvSys_ContainerGridWidget* FromContainer,
+		UInvSys_InventoryItemInstance* ItemInstance, FIntPoint FromItemSize, FGridInvSys_ItemPosition ItemPositionData);
 
 	void ShowDragGridEffect(FIntPoint Position, FIntPoint Size, bool bIsRight);
 	
@@ -134,8 +135,7 @@ public:
 
 protected:
 	// 判断目标位置能否放置物品，注意：使用此方法时From必须是来自其他容器
-	bool IsCanDropItemFromContainer(UGridInvSys_ContainerGridItemWidget* FromGridItemWidget,
-		FIntPoint ToPosition, FIntPoint FromItemSize) const;
+	bool IsCanDropItemFromContainer(UGridInvSys_ContainerGridWidget* FromContainer, FIntPoint ToPosition, FIntPoint FromItemSize) const;
 
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Container Grid", meta = (BindWidget))
@@ -164,9 +164,6 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory Container Grid")
 	FName SlotName;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Container Grid")
-	TObjectPtr<UGridInvSys_ContainerGridLayoutWidget> ContainerLayout;
 
 private:
 	UPROPERTY()

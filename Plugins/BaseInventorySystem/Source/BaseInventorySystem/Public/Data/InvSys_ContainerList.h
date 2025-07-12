@@ -130,9 +130,9 @@ public:
 	 * 添加其他物品实例
 	 * 注意：传入的实例必须与本容器处在同一库存组件，对于不同库存组件的物品交换，采用 AddDefinition 的方式添加。
 	 * @param Instance 
-	 * @param StackCount 
+	 * @param bIsForceRep 
 	 */
-	bool AddEntry(UInvSys_InventoryItemInstance* Instance);
+	bool AddEntry(UInvSys_InventoryItemInstance* Instance, bool bIsForceRep = false);
 	
 	bool RemoveEntry(UInvSys_InventoryItemInstance* Instance);
 
@@ -208,6 +208,18 @@ public:
 	FORCEINLINE FOnContainerEntryChange& OnContainerEntryRemoveDelegate()
 	{
 		return OnContainerEntryRemove;
+	}
+
+	bool Contains(FGuid ItemUniqueID)
+	{
+		for (FInvSys_ContainerEntry Entry : Entries)
+		{
+			if (Entry.Instance->GetItemUniqueID() == ItemUniqueID)
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/*FORCEINLINE FOnInventoryStackChange& OnInventoryStackChangeDelegate()

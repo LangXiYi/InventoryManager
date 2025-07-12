@@ -42,9 +42,9 @@ public:
 	}
 	
 protected:
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Widget")
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory Widget", meta = (ExposeOnSpawn))
 	TWeakObjectPtr<UInvSys_InventoryComponent> InventoryComponent;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Container Grid Layout")
+	UPROPERTY(BlueprintReadOnly, Category = "Container Grid Layout", meta = (ExposeOnSpawn))
 	FGameplayTag SlotTag;
 };

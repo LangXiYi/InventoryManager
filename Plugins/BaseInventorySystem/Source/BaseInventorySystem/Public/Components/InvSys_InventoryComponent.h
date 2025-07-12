@@ -50,8 +50,6 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
 	void UnEquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
 
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
-	bool RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
 
 	/**
 	 * 支持自定义参数传入物品实例，支持在不同库存组件下转移物品，在转移时需要注意将旧物品的实例删除。
@@ -63,7 +61,7 @@ public:
 	 * @param Args 可变参数列表，传入的参数会同一赋值给创建的物品实例
 	 */
 	template<class T, class... Arg>
-	T* AddItemDefinitionToContainer(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
+	T* AddItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
 		FGameplayTag InSlotTag,	int32 InStackCount, const Arg&... Args)
 	{
 		UInvSys_BaseEquipContainerObject* ContainerObj = GetInventoryObject<UInvSys_BaseEquipContainerObject>(InSlotTag);
@@ -74,9 +72,18 @@ public:
 		return nullptr;
 	}
 
-	void RestoreItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
+	bool AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
 	
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
+	bool RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
+
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
+	bool RestoreItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
+
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
 	bool TryDragItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
+
 	void CancelDragItemInstance();
 	
 protected:
@@ -118,8 +125,6 @@ public:
 
 	UFUNCTION(Client, Reliable)
 	void Client_TryRefreshInventoryObject();
-
-	
 	
 public:
 	/**
@@ -193,8 +198,8 @@ protected:
 	UPROPERTY()
 	TObjectPtr<UUserWidget> DraggingWidget;
 
-	// UPROPERTY(ReplicatedUsing = OnRep_DraggingItemInstance)
-	// TObjectPtr<UInvSys_InventoryItemInstance> DraggingItemInstance;
-	// UFUNCTION()
-	// void OnRep_DraggingItemInstance();
+	/**
+	 * 在拖拽需要调用的函数中需要检查该属性是否为True，确保物品是能够被客户端拖拽的物品！！！！
+	 */
+	bool bIsSuccessDragItem = false;
 };

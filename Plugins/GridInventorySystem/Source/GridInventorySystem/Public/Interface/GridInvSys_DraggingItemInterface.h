@@ -20,4 +20,7 @@ class GRIDINVENTORYSYSTEM_API IGridInvSys_DraggingItemInterface
 public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Dragging Item Interface")
 	void UpdateItemDirection(EGridInvSys_ItemDirection NewDirection);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Dragging Item Interface")
+	EGridInvSys_ItemDirection GetItemDirection() const;
 };

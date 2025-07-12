@@ -9,6 +9,7 @@
 #include "Components/InventoryObject/InvSys_BaseEquipmentObject.h"
 #include "Components/InventoryObject/InvSys_BaseInventoryObject.h"
 #include "Data/InvSys_InventoryItemInstance.h"
+#include "Interface/InvSys_DraggingItemInterface.h"
 #include "Widgets/InvSys_InventoryItemWidget.h"
 
 void UInvSys_EquipSlotWidget::EquipItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)
@@ -41,14 +42,11 @@ bool UInvSys_EquipSlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FD
 {
 	UInvSys_InventoryComponent* PlayerInvComp = GetOwningPlayer()->GetComponentByClass<UInvSys_InventoryComponent>();
 	check(PlayerInvComp)
-	if (PlayerInvComp == nullptr || InOperation->Payload == nullptr ||
-		InOperation->Payload->IsA<UInvSys_InventoryItemWidget>() == false)
+	if (PlayerInvComp == nullptr)
 	{
 		return Super::NativeOnDrop(InGeometry, InDragDropEvent, InOperation);
 	}
-	
-	UInvSys_InventoryItemWidget* ItemWidget = Cast<UInvSys_InventoryItemWidget>(InOperation->Payload);
-	UInvSys_InventoryItemInstance* LOCAL_ItemInstance = ItemWidget->GetItemInstance<UInvSys_InventoryItemInstance>();
+	UInvSys_InventoryItemInstance* LOCAL_ItemInstance = IInvSys_DraggingItemInterface::Execute_GetItemInstance(InOperation->DefaultDragVisual);
 	check(LOCAL_ItemInstance)
 	if (LOCAL_ItemInstance)
 	{

@@ -71,12 +71,12 @@ protected:
 	
 	// Begin Listen Container List Event ====
 	void NativeOnInventoryStackChange(FInvSys_InventoryStackChangeMessage ChangeInfo);
-	void NativeOnContainerEntryAdded(const FInvSys_ContainerEntry& Entry, bool bIsInit);
-	void NativeOnContainerEntryRemove(const FInvSys_ContainerEntry& Entry, bool bIsInit);
+	void NativeOnContainerEntryAdded(const FInvSys_ContainerEntry& Entry, bool bIsForceRep);
+	void NativeOnContainerEntryRemove(const FInvSys_ContainerEntry& Entry, bool bIsForceRep);
 
 	virtual void OnInventoryStackChange(const FInvSys_InventoryStackChangeMessage& ChangeInfo) {}
-	virtual void OnContainerEntryAdded(const FInvSys_ContainerEntry& Entry, bool bIsInit) {}
-	virtual void OnContainerEntryRemove(const FInvSys_ContainerEntry& Entry, bool bIsInit) {}
+	virtual void OnContainerEntryAdded(const FInvSys_ContainerEntry& Entry, bool bIsForceRep) {}
+	virtual void OnContainerEntryRemove(const FInvSys_ContainerEntry& Entry, bool bIsForceRep) {}
 	// End Listen Container List Event ====
 
 	virtual bool ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags) override;
@@ -86,10 +86,9 @@ public:
 	 * Getter Or Setter
 	 **/
 
-	virtual bool ContainsItem(FName UniqueID) override;
+	virtual bool ContainsItem(FGuid ItemUniqueID) override;
 
 	virtual void CopyPropertyFromPreEdit(UObject* PreEditPayLoad) override;
-
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 

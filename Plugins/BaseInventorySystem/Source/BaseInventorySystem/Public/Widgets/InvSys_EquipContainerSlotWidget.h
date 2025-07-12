@@ -16,7 +16,10 @@ class BASEINVENTORYSYSTEM_API UInvSys_EquipContainerSlotWidget : public UInvSys_
 	GENERATED_BODY()
 
 public:
-	void AddContainerLayout(TObjectPtr<UInvSys_InventoryWidget> ContainerLayout);
+	// void AddContainerLayout(TObjectPtr<UInvSys_InventoryWidget> ContainerLayout);
+
+	UFUNCTION(BlueprintImplementableEvent)
+	UInvSys_InventoryWidget* GetContainerLayoutWidget();
 
 protected:
 	UPROPERTY(BlueprintReadWrite, Category = "Equip Container")

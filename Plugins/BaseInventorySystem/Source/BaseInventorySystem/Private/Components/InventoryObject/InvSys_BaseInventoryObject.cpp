@@ -87,7 +87,7 @@ bool UInvSys_BaseInventoryObject::IsUsingRegisteredSubObjectList()
 	return InventoryComponent->IsUsingRegisteredSubObjectList();
 }
 
-bool UInvSys_BaseInventoryObject::ContainsItem(FName UniqueID)
+bool UInvSys_BaseInventoryObject::ContainsItem(FGuid ItemUniqueID)
 {
 	return false;
 }

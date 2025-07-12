@@ -18,6 +18,7 @@ void UInvSys_InventoryItemInstance::GetLifetimeReplicatedProps(TArray<FLifetimeP
 	DOREPLIFETIME(UInvSys_InventoryItemInstance, ItemUniqueID);
 	DOREPLIFETIME(UInvSys_InventoryItemInstance, StackCount);
 	DOREPLIFETIME(UInvSys_InventoryItemInstance, InvComp);
+	DOREPLIFETIME(UInvSys_InventoryItemInstance, LastInvComp);
 	DOREPLIFETIME(UInvSys_InventoryItemInstance, SlotTag);
 }
 
@@ -34,6 +35,7 @@ void UInvSys_InventoryItemInstance::SetItemDefinition(TSubclassOf<UInvSys_Invent
 
 void UInvSys_InventoryItemInstance::SetInventoryComponent(UInvSys_InventoryComponent* NewInvComp)
 {
+	LastInvComp = InvComp;
 	InvComp = NewInvComp;
 }
 

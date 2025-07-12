@@ -8,6 +8,7 @@
 #include "Blueprint/WidgetTree.h"
 #include "Components/InvSys_InventoryComponent.h"
 #include "Data/InvSys_InventoryItemInstance.h"
+#include "Interface/InvSys_DraggingItemInterface.h"
 #include "Widgets/InvSys_InventoryItemWidget.h"
 #include "Widgets/Components/InvSys_TagSlot.h"
 
@@ -39,23 +40,21 @@ bool UInvSys_InventoryLayoutWidget::NativeOnDrop(const FGeometry& InGeometry, co
 {
 	// TODO::如何获取这个组件呢？
 	UInvSys_InventoryComponent* PlayerInvComp = GetOwningPlayer()->GetComponentByClass<UInvSys_InventoryComponent>();
-	
-	// 对于在容器布局内放下拖拽的物品，则将该物品返回原位置
-	if (InOperation->Payload && InOperation->Payload->IsA<UInvSys_InventoryItemWidget>())
+	check(PlayerInvComp)
+	if (PlayerInvComp == nullptr)
 	{
-		UInvSys_InventoryItemWidget* ItemWidget = Cast<UInvSys_InventoryItemWidget>(InOperation->Payload);
-		UInvSys_InventoryItemInstance* LOCAL_ItemInstance = ItemWidget->GetItemInstance<UInvSys_InventoryItemInstance>();
-		if (LOCAL_ItemInstance)
+		return Super::NativeOnDrop(InGeometry, InDragDropEvent, InOperation);
+	}
+	UInvSys_InventoryItemInstance* LOCAL_ItemInstance = IInvSys_DraggingItemInterface::Execute_GetItemInstance(InOperation->DefaultDragVisual);
+	check(LOCAL_ItemInstance)
+	if (LOCAL_ItemInstance)
+	{
+		UInvSys_InventoryComponent* From_InvComp = LOCAL_ItemInstance->GetInventoryComponent();
+		if (From_InvComp && PlayerInvComp)
 		{
-			UInvSys_InventoryComponent* From_InvComp = LOCAL_ItemInstance->GetInventoryComponent();
-			if (From_InvComp && PlayerInvComp)
-			{
-				PlayerInvComp->Server_CancelDragItemInstance(From_InvComp);
-				// 通知当前控件的库存对象，装备新物品？添加新物品？将物品放回原来位置。
-				//PlayerInvComp->Server_AddItemInstance()
-				PlayerInvComp->Server_RestoreItemInstance(From_InvComp, LOCAL_ItemInstance);
-				return true;
-			}
+			// 对于在容器布局内放下拖拽的物品，则将该物品返回原位置
+			PlayerInvComp->Server_RestoreItemInstance(From_InvComp, LOCAL_ItemInstance);
+			return true;
 		}
 	}
 	return Super::NativeOnDrop(InGeometry, InDragDropEvent, InOperation);

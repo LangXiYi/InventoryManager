@@ -52,7 +52,7 @@ public:
 	 * Getter Or Setter
 	 **/
 
-	virtual bool ContainsItem(FName UniqueID) override;
+	virtual bool ContainsItem(FGuid ItemUniqueID) override;
 
 	UInvSys_InventoryItemInstance* GetEquipItemInstance() const
 	{

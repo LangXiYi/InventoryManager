@@ -42,4 +42,7 @@ public:
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Item", meta = (ExposeOnSpawn))
 	TWeakObjectPtr<UInvSys_InventoryItemInstance> ItemInstance;
+
+private:
+	bool bIsWaitServerDragging = false;
 };

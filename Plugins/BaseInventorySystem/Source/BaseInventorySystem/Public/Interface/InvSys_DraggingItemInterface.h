@@ -24,4 +24,7 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Dragging Item Interface")
 	void OnCancelDragItemInstance();
+	
+	UFUNCTION(BlueprintCallable, BlueprintImplementableEvent, Category = "Dragging Item Interface")
+	UInvSys_InventoryItemInstance* GetItemInstance();
 };

@@ -19,6 +19,7 @@ FReply UInvSys_InventoryItemWidget::NativeOnMouseButtonDown(const FGeometry& InG
 {
 	if (ItemInstance.Get())
 	{
+		// 后续修改这部分逻辑，优化操作体验
 		FEventReply EventReply = UWidgetBlueprintLibrary::DetectDragIfPressed(InMouseEvent, this, EKeys::LeftMouseButton);
 		return EventReply.NativeReply;
 	}
@@ -29,7 +30,11 @@ void UInvSys_InventoryItemWidget::NativeOnDragDetected(const FGeometry& InGeomet
 	UDragDropOperation*& OutOperation)
 {
 	Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
-
+	if (bIsWaitServerDragging == true)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("正在等待服务器拖拽的回调，无法继续拖拽该物品。"))
+		return;
+	}
 	if (ItemInstance.IsValid() == false)
 	{
 		return;
@@ -58,7 +63,9 @@ void UInvSys_InventoryItemWidget::NativeOnDragDetected(const FGeometry& InGeomet
 			DragDropOperation->Offset = DragDropFragment->DragOffset;
 			OutOperation = DragDropOperation;
 
+			UE_LOG(LogInventorySystem, Warning, TEXT("正在抓起物品：%s"), *ItemInstance.Get()->GetName());
 			PlayerInvComp->Server_TryDragItemInstance(FromInvComp, ItemInstance.Get()); //通知服务器: 玩家正在拖拽物品
+			bIsWaitServerDragging = true;
 		}
 	}
 }

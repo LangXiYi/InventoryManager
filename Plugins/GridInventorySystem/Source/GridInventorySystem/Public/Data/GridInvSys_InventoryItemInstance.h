@@ -45,8 +45,8 @@ public:
 	
 	void SetItemPosition(const FGridInvSys_ItemPosition& NewItemPosition)
 	{
+		LastItemPosition = ItemPosition;
 		ItemPosition = NewItemPosition;
-
 		SetSlotTag(ItemPosition.EquipSlotTag);
 
 		UWorld* World = GetWorld();
@@ -61,6 +61,11 @@ public:
 		return ItemPosition;
 	}
 
+	FGridInvSys_ItemPosition GetLastItemPosition() const
+	{
+		return LastItemPosition;
+	}
+
 	void BroadcastItemPositionChangeMessage(const FGridInvSys_ItemPosition& OldPosition, const FGridInvSys_ItemPosition& NewPosition)
 	{
 		FGridInvSys_ItemPositionChangeMessage ItemPositionChangeMessage;
@@ -68,12 +73,7 @@ public:
 		ItemPositionChangeMessage.OldPosition = OldPosition;
 		ItemPositionChangeMessage.NewPosition = NewPosition;
 
-		if (OnItemPositionChange.ExecuteIfBound(ItemPositionChangeMessage))
-		{
-			UE_LOG(LogInventorySystem, Log, TEXT("[%s]广播物品位置变化事件 ===> %s:%d[%d,%d]"),
-				InvComp->HasAuthority() ? TEXT("Server") : TEXT("Client"),
-				*ItemPosition.EquipSlotTag.ToString(), NewPosition.GridID, NewPosition.Position.X, NewPosition.Position.Y);
-		}
+		OnItemPositionChange.ExecuteIfBound(ItemPositionChangeMessage);
 	}
 	
 	FOnItemPositionChange& OnItemPositionChangeDelegate()
@@ -84,17 +84,16 @@ public:
 protected:
 	UPROPERTY(ReplicatedUsing = OnRep_ItemPosition)
 	FGridInvSys_ItemPosition ItemPosition;
-
-	FGridInvSys_ItemPosition LastItemPosition;
-
 	UFUNCTION()
-	void OnRep_ItemPosition()
-	{
-		UE_LOG(LogInventorySystem, Warning, TEXT("=== OnRep_ItemPosition [%s:Begin] ==="),
-			InvComp->HasAuthority() ? TEXT("Server"):TEXT("Client"))
-		BroadcastItemPositionChangeMessage(LastItemPosition, ItemPosition);
-		LastItemPosition = ItemPosition;
-	}
+	void OnRep_ItemPosition();
+
+	UPROPERTY(Replicated)
+	FGridInvSys_ItemPosition LastItemPosition;
+	
+	UPROPERTY()
+	FGridInvSys_ItemPosition NewTempItemPosition;
+	UPROPERTY()
+	bool bIsFirstRepItemPosition = true;
 
 private:
 	FOnItemPositionChange OnItemPositionChange;

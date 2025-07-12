@@ -63,11 +63,11 @@ void UInvSys_BaseEquipmentObject::UnEquipInventoryItem()
 
 bool UInvSys_BaseEquipmentObject::RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
 {
-	UE_LOG(LogInventorySystem, Log, TEXT("正在删除装备槽中的物品"))
 
 	// Super::RemoveItemInstance(InItemInstance);
 	if (InItemInstance == EquipItem)
 	{
+		UE_LOG(LogInventorySystem, Log, TEXT("正在删除装备槽中的物品"))
 		UnEquipInventoryItem();
 		return true;
 	}
@@ -141,9 +141,10 @@ void UInvSys_BaseEquipmentObject::NativeOnUnEquipItemInstance()
 	EquipSlotWidget->UnEquipItemInstance();
 }
 
-bool UInvSys_BaseEquipmentObject::ContainsItem(FName UniqueID)
+bool UInvSys_BaseEquipmentObject::ContainsItem(FGuid ItemUniqueID)
 {
-	return false;
+	//check(EquipItem)
+	return EquipItem ? EquipItem->GetItemUniqueID() == ItemUniqueID : false;
 	//return GetOccupantData().UniqueID == UniqueID;
 }
 

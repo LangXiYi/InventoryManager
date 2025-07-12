@@ -59,7 +59,7 @@ public:
 	 **/
 
 	/** 传入 Item Unique ID 判断其在库存对象中是否存在 */
-	virtual bool ContainsItem(FName UniqueID);
+	virtual bool ContainsItem(FGuid ItemUniqueID);
 	
 	UFUNCTION(BlueprintPure)
 	FORCEINLINE FGameplayTag GetSlotTag() const{ return EquipSlotTag; }
