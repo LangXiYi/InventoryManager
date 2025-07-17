@@ -43,25 +43,25 @@ FString FInvSys_ContainerEntry::GetDebugString() const
 	return FString::Printf(TEXT("%s (%d x %s)"), *GetNameSafe(Instance), StackCount, *GetNameSafe(ItemDef));
 }
 
-bool FInvSys_ContainerList::AddEntry(UInvSys_InventoryItemInstance* Instance, bool bIsForceRep)
-{
-	if (Instance == nullptr)
-	{
-		return false;
-	}
-	
-	FInvSys_ContainerEntry& NewEntry = Entries.AddDefaulted_GetRef();
-	NewEntry.Instance = Instance;
-
-	MarkItemDirty(NewEntry);
-
-	check(OwnerObject)
-	if (OwnerObject && OwnerObject->GetNetMode() != NM_DedicatedServer)
-	{
-		BroadcastAddEntryMessage(NewEntry, bIsForceRep);
-	}
-	return true;
-}
+// bool FInvSys_ContainerList::AddEntry(UInvSys_InventoryItemInstance* Instance)
+// {
+// 	if (Instance == nullptr)
+// 	{
+// 		return false;
+// 	}
+// 	
+// 	FInvSys_ContainerEntry& NewEntry = Entries.AddDefaulted_GetRef();
+// 	NewEntry.Instance = Instance;
+//
+// 	MarkItemDirty(NewEntry);
+//
+// 	check(OwnerObject)
+// 	if (OwnerObject && OwnerObject->GetNetMode() != NM_DedicatedServer)
+// 	{
+// 		BroadcastAddEntryMessage(NewEntry);
+// 	}
+// 	return true;
+// }
 
 bool FInvSys_ContainerList::RemoveEntry(UInvSys_InventoryItemInstance* Instance)
 {

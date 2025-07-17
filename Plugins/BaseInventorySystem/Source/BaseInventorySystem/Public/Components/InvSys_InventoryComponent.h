@@ -29,6 +29,8 @@ class BASEINVENTORYSYSTEM_API UInvSys_InventoryComponent : public UActorComponen
 {
 	GENERATED_BODY()
 
+	friend class UInvSys_InventoryControllerComponent;
+
 public:
 	// Sets default values for this component's properties
 	UInvSys_InventoryComponent(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
@@ -60,7 +62,7 @@ public:
 	 * @param InStackCount 当前物品的堆叠数量 
 	 * @param Args 可变参数列表，传入的参数会同一赋值给创建的物品实例
 	 */
-	template<class T, class... Arg>
+	template<class T = UInvSys_InventoryItemInstance, class... Arg>
 	T* AddItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
 		FGameplayTag InSlotTag,	int32 InStackCount, const Arg&... Args)
 	{
@@ -72,30 +74,51 @@ public:
 		return nullptr;
 	}
 
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
-	bool AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
+	template<class T, class... Arg>
+	bool AddItemInstance(T* InItemInstance, FGameplayTag SlotTag, const Arg&... Args)
+	{
+		UInvSys_BaseEquipContainerObject* InvObj = GetInventoryObject<UInvSys_BaseEquipContainerObject>(SlotTag);
+		if (InItemInstance == nullptr || InvObj == nullptr)
+		{
+			checkNoEntry()
+			return false;
+		}
+		/**
+		 * 判断物品实例之前所在的库存组件与当前组件是否一致
+		 * 一致：正常处理即可
+		 * 不一致：说明物品实例的 Outer 不是当前组件的 Owner 所以需要重新复制一份并更新 Outer 为当前组件的 Owner
+		 */
+		T* TargetItemInstance = InItemInstance;
+		if (this != InItemInstance->GetInventoryComponent())
+		{
+			TargetItemInstance = DuplicateObject<T>(InItemInstance, GetOwner());
+			InItemInstance->ConditionalBeginDestroy();//标记目标待删除
+		}
+		return InvObj->AddItemInstance<T>(TargetItemInstance, Args...);
+	}
 	
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
 	bool RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
-
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
 	bool RestoreItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
 
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
-	bool TryDragItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
+	// Begin Drag Drop ====================
+	bool TryDragItemInstance(UInvSys_InventoryComponent* PlayerInvComp, UInvSys_InventoryItemInstance* InItemInstance);
 
-	void CancelDragItemInstance();
-	
+	template<class T = UInvSys_InventoryItemInstance, class... Arg>
+	bool TryDropItemInstance(UInvSys_InventoryComponent* PlayerInvComp,
+		T* InItemInstance, FGameplayTag SlotTag, const Arg&... Ags)
+	{
+		if (PlayerInvComp && PlayerInvComp->bIsSuccessDragItem)
+		{
+			return AddItemInstance<T>(InItemInstance, SlotTag, Ags...);
+		}
+		return  false;
+	}
+	// End Drag Drop ====================
+
 protected:
 	/** 创建所有库存对象后被调用 */
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCosmetic, Category = "Inventory Component")
 	void OnConstructInventoryObjects();
-
-	// Begin Drag Event =====
-	virtual void NativeOnDiscardItemInstance(UInvSys_InventoryItemInstance* InDraggingItemInstance);
-	virtual void NativeOnDraggingItemInstance(UInvSys_InventoryItemInstance* InDraggingItemInstance);
-	virtual void NativeOnCancelDragItemInstance();
-	// End Drag Event =====
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnEquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
@@ -119,9 +142,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_TryDragItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance);
-
-	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_CancelDragItemInstance(UInvSys_InventoryComponent* InvComp);
 
 	UFUNCTION(Client, Reliable)
 	void Client_TryRefreshInventoryObject();

@@ -41,6 +41,8 @@ void UInvSys_BaseEquipmentObject::EquipInventoryItem(UInvSys_InventoryItemInstan
 	if (HasAuthority())
 	{
 		EquipItem = NewItemInstance;
+		EquipItem->SetSlotTag(EquipSlotTag);
+		EquipItem->SetInventoryComponent(InventoryComponent);
 		if (GetNetMode() != NM_DedicatedServer)
 		{
 			OnRep_EquipItemInstance();

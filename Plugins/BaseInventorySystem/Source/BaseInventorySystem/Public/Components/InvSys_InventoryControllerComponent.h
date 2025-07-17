@@ -19,6 +19,26 @@ public:
 	UInvSys_InventoryControllerComponent();
 
 public:
+	/**
+	 * RPC Functions
+	 **/
+
+	/*
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_EquipItemDefinition(UInvSys_InventoryComponent* InvComp,TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, FGameplayTag SlotTag);
+	
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_EquipItemInstance(UInvSys_InventoryComponent* InvComp,UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag);
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_RestoreItemInstance(UInvSys_InventoryComponent* InvComp,UInvSys_InventoryItemInstance* InItemInstance);
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_TryDragItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance);
+	*/
+
+	
+public:
 	/** Gets the game instance this component is a part of, this will return null if not called during normal gameplay */
 	template <class T>
 	T* GetGameInstance() const

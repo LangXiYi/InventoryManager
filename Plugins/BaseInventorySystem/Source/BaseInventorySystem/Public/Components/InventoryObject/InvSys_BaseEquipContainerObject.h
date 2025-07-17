@@ -49,17 +49,21 @@ public:
 	 * 主要用于初始化库存，或不同库存组件间的物品交换
 	 * 注意：传入可变参数时，请确保目标类型中正确创建了对于的处理函数。
 	 */
-	template<class T, class... Arg>
+	template<class T = UInvSys_InventoryItemInstance, class... Arg>
 	T* AddItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, const Arg&... Args)
 	{
-		if (ItemDef == nullptr) return nullptr;
-		T* ItemInstance = ContainerList.AddEntry<T>(ItemDef, StackCount, Args...);
-		return ItemInstance;
+		check(ItemDef)
+		return ContainerList.AddEntry<T>(ItemDef, StackCount, Args...);
 	}
 
 	/** 从其他容器添加物品，容器与容器间的交换，不会 RemoveReplicateObject，因为它们都在同一个Actor下 */
-	bool AddItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
-	bool AddItemInstances(TArray<UInvSys_InventoryItemInstance*> ItemInstances);
+	template<class T = UInvSys_InventoryItemInstance, class... Arg>
+	bool AddItemInstance(T* ItemInstance, const Arg&... Args)
+	{
+		check(ItemInstance)
+		return ContainerList.AddEntry(ItemInstance, Args...);
+	}
+	
 	virtual bool RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance) override;
 	virtual bool RestoreItemInstance(UInvSys_InventoryItemInstance* InItemInstance) override;
 	bool UpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance, int32 NewStackCount);

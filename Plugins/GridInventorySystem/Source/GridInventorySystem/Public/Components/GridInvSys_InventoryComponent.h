@@ -38,8 +38,6 @@ public:
 	UFUNCTION(BlueprintCallable, meta = (DeprecatedFunction))
 	virtual void AddInventoryItemToGridContainer(FGridInvSys_InventoryItem GridContainerItem);
 
-	
-
 	/**
 	 * 仅适用于同容器组件下的物品转移
 	 * @param ChangedItems 旧物品的唯一ID
@@ -66,8 +64,14 @@ public:
 	 * RPC Function
 	 **/
 
+	bool TryDropItemInstanceToPos(UInvSys_InventoryComponent* InvComp,
+		UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos);
+	
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_TryDropItemInstanceToPos(UInvSys_InventoryComponent* InvComp,
+		UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos);
+	
+	void LocalPre_TryDropItemInstance(UInvSys_InventoryComponent* InvComp,
 		UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos);
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
@@ -77,6 +81,7 @@ public:
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_RestoreItemInstanceToPos(UInvSys_InventoryComponent* InvComp,
 		UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos);
+
 	
 public:
 	/**

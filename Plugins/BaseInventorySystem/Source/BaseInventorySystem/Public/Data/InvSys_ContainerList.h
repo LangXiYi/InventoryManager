@@ -90,18 +90,20 @@ public:
 	template<class T, class... Arg>
 	T* AddEntry(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, const Arg&... Args)
 	{
-		check(ItemDef != nullptr);
-		check(OwnerObject);
+		if (ItemDef == nullptr || OwnerObject == nullptr)
+		{
+			checkNoEntry();
+			return nullptr;
+		}
 		
-		AActor* OwningActor = OwnerObject->GetOwner();
-		check(OwningActor->HasAuthority());
-
+		check(OwnerObject->HasAuthority());
 		FInvSys_ContainerEntry& NewEntry = Entries.AddDefaulted_GetRef();
 		T* Result = NewObject<T>(OwnerObject->GetOwner());
 		Result->SetItemDefinition(ItemDef);
 		Result->SetItemUniqueID(FGuid::NewGuid());
-		Result->SetSlotTag(OwnerObject->GetSlotTag());
 		Result->SetStackCount(StackCount);
+		// 这两个属性表明了这个对象的最基础的位置信息
+		Result->SetSlotTag(OwnerObject->GetSlotTag());
 		Result->SetInventoryComponent(OwnerObject->GetInventoryComponent());
 
 		for (const UInvSys_InventoryItemFragment* Fragment : GetDefault<UInvSys_InventoryItemDefinition>(ItemDef)->GetFragments())
@@ -115,7 +117,7 @@ public:
 		NewEntry.Instance = Result;
 		//NewEntry.StackCount = StackCount;
 		//执行可变参数模板，将参数列表中的值赋予目标对象。
-		int32 Arr[] = {(InitItemInstanceProps(Result, Args), 0)...}; 
+		int32 Arr[] = {0, (InitItemInstanceProps(Result, Args), 0)...}; 
 		
 		MarkItemDirty(NewEntry);
 		
@@ -128,11 +130,33 @@ public:
 
 	/**
 	 * 添加其他物品实例
-	 * 注意：传入的实例必须与本容器处在同一库存组件，对于不同库存组件的物品交换，采用 AddDefinition 的方式添加。
-	 * @param Instance 
-	 * @param bIsForceRep 
 	 */
-	bool AddEntry(UInvSys_InventoryItemInstance* Instance, bool bIsForceRep = false);
+	template<class T, class... Arg>
+	bool AddEntry(T* Instance, const Arg&... Args)
+	{
+		if (Instance)
+		{
+			// 更新物品的基础信息
+			Instance->SetSlotTag(OwnerObject->GetSlotTag());
+			Instance->SetInventoryComponent(OwnerObject->GetInventoryComponent());
+			//执行可变参数模板，将参数列表中的值赋予目标对象。
+
+			int32 Arr[] = {0, (InitItemInstanceProps(Instance, Args), 0)...};
+
+
+			FInvSys_ContainerEntry& NewEntry = Entries.AddDefaulted_GetRef();
+			NewEntry.Instance = Instance;
+			MarkItemDirty(NewEntry);
+
+			check(OwnerObject)
+			if (OwnerObject && OwnerObject->GetNetMode() != NM_DedicatedServer)
+			{
+				BroadcastAddEntryMessage(NewEntry);
+			}
+			return true;
+		}
+		return false;
+	}
 	
 	bool RemoveEntry(UInvSys_InventoryItemInstance* Instance);
 

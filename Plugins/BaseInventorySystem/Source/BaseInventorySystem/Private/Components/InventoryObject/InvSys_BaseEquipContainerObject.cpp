@@ -139,26 +139,6 @@ void UInvSys_BaseEquipContainerObject::TryRefreshContainerItems()
 	}
 }
 
-bool UInvSys_BaseEquipContainerObject::AddItemInstance(UInvSys_InventoryItemInstance* ItemInstance)
-{
-	if (ItemInstance == nullptr) return false;
-	
-	ItemInstance->SetSlotTag(EquipSlotTag);
-	ItemInstance->SetInventoryComponent(InventoryComponent);
-	
-	return ContainerList.AddEntry(ItemInstance, true);
-}
-
-bool UInvSys_BaseEquipContainerObject::AddItemInstances(TArray<UInvSys_InventoryItemInstance*> ItemInstances)
-{
-	bool bResult = true;
-	for (UInvSys_InventoryItemInstance* ItemInstance : ItemInstances)
-	{
-		bResult &= AddItemInstance(ItemInstance);
-	}
-	return bResult;
-}
-
 bool UInvSys_BaseEquipContainerObject::RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
 {
 	bool LOCAL_IsRemoveEquipContainer = Super::RemoveItemInstance(InItemInstance);
@@ -189,7 +169,10 @@ bool UInvSys_BaseEquipContainerObject::RestoreItemInstance(UInvSys_InventoryItem
 		if (InItemInstance->MyInstances.Num() > 0)
 		{
 			//如果内部存在其他物品则表明该物品是一个装备容器，那么就需要将内部物品全部转移进来。
-			bResult |= AddItemInstances(InItemInstance->MyInstances);
+			for (UInvSys_InventoryItemInstance* TempItemInstance : InItemInstance->MyInstances)
+			{
+				bResult |= AddItemInstance(TempItemInstance);
+			}
 		}
 		else if(bResult == false)
 		{
