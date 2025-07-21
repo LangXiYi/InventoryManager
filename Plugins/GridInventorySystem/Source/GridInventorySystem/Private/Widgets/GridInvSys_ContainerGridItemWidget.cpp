@@ -6,6 +6,7 @@
 #include "BaseInventorySystem.h"
 #include "GridInvSys_InventorySystemConfig.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
+#include "Components/CanvasPanelSlot.h"
 #include "Components/GridSlot.h"
 #include "Components/SizeBox.h"
 #include "Data/GridInvSys_InventoryItemInfo.h"
@@ -41,12 +42,12 @@ void UGridInvSys_ContainerGridItemWidget::RemoveItemInfo()
 
 void UGridInvSys_ContainerGridItemWidget::AddItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)
 {
-	UGridSlot* GridSlot = Cast<UGridSlot>(Slot);
+	/*UCanvasPanelSlot* GridSlot = Cast<UCanvasPanelSlot>(Slot);
 	if (GridSlot == nullptr)
 	{
 		UE_LOG(LogInventorySystem, Warning, TEXT("更新 ItemInfo 失败 InventoryItemWidget 父级类型不是 GridPanel 。"));
 		return;
-	}
+	}*/
 	if (NewItemInstance == nullptr || NewItemInstance->GetItemDefinition() == nullptr)
 	{
 		UE_LOG(LogInventorySystem, Warning, TEXT("NewItemInstance 为空。"));
@@ -58,9 +59,9 @@ void UGridInvSys_ContainerGridItemWidget::AddItemInstance(UInvSys_InventoryItemI
 	ItemInstance = NewItemInstance;
 	GridItemSize = CalculateGridItemSize(NewItemInstance);
 
-	GridSlot->SetRowSpan(GridItemSize.X);
+	/*GridSlot->SetRowSpan(GridItemSize.X);
 	GridSlot->SetColumnSpan(GridItemSize.Y);
-	GridSlot->SetLayer(100);
+	GridSlot->SetLayer(100);*/
 
 	TArray<UGridInvSys_ContainerGridItemWidget*> OutArray;
 	ContainerGridWidget->GetContainerGridItems<UGridInvSys_ContainerGridItemWidget>(OutArray, GetPosition(), GridItemSize, {this});
@@ -75,13 +76,6 @@ void UGridInvSys_ContainerGridItemWidget::AddItemInstance(UInvSys_InventoryItemI
 
 void UGridInvSys_ContainerGridItemWidget::RemoveItemInstance()
 {
-	UGridSlot* GridSlot = Cast<UGridSlot>(Slot);
-	if (GridSlot == nullptr)
-	{
-		UE_LOG(LogInventorySystem, Warning, TEXT("更新 ItemInfo 失败 InventoryItemWidget 父级类型不是 GridPanel 。"));
-		return;
-	}
-
 	// 先移除下级网格的信息
 	TArray<UGridInvSys_ContainerGridItemWidget*> OutArray;
 	ContainerGridWidget->FindContainerGridItems(OutArray, GetPosition(), GridItemSize, {this});
@@ -94,11 +88,6 @@ void UGridInvSys_ContainerGridItemWidget::RemoveItemInstance()
 	GridItemSize = FIntPoint(1, 1);
 	bIsOccupied = false;
 	OriginGridItemWidget = this;
-
-	GridSlot->SetRowSpan(0);
-	GridSlot->SetColumnSpan(0);
-	GridSlot->SetLayer(0);
-
 	OnRemoveItemInstance();
 }
 
@@ -114,9 +103,7 @@ UInvSys_InventoryItemInfo* UGridInvSys_ContainerGridItemWidget::GetItemInfo() co
 
 FIntPoint UGridInvSys_ContainerGridItemWidget::GetPosition() const
 {
-	UGridSlot* GridSlot = Cast<UGridSlot>(Slot);
-	check(GridSlot)
-	return FIntPoint(GridSlot->GetRow(), GridSlot->GetColumn());
+	return Position;
 }
 
 FIntPoint UGridInvSys_ContainerGridItemWidget::GetOriginPosition() const

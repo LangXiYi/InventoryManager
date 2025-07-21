@@ -91,6 +91,13 @@ protected:
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnRemoveItemInstance();
 
+public:
+	UFUNCTION(BlueprintImplementableEvent, Category = "DraggingDisplayWidget")
+	void OnDraggingHovered(bool bIsCanDrop);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "DraggingDisplayWidget")
+	void OnEndDraggingHovered();
+
 private:
 	/** 获取Item的大小，该大小会收到方向的影响。 */
 	FIntPoint CalculateGridItemSize(UInvSys_InventoryItemInstance* InItemInstance) const;
@@ -115,6 +122,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item")
 	FIntPoint Position;
 
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item")
 	FIntPoint GridItemSize = FIntPoint(1, 1);
 
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item")

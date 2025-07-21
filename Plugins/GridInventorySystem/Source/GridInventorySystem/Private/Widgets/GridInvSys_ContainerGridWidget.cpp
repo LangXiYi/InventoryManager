@@ -8,6 +8,8 @@
 #include "GridInvSys_InventorySystemConfig.h"
 #include "Blueprint/DragDropOperation.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
+#include "Components/CanvasPanel.h"
+#include "Components/CanvasPanelSlot.h"
 #include "Components/GridInvSys_GridInventoryControllerComponent.h"
 #include "Components/GridInvSys_InventoryComponent.h"
 #include "Components/GridPanel.h"
@@ -38,23 +40,23 @@ void UGridInvSys_ContainerGridWidget::ConstructGridItems(int32 InGridID)
 	ContainerGridID = InGridID;
 
 	//  清除 ContainerGrid 中所有子项。
-	if (ContainerGridItemPanel->HasAnyChildren() == true)
+	if (ContainerPanel->HasAnyChildren() == true)
 	{
-		ContainerGridItemPanel->ClearChildren();
-		ContainerGridDropPanel->ClearChildren();
+		ContainerPanel->ClearChildren();
 	}
 
 	// 创建所有网格
+	int32 ItemSize = GetDefault<UGridInvSys_InventorySystemConfig>()->ItemDrawSize;
 	for (int i = 0; i < ContainerGridSize.X * ContainerGridSize.Y; ++i)
 	{
-		auto GridItemWidget = CreateWidget<UGridInvSys_ContainerGridItemWidget>(this, GridItemWidgetClass);
-		auto GridDragWidget = CreateWidget<UGridInvSys_ContainerGridDropWidget>(this, GridDropWidgetClass);
-
 		const int SlotRow = i / ContainerGridSize.Y;
 		const int SlotColumn = i % ContainerGridSize.Y;
-		ContainerGridItemPanel->AddChildToGrid(GridItemWidget, SlotRow,SlotColumn);
-		ContainerGridDropPanel->AddChildToUniformGrid(GridDragWidget, SlotRow,SlotColumn);
+		auto GridItemWidget = CreateWidget<UGridInvSys_ContainerGridItemWidget>(this, GridItemWidgetClass);
+		UCanvasPanelSlot* PanelSlot = ContainerPanel->AddChildToCanvas(GridItemWidget);
 
+		PanelSlot->SetPosition(FVector2d(SlotColumn * ItemSize, SlotRow * ItemSize));
+		PanelSlot->SetSize(FVector2d(ItemSize, ItemSize)); // 方便后续显示拖拽范围。
+		
 		GridItemWidget->SetInventoryComponent(InventoryComponent.Get());
 		GridItemWidget->SetSlotTag(SlotTag);
 		GridItemWidget->OnConstructGridItem(this, FIntPoint(SlotRow, SlotColumn));
@@ -97,7 +99,7 @@ int32 UGridInvSys_ContainerGridWidget::GetItemIndex(const FIntPoint Position) co
 UGridInvSys_ContainerGridItemWidget* UGridInvSys_ContainerGridWidget::GetGridItemWidget(FIntPoint Position) const
 {
 	const int32 Index = GetItemIndex(Position);
-	return Index >= 0 ? Cast<UGridInvSys_ContainerGridItemWidget>(ContainerGridItemPanel->GetChildAt(Index)) : nullptr;
+	return Index >= 0 ? Cast<UGridInvSys_ContainerGridItemWidget>(ContainerPanel->GetChildAt(Index)) : nullptr;
 }
 
 UGridInvSys_ContainerGridDropWidget* UGridInvSys_ContainerGridWidget::GetContainerGridDropItem(FIntPoint Position) const
@@ -432,9 +434,9 @@ bool UGridInvSys_ContainerGridWidget::NativeOnDrop(const FGeometry& InGeometry, 
 
 void UGridInvSys_ContainerGridWidget::ResetDragDropData()
 {
-	for (UGridInvSys_ContainerGridDropWidget* LastOverItem : LastDropOverItems)
+	for (UGridInvSys_ContainerGridItemWidget* LastOverItem : LastDropOverItems)
 	{
-		LastOverItem->NativeOnEndDraggingHovered();
+		LastOverItem->OnEndDraggingHovered();
 	}
 	LastDropOverItems.Empty();
 	LastDropOriginPosition = FIntPoint(-1, -1);
@@ -612,10 +614,11 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(UGridInvSys_Conta
 
 void UGridInvSys_ContainerGridWidget::ShowDragGridEffect(FIntPoint Position, FIntPoint Size, bool bIsRight)
 {
-	GetContainerGridDragItems<UGridInvSys_ContainerGridDropWidget>(LastDropOverItems, Position, Size);
-	for (UGridInvSys_ContainerGridDropWidget* DropOverItem : LastDropOverItems)
+	// UE_LOG(LogInventorySystem, Warning, TEXT("Pos = [%d, %d]"), Position.X, Position.Y)
+	GetContainerGridItems<UGridInvSys_ContainerGridItemWidget>(LastDropOverItems, Position, Size);
+	for (UGridInvSys_ContainerGridItemWidget* DropOverItem : LastDropOverItems)
 	{
-		DropOverItem->NativeOnDraggingHovered(bIsRight);
+		DropOverItem->OnDraggingHovered(bIsRight);
 	}
 }
 

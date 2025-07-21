@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GridInvSys_CommonType.h"
+#include "Components/CanvasPanel.h"
 #include "Components/GridPanel.h"
 #include "Components/UniformGridPanel.h"
 #include "Widgets/InvSys_InventoryWidget.h"
@@ -83,25 +84,11 @@ public:
 		GetContainerGridItemIndexes(OutIndexes, Position, Size);
 		for (const int32 Index : OutIndexes)
 		{
-			T* GridItemWidget = Cast<T>(ContainerGridItemPanel->GetChildAt(Index));
+			T* GridItemWidget = Cast<T>(ContainerPanel->GetChildAt(Index));
 			if (Ignores.Contains(GridItemWidget))
 			{
 				continue;
 			}
-			OutArray.AddUnique(GridItemWidget);
-		}
-	}
-
-	template<class T = UWidget>
-	void GetContainerGridDragItems(TArray<T*>& OutArray, FIntPoint Position, FIntPoint Size) const
-	{
-		OutArray.Empty();
-		OutArray.Reserve(Size.X * Size.Y);
-		TArray<int32> OutIndexes;
-		GetContainerGridItemIndexes(OutIndexes, Position, Size);
-		for (const int32 Index : OutIndexes)
-		{
-			T* GridItemWidget = Cast<T>(ContainerGridDropPanel->GetChildAt(Index));
 			OutArray.AddUnique(GridItemWidget);
 		}
 	}
@@ -138,11 +125,15 @@ protected:
 	bool IsCanDropItemFromContainer(UGridInvSys_ContainerGridWidget* FromContainer, FIntPoint ToPosition, FIntPoint FromItemSize) const;
 
 protected:
+	// 废弃！！！
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Container Grid", meta = (BindWidget))
 	TObjectPtr<class UGridPanel> ContainerGridItemPanel;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Container Grid", meta = (BindWidget))
 	TObjectPtr<class UUniformGridPanel> ContainerGridDropPanel;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory Container Grid", meta = (BindWidget))
+	TObjectPtr<class UCanvasPanel> ContainerPanel;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Container Grid", meta = (BindWidget))
 	TObjectPtr<class USizeBox> SizeBox;
@@ -167,7 +158,7 @@ protected:
 
 private:
 	UPROPERTY()
-	TArray<UGridInvSys_ContainerGridDropWidget*> LastDropOverItems;
+	TArray<UGridInvSys_ContainerGridItemWidget*> LastDropOverItems;
 
 	// 上一次拖拽时，计算得到的坐标位置
 	FIntPoint LastDropOriginPosition;
