@@ -64,16 +64,6 @@ public:
 	 * RPC Function
 	 **/
 
-	bool TryDropItemInstanceToPos(UInvSys_InventoryComponent* InvComp,
-		UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos);
-	
-	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_TryDropItemInstanceToPos(UInvSys_InventoryComponent* InvComp,
-		UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos);
-	
-	void LocalPre_TryDropItemInstance(UInvSys_InventoryComponent* InvComp,
-		UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos);
-
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_AddItemInstancesToContainerPos(UInvSys_InventoryComponent* InvComp,
 		const TArray<UInvSys_InventoryItemInstance*>& InItemInstances, const TArray<FGridInvSys_ItemPosition>& InPosArray);

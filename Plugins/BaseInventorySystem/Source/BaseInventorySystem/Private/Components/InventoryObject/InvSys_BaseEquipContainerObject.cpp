@@ -199,42 +199,21 @@ void UInvSys_BaseEquipContainerObject::NativeOnEquipItemInstance(UInvSys_Invento
 		if (EquipSlotWidget->IsA(UInvSys_EquipContainerSlotWidget::StaticClass()))
 		{
 			UInvSys_EquipContainerSlotWidget* ContainerSlotWidget = Cast<UInvSys_EquipContainerSlotWidget>(EquipSlotWidget);
-			ContainerLayout = ContainerSlotWidget->GetContainerLayoutWidget();
-			GetWorld()->GetTimerManager().SetTimerForNextTick([this]()
+			GetWorld()->GetTimerManager().SetTimerForNextTick([this, ContainerSlotWidget]()
 			{
 				// 延迟到下一帧执行，确保ContainerLayout创建完成
+				ContainerLayout = ContainerSlotWidget->GetContainerLayoutWidget();
 				UE_LOG(LogInventorySystem, Error, TEXT("尝试刷新容器所有物品"))
 				TryRefreshContainerItems();
 			});
 		}
-		// EquipSlotWidget->
-		/*auto Fragment = InItemInstance->FindFragmentByClass<UInvSys_ItemFragment_ContainerLayout>();
-		if (Fragment)
-		{
-			ContainerLayout = CreateWidget<UInvSys_InventoryWidget>(EquipSlotWidget, Fragment->ContainerLayout);
-			ContainerLayout->SetInventoryComponent(InventoryComponent);
-			ContainerLayout->SetSlotTag(EquipSlotTag);
-			if (EquipSlotWidget->IsA(UInvSys_EquipContainerSlotWidget::StaticClass()))
-			{
-				UInvSys_EquipContainerSlotWidget* TempContainerSlotWidget = Cast<UInvSys_EquipContainerSlotWidget>(EquipSlotWidget);
-				check(TempContainerSlotWidget);
-				TempContainerSlotWidget->AddContainerLayout(ContainerLayout);
-				TryRefreshContainerItems();
-			}
-		}*/
 	}
 }
 
 void UInvSys_BaseEquipContainerObject::NativeOnUnEquipItemInstance()
 {
 	Super::NativeOnUnEquipItemInstance();
-	if (EquipSlotWidget && ContainerLayout)
-	{
-		ContainerLayout->RemoveFromParent();
-		ContainerLayout = nullptr;
-		// TODO::删除布局
-		// EquipSlotWidget->UnEquipItemInstance();
-	}
+	ContainerLayout = nullptr;
 }
 
 void UInvSys_BaseEquipContainerObject::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

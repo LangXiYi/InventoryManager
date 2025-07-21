@@ -7,7 +7,7 @@
 #include "Data/InvSys_InventoryItemDefinition.h"
 #include "InvSys_ItemFragment_DragDrop.generated.h"
 
-class UInvSys_DraggingItemInterface;
+class UInvSys_DraggingItemWidget;
 /**
  * 
  */
@@ -17,10 +17,7 @@ class BASEINVENTORYSYSTEM_API UInvSys_ItemFragment_DragDrop : public UInvSys_Inv
 	GENERATED_BODY()
 public:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment")
-	TSubclassOf<UUserWidget> DraggingWidgetClass;
-
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment")
-	TScriptInterface<UInvSys_DraggingItemInterface> DraggingItemWidget;
+	TSubclassOf<UInvSys_DraggingItemWidget> DraggingWidgetClass;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Item Fragment")
 	EDragPivot DragPivot = EDragPivot::CenterCenter;

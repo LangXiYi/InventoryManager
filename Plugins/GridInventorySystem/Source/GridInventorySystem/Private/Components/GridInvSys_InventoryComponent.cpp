@@ -104,7 +104,7 @@ void UGridInvSys_InventoryComponent::UpdateContainerItemsPosition(TArray<FName> 
 		{
 			check(false)
 			UE_LOG(LogInventorySystem, Error, TEXT("用户可能存在作弊行为，传入数据与服务器数据不匹配。"))
-			Client_TryRefreshInventoryObject();
+			//Client_TryRefreshInventoryObject();
 			return;
 		}
 	}
@@ -119,7 +119,7 @@ void UGridInvSys_InventoryComponent::UpdateContainerItemsPosition(TArray<FName> 
 		{
 			check(false)
 			UE_LOG(LogInventorySystem, Error, TEXT("用户可能存在作弊行为，传入数据与服务器数据不匹配。"))
-			Client_TryRefreshInventoryObject();
+			//Client_TryRefreshInventoryObject();
 			return;
 		}
 	}
@@ -201,32 +201,6 @@ bool UGridInvSys_InventoryComponent::FindEnoughFreeSpace(FName SlotName, FIntPoi
 	return false;
 }
 
-bool UGridInvSys_InventoryComponent::TryDropItemInstanceToPos(UInvSys_InventoryComponent* InvComp,
-	UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos)
-{
-	check(InItemInstance)
-	if (InItemInstance && InItemInstance->IsA<UGridInvSys_InventoryItemInstance>())
-	{
-		UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(InItemInstance);
-		check(GridItemInstance)
-
-		return TryDropItemInstance<UGridInvSys_InventoryItemInstance>(InvComp, GridItemInstance, InPos.EquipSlotTag, InPos);
-	}
-	return false;
-}
-
-void UGridInvSys_InventoryComponent::Server_TryDropItemInstanceToPos_Implementation(
-	UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance,
-	const FGridInvSys_ItemPosition& InPos)
-{
-	check(InvComp)
-	if (InvComp && InvComp->IsA<UGridInvSys_InventoryComponent>())
-	{
-		UGridInvSys_InventoryComponent* GridInvComp = Cast<UGridInvSys_InventoryComponent>(InvComp);
-		check(GridInvComp)
-		GridInvComp->TryDropItemInstanceToPos(this, InItemInstance, InPos);
-	}
-}
 
 void UGridInvSys_InventoryComponent::Server_AddItemInstancesToContainerPos_Implementation(
 	UInvSys_InventoryComponent* InvComp, const TArray<UInvSys_InventoryItemInstance*>& InItemInstances,
@@ -260,19 +234,6 @@ void UGridInvSys_InventoryComponent::Server_RestoreItemInstanceToPos_Implementat
 		UGridInvSys_InventoryComponent* GridInvComp = Cast<UGridInvSys_InventoryComponent>(InvComp);
 		GridInvComp->RestoreItemInstanceToPos(InItemInstance, InPos);
 	}
-}
-
-void UGridInvSys_InventoryComponent::LocalPre_TryDropItemInstance(UInvSys_InventoryComponent* InvComp,
-	UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos)
-{
-	check(InvComp)
-	if (InvComp && InvComp->IsA<UGridInvSys_InventoryComponent>())
-	{
-		UGridInvSys_InventoryComponent* GridInvComp = Cast<UGridInvSys_InventoryComponent>(InvComp);
-		check(GridInvComp)
-		GridInvComp->TryDropItemInstanceToPos(this, InItemInstance, InPos);
-	}
-	Server_TryDropItemInstanceToPos(InvComp, InItemInstance, InPos);
 }
 
 bool UGridInvSys_InventoryComponent::FindInventoryItem(FName SlotName, const FIntPoint& ItemPosition, FGridInvSys_InventoryItem& OutItem)

@@ -11,19 +11,10 @@ class UInvSys_InventoryItemInstance;
  * 
  */
 UCLASS()
-class BASEINVENTORYSYSTEM_API UInvSys_InventoryItemWidget : public UInvSys_InventoryWidget
+class BASEINVENTORYSYSTEM_API UInvSys_InventoryItemWidget : public UUserWidget
 {
 	GENERATED_BODY()
 
-public:
-	UFUNCTION(BlueprintImplementableEvent)
-	UInvSys_InventoryComponent* GetPlayerInventoryComponent() const;
-	
-protected:
-	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
-	virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
-	virtual void NativeOnDragCancelled(const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
-	
 public:
 	void SetItemInstance(UInvSys_InventoryItemInstance* NewItemInstance);
 	
@@ -33,16 +24,18 @@ public:
 		return (T*)ItemInstance.Get();
 	}
 
-	template<class T>
-	T* GetPlayerInventoryComponent() const
-	{
-		return (T*)GetPlayerInventoryComponent();
-	}
+protected:
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
+
+	virtual void NativeDestruct() override;
 
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Item", meta = (ExposeOnSpawn))
 	TWeakObjectPtr<UInvSys_InventoryItemInstance> ItemInstance;
 
 private:
-	bool bIsWaitServerDragging = false;
+	bool bIsWaitingServerResponse = false;
+
+	FTimerHandle ServerTimeoutHandle;
 };

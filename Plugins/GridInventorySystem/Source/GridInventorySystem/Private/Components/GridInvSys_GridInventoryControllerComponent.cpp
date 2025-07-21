@@ -4,53 +4,25 @@
 #include "Components/GridInvSys_GridInventoryControllerComponent.h"
 
 #include "Components/GridInvSys_InventoryComponent.h"
+#include "Data/GridInvSys_InventoryItemInstance.h"
 
 
-// Sets default values for this component's properties
 UGridInvSys_GridInventoryControllerComponent::UGridInvSys_GridInventoryControllerComponent()
 {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
-	PrimaryComponentTick.bCanEverTick = true;
-
-	// ...
 }
 
-void UGridInvSys_GridInventoryControllerComponent::Server_UpdateInventoryItems_Implementation(
-	UInvSys_InventoryComponent* TargetInvComp, const TArray<FName>& ChangedItems,
-	const TArray<FGridInvSys_InventoryItemPosition>& NewItemData)
+void UGridInvSys_GridInventoryControllerComponent::Server_TryDropItemInstance_Implementation(
+	UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance,
+	const FGridInvSys_ItemPosition& InPos)
 {
-	if (TargetInvComp && TargetInvComp->IsA(UGridInvSys_InventoryComponent::StaticClass()))
+	bool bIsSuccess = false;
+	UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(InItemInstance);
+	if (GridItemInstance)
 	{
-		UGridInvSys_InventoryComponent* GridInvComp = Cast<UGridInvSys_InventoryComponent>(TargetInvComp);
-		GridInvComp->UpdateContainerItemsPosition(ChangedItems, NewItemData);
+		bIsSuccess = TryDropItemInstance<UGridInvSys_InventoryItemInstance>(InvComp, GridItemInstance,
+			InPos.EquipSlotTag, InPos);
 	}
-}
-
-void UGridInvSys_GridInventoryControllerComponent::Server_AddInventoryItem_Implementation(UInvSys_InventoryComponent* TargetInvComp, FGridInvSys_InventoryItem NewItem)
-{
-	if (TargetInvComp && TargetInvComp->IsA(UGridInvSys_InventoryComponent::StaticClass()))
-	{
-		UGridInvSys_InventoryComponent* GridInvComp = Cast<UGridInvSys_InventoryComponent>(TargetInvComp);
-		GridInvComp->AddInventoryItemToGridContainer(NewItem);
-	}
-}
-
-// Called when the game starts
-void UGridInvSys_GridInventoryControllerComponent::BeginPlay()
-{
-	Super::BeginPlay();
-
-	// ...
-	
-}
-
-
-// Called every frame
-void UGridInvSys_GridInventoryControllerComponent::TickComponent(float DeltaTime, ELevelTick TickType,
-                                                                 FActorComponentTickFunction* ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	// ...
+	UE_LOG(LogInventorySystem, Log, TEXT("[Server:%s] 尝试放置物品[%s] --> {%s}"),
+		bIsSuccess ? TEXT("TRUE") : TEXT("FALSE"),
+		*InItemInstance->GetItemDisplayName().ToString(), *InPos.ToString())
 }

@@ -37,6 +37,12 @@ public:
 
 	const UInvSys_InventoryItemFragment* FindFragmentByClass(TSubclassOf<UInvSys_InventoryItemFragment> FragmentClass) const;
 
+	template<class T>
+	const T* FindFragmentByClass() const
+	{
+		return (T*)FindFragmentByClass(T::StaticClass());
+	}
+
 	const FText GetItemDisplayName() const
 	{
 		return DisplayName;

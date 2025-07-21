@@ -21,10 +21,10 @@ struct FInvSys_InventoryStackChangeMessage
 	UInvSys_InventoryItemInstance* ItemInstance = nullptr;
 
 	UPROPERTY(BlueprintReadOnly, Category = Inventory)
-	int32 StackCount;
+	int32 StackCount = 1;
 
 	UPROPERTY(BlueprintReadOnly, Category = Inventory)
-	int32 Delta;
+	int32 Delta = 0;
 };
 
 DECLARE_DELEGATE_OneParam(FOnInventoryStackChange, FInvSys_InventoryStackChangeMessage);

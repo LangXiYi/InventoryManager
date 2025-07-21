@@ -3,10 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "BaseInventorySystem.h"
+#include "InvSys_InventoryComponent.h"
 #include "Components/ActorComponent.h"
 #include "InvSys_InventoryControllerComponent.generated.h"
 
 
+class UInvSys_InventoryItemInstance;
 class UInvSys_InventoryComponent;
 
 UCLASS(Blueprintable, meta=(BlueprintSpawnableComponent))
@@ -15,7 +18,6 @@ class BASEINVENTORYSYSTEM_API UInvSys_InventoryControllerComponent : public UAct
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this component's properties
 	UInvSys_InventoryControllerComponent();
 
 public:
@@ -23,20 +25,22 @@ public:
 	 * RPC Functions
 	 **/
 
-	/*
-	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_EquipItemDefinition(UInvSys_InventoryComponent* InvComp,TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, FGameplayTag SlotTag);
-	
-	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_EquipItemInstance(UInvSys_InventoryComponent* InvComp,UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag);
-
-	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_RestoreItemInstance(UInvSys_InventoryComponent* InvComp,UInvSys_InventoryItemInstance* InItemInstance);
+	/**
+	 * 由于放置逻辑可能存在其他不确定的属性，所以这里没有办法提前定义 RPC 函数，需要子类实现自定义的 Server RPC
+	 * void Server_TryDropItemInstance(InvComp, ItemInstance, SlotTag, Args...);
+	 */
+	template<class T, class... Arg>
+	bool TryDropItemInstance(UInvSys_InventoryComponent* InvComp, T* InItemInstance, FGameplayTag SlotTag, const Arg&... Ags)
+	{
+		if (bIsSuccessDragItem && InvComp)
+		{
+			return InvComp->TryDropItemInstance<T>(InItemInstance, SlotTag, Ags...);
+		}
+		return false;
+	}
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_TryDragItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance);
-	*/
-
 	
 public:
 	/** Gets the game instance this component is a part of, this will return null if not called during normal gameplay */
@@ -65,12 +69,11 @@ public:
 	/** Returns the world's timer manager */
 	class FTimerManager& GetWorldTimerManager() const;
 
-protected:
-	// Called when the game starts
-	virtual void BeginPlay() override;
+private:
+	// 标记玩家是否拖拽起了目标物品
+	bool bIsSuccessDragItem = false;
 
-public:
-	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
-	                           FActorComponentTickFunction* ThisTickFunction) override;
+	// 保存目标物品的引用
+	UPROPERTY()
+	TObjectPtr<UInvSys_InventoryItemInstance> DraggingItemInstance = nullptr;
 };

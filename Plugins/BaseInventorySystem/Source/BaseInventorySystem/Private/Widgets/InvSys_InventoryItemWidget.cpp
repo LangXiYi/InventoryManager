@@ -6,9 +6,10 @@
 #include "BaseInventorySystem.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Components/InvSys_InventoryComponent.h"
+#include "Components/InvSys_InventoryControllerComponent.h"
 #include "Data/InvSys_ItemFragment_DragDrop.h"
 #include "Data/InvSys_InventoryItemInstance.h"
-#include "Interface/InvSys_DraggingItemInterface.h"
+#include "Library/InvSys_InventorySystemLibrary.h"
 
 void UInvSys_InventoryItemWidget::SetItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)
 {
@@ -19,67 +20,38 @@ FReply UInvSys_InventoryItemWidget::NativeOnMouseButtonDown(const FGeometry& InG
 {
 	if (ItemInstance.Get())
 	{
-		// 后续修改这部分逻辑，优化操作体验
-		FEventReply EventReply = UWidgetBlueprintLibrary::DetectDragIfPressed(InMouseEvent, this, EKeys::LeftMouseButton);
-		return EventReply.NativeReply;
+		return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 	}
-	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
+	return FReply::Unhandled();
 }
 
 void UInvSys_InventoryItemWidget::NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent,
 	UDragDropOperation*& OutOperation)
 {
-	Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
-	if (bIsWaitServerDragging == true)
+	if (false)
 	{
-		UE_LOG(LogInventorySystem, Error, TEXT("正在等待服务器拖拽的回调，无法继续拖拽该物品。"))
+		// todo::禁用拖拽？
 		return;
 	}
-	if (ItemInstance.IsValid() == false)
+	if (ItemInstance.IsValid() && bIsWaitingServerResponse == false)
 	{
-		return;
-	}
-
-	// 获取当前玩家的库存组件
-	UInvSys_InventoryComponent* PlayerInvComp = GetPlayerInventoryComponent();
-	UInvSys_InventoryComponent* FromInvComp = ItemInstance->GetInventoryComponent();
-
-	auto DragDropFragment = ItemInstance->FindFragmentByClass<UInvSys_ItemFragment_DragDrop>();
-	if (DragDropFragment && PlayerInvComp && FromInvComp)
-	{
-		check(DragDropFragment->DraggingWidgetClass)
-		// 创建 Dragging 控件
-		UUserWidget* DraggingWidget = CreateWidget<UUserWidget>(this, DragDropFragment->DraggingWidgetClass);
-		if (DraggingWidget && DraggingWidget->Implements<UInvSys_DraggingItemInterface>())
+		Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
+		// 获取当前玩家的库存组件
+		UInvSys_InventoryControllerComponent* PlayerInvComp = UInvSys_InventorySystemLibrary::FindInvControllerComponent(GetWorld());
+		UInvSys_InventoryComponent* FromInvComp = ItemInstance->GetInventoryComponent();
+		/** 等待服务器响应用户拖拽事件 */
+		bIsWaitingServerResponse = true;
+		PlayerInvComp->Server_TryDragItemInstance(FromInvComp, ItemInstance.Get()); //通知服务器: 玩家正在拖拽物品
+		GetWorld()->GetTimerManager().SetTimer(ServerTimeoutHandle, [&]()
 		{
-			PlayerInvComp->SetDraggingWidget(DraggingWidget); //更新库存组件中被拖拽的物品控件，方便更新最新的物品实例。
-			IInvSys_DraggingItemInterface::Execute_UpdateItemInstance(DraggingWidget, ItemInstance.Get());
-
-
-			UDragDropOperation* DragDropOperation = NewObject<UDragDropOperation>();
-			DragDropOperation->Payload = this;
-			DragDropOperation->DefaultDragVisual = DraggingWidget;
-			DragDropOperation->Pivot = DragDropFragment->DragPivot;
-			DragDropOperation->Offset = DragDropFragment->DragOffset;
-			OutOperation = DragDropOperation;
-
-			UE_LOG(LogInventorySystem, Warning, TEXT("正在抓起物品：%s"), *ItemInstance.Get()->GetName());
-			PlayerInvComp->Server_TryDragItemInstance(FromInvComp, ItemInstance.Get()); //通知服务器: 玩家正在拖拽物品
-			bIsWaitServerDragging = true;
-		}
+			bIsWaitingServerResponse = false;
+			// TODO::发送网络环境较差通知？
+		}, 5.f, false);
 	}
 }
 
-void UInvSys_InventoryItemWidget::NativeOnDragCancelled(const FDragDropEvent& InDragDropEvent,
-	UDragDropOperation* InOperation)
+void UInvSys_InventoryItemWidget::NativeDestruct()
 {
-	Super::NativeOnDragCancelled(InDragDropEvent, InOperation);
-	/*UInvSys_InventoryComponent* PlayerGridInvComp = GetPlayerInventoryComponent();
-	if (PlayerGridInvComp)
-	{
-		PlayerGridInvComp->SetDraggingWidget(nullptr);
-		UInvSys_InventoryComponent* FromInvComp = ItemInstance->GetInventoryComponent();
-		PlayerGridInvComp->Server_CancelDragItemInstance(FromInvComp); //通知服务器: 玩家正在取消拖拽
-	}
-	UE_LOG(LogInventorySystem, Error, TEXT("Cancel Drag"))*/
+	GetWorld()->GetTimerManager().ClearTimer(ServerTimeoutHandle);
+	Super::NativeDestruct();
 }

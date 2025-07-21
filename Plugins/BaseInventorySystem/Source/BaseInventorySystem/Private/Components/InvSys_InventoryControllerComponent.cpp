@@ -3,15 +3,21 @@
 
 #include "Components/InvSys_InventoryControllerComponent.h"
 
+#include "Components/InvSys_InventoryComponent.h"
 
-// Sets default values for this component's properties
+
 UInvSys_InventoryControllerComponent::UInvSys_InventoryControllerComponent()
 {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = false;
+}
 
-	// ...
+void UInvSys_InventoryControllerComponent::Server_TryDragItemInstance_Implementation(
+	UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance)
+{
+	check(InvComp)
+	check(InItemInstance)
+	bIsSuccessDragItem = InvComp ? InvComp->TryDragItemInstance(InItemInstance) : false;
+	DraggingItemInstance = bIsSuccessDragItem ? InItemInstance : nullptr;
 }
 
 bool UInvSys_InventoryControllerComponent::HasAuthority() const
@@ -27,23 +33,3 @@ FTimerManager& UInvSys_InventoryControllerComponent::GetWorldTimerManager() cons
 	check(Owner);
 	return Owner->GetWorldTimerManager();
 }
-
-// Called when the game starts
-void UInvSys_InventoryControllerComponent::BeginPlay()
-{
-	Super::BeginPlay();
-
-	// ...
-	
-}
-
-
-// Called every frame
-void UInvSys_InventoryControllerComponent::TickComponent(float DeltaTime, ELevelTick TickType,
-                                                         FActorComponentTickFunction* ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	// ...
-}
-

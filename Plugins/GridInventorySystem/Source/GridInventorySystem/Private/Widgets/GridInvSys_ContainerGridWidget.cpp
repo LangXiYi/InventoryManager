@@ -19,12 +19,11 @@
 #include "Data/GridInvSys_ItemFragment_GridItemSize.h"
 #include "Framework/Notifications/NotificationManager.h"
 #include "Interface/GridInvSys_DraggingItemInterface.h"
-#include "Interface/InvSys_DraggingItemInterface.h"
+#include "Library/InvSys_InventorySystemLibrary.h"
 #include "Widgets/GridInvSys_ContainerGridDropWidget.h"
 #include "Widgets/GridInvSys_ContainerGridItemWidget.h"
 #include "Widgets/GridInvSys_ContainerGridLayoutWidget.h"
 #include "Widgets/GridInvSys_DragItemWidget.h"
-#include "Widgets/GridInvSys_InventoryItemWidget.h"
 #include "Widgets/Notifications/SNotificationList.h"
 
 
@@ -314,12 +313,12 @@ void UGridInvSys_ContainerGridWidget::NativePreConstruct()
 bool UGridInvSys_ContainerGridWidget::NativeOnDragOver(const FGeometry& InGeometry,
                                                        const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
 {
-	if (InOperation->DefaultDragVisual == nullptr)
+	if (InOperation->DefaultDragVisual == nullptr || InOperation->Payload == nullptr)
 	{
 		return Super::NativeOnDragOver(InGeometry, InDragDropEvent, InOperation);
 	}
 	// 拖拽目标的物品实例
-	UInvSys_InventoryItemInstance* DragItemInstance = IInvSys_DraggingItemInterface::Execute_GetItemInstance(InOperation->DefaultDragVisual);
+	UInvSys_InventoryItemInstance* DragItemInstance = Cast<UInvSys_InventoryItemInstance>(InOperation->Payload);
 	check(DragItemInstance);
 	if (DragItemInstance)
 	{
@@ -392,7 +391,7 @@ bool UGridInvSys_ContainerGridWidget::NativeOnDrop(const FGeometry& InGeometry, 
 		return Super::NativeOnDragOver(InGeometry, InDragDropEvent, InOperation);
 	}
 	// 拖拽目标的物品实例
-	UInvSys_InventoryItemInstance* DragItemInstance = IInvSys_DraggingItemInterface::Execute_GetItemInstance(InOperation->DefaultDragVisual);
+	UInvSys_InventoryItemInstance* DragItemInstance = Cast<UInvSys_InventoryItemInstance>(InOperation->Payload);
 	check(DragItemInstance);
 	if (DragItemInstance)
 	{
@@ -421,7 +420,7 @@ bool UGridInvSys_ContainerGridWidget::NativeOnDrop(const FGeometry& InGeometry, 
 			{
 				FGridInvSys_ItemPosition ToPos;
 				ToPos.EquipSlotTag = SlotTag;
-				ToPos.GridID = 0;
+				ToPos.GridID = ContainerGridID;
 				ToPos.Position = OriginPosition;
 				ToPos.Direction = ItemDirection;
 				return TryDropItemFromContainer(this, DragItemInstance, ItemSize, ToPos);
@@ -446,8 +445,8 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(UGridInvSys_Conta
 {
 	UE_LOG(LogInventorySystem, Log, TEXT("尝试放下物品至位置：%s"), *ItemPositionData.ToString())
 
-	UGridInvSys_InventoryComponent* PlayerInvComp = GetOwningPlayer()->GetComponentByClass<UGridInvSys_InventoryComponent>();
-	check(PlayerInvComp);
+	UGridInvSys_GridInventoryControllerComponent* PlayerInvComp =
+		UInvSys_InventorySystemLibrary::FindInvControllerComponent<UGridInvSys_GridInventoryControllerComponent>(GetWorld());
 	if (PlayerInvComp == nullptr)
 	{
 		return false;
@@ -478,8 +477,7 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(UGridInvSys_Conta
 	GetOccupiedGridItems(ToOccupiedItems, ToPosition, FromItemSize);
 	if (ToOccupiedItems.IsEmpty()) // 目标位置未被其他物品占领
 	{
-		UE_LOG(LogInventorySystem, Log, TEXT("[Try Drop Item] To 未被占领或是 From 与 To 的 Occupant 是同一对象"))
-		PlayerInvComp->Server_TryDropItemInstanceToPos(InventoryComponent.Get(), ItemInstance, ItemPositionData);
+		PlayerInvComp->Server_TryDropItemInstance(InventoryComponent.Get(), ItemInstance, ItemPositionData);
 		return true;
 	}
 	

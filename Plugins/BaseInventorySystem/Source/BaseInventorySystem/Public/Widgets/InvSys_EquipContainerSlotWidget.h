@@ -22,9 +22,6 @@ public:
 	UInvSys_InventoryWidget* GetContainerLayoutWidget();
 
 protected:
-	UPROPERTY(BlueprintReadWrite, Category = "Equip Container")
-	TObjectPtr<UInvSys_InventoryWidget> ContainerLayoutWidget;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
 	TObjectPtr<UNamedSlot> NS_ContainerGridLayout;
 };

@@ -101,17 +101,12 @@ public:
 	bool RestoreItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
 
 	// Begin Drag Drop ====================
-	bool TryDragItemInstance(UInvSys_InventoryComponent* PlayerInvComp, UInvSys_InventoryItemInstance* InItemInstance);
+	bool TryDragItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
 
 	template<class T = UInvSys_InventoryItemInstance, class... Arg>
-	bool TryDropItemInstance(UInvSys_InventoryComponent* PlayerInvComp,
-		T* InItemInstance, FGameplayTag SlotTag, const Arg&... Ags)
+	bool TryDropItemInstance(T* InItemInstance, FGameplayTag SlotTag, const Arg&... Ags)
 	{
-		if (PlayerInvComp && PlayerInvComp->bIsSuccessDragItem)
-		{
-			return AddItemInstance<T>(InItemInstance, SlotTag, Ags...);
-		}
-		return  false;
+		return AddItemInstance<T>(InItemInstance, SlotTag, Ags...);
 	}
 	// End Drag Drop ====================
 
@@ -139,12 +134,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_RestoreItemInstance(UInvSys_InventoryComponent* InvComp,UInvSys_InventoryItemInstance* InItemInstance);
-
-	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_TryDragItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance);
-
-	UFUNCTION(Client, Reliable)
-	void Client_TryRefreshInventoryObject();
 	
 public:
 	/**

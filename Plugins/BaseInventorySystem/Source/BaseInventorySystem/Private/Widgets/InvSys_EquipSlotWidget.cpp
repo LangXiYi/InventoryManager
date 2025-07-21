@@ -9,7 +9,7 @@
 #include "Components/InventoryObject/InvSys_BaseEquipmentObject.h"
 #include "Components/InventoryObject/InvSys_BaseInventoryObject.h"
 #include "Data/InvSys_InventoryItemInstance.h"
-#include "Interface/InvSys_DraggingItemInterface.h"
+#include "Data/InvSys_ItemFragment_EquipItem.h"
 #include "Widgets/InvSys_InventoryItemWidget.h"
 
 void UInvSys_EquipSlotWidget::EquipItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)
@@ -46,23 +46,26 @@ bool UInvSys_EquipSlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FD
 	{
 		return Super::NativeOnDrop(InGeometry, InDragDropEvent, InOperation);
 	}
-	UInvSys_InventoryItemInstance* LOCAL_ItemInstance = IInvSys_DraggingItemInterface::Execute_GetItemInstance(InOperation->DefaultDragVisual);
+	UInvSys_InventoryItemInstance* LOCAL_ItemInstance = Cast<UInvSys_InventoryItemInstance>(InOperation->Payload);
 	check(LOCAL_ItemInstance)
 	if (LOCAL_ItemInstance)
 	{
-		if (CheckIsCanDrop(LOCAL_ItemInstance))
+		// 这里是客户端的本地检查，在服务器还有一重检查，确保目标物品不会装备到错误的位置。
+		auto EquipItemFragment = LOCAL_ItemInstance->FindFragmentByClass<UInvSys_ItemFragment_EquipItem>();
+		if (EquipItemFragment)
 		{
-			// 将物品装备至指定槽
-			PlayerInvComp->Server_EquipItemInstance(InventoryComponent.Get(), LOCAL_ItemInstance, SlotTag);
+			// 判断目标物品是否支持在该槽位装备
+			if (EquipItemFragment->SupportEquipSlot.HasTagExact(SlotTag) && EquipItemFragment->bIsAllowPlayerChange == true)
+			{
+				PlayerInvComp->Server_EquipItemInstance(InventoryComponent.Get(), LOCAL_ItemInstance, SlotTag);
+				return true;
+			}
 		}
-		else
-		{
-			// 还原目标物品
-			UInvSys_InventoryComponent* From_InvComp = LOCAL_ItemInstance->GetInventoryComponent();
-			PlayerInvComp->Server_RestoreItemInstance(From_InvComp, LOCAL_ItemInstance); 
-		}
+		// 还原目标物品
+		UInvSys_InventoryComponent* From_InvComp = LOCAL_ItemInstance->GetInventoryComponent();
+		PlayerInvComp->Server_RestoreItemInstance(From_InvComp, LOCAL_ItemInstance); 
 	}
-	return true;
+	return false;
 }
 
 bool UInvSys_EquipSlotWidget::CheckIsCanDrop_Implementation(UInvSys_InventoryItemInstance* InItemInstance)

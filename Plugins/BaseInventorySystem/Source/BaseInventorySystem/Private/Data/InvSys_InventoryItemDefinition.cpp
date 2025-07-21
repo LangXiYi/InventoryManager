@@ -25,6 +25,5 @@ const UInvSys_InventoryItemFragment* UInvSys_InventoryItemDefinition::FindFragme
 			}
 		}
 	}
-
 	return nullptr;
 }

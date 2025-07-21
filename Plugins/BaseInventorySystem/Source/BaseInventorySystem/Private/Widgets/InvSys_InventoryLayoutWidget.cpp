@@ -8,7 +8,6 @@
 #include "Blueprint/WidgetTree.h"
 #include "Components/InvSys_InventoryComponent.h"
 #include "Data/InvSys_InventoryItemInstance.h"
-#include "Interface/InvSys_DraggingItemInterface.h"
 #include "Widgets/InvSys_InventoryItemWidget.h"
 #include "Widgets/Components/InvSys_TagSlot.h"
 
@@ -45,7 +44,7 @@ bool UInvSys_InventoryLayoutWidget::NativeOnDrop(const FGeometry& InGeometry, co
 	{
 		return Super::NativeOnDrop(InGeometry, InDragDropEvent, InOperation);
 	}
-	UInvSys_InventoryItemInstance* LOCAL_ItemInstance = IInvSys_DraggingItemInterface::Execute_GetItemInstance(InOperation->DefaultDragVisual);
+	UInvSys_InventoryItemInstance* LOCAL_ItemInstance = Cast<UInvSys_InventoryItemInstance>(InOperation->Payload);
 	check(LOCAL_ItemInstance)
 	if (LOCAL_ItemInstance)
 	{

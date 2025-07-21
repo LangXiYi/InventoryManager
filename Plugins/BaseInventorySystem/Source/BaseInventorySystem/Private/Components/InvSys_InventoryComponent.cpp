@@ -10,10 +10,10 @@
 #include "Data/InvSys_InventoryContentMapping.h"
 #include "Data/InvSys_InventoryItemInstance.h"
 #include "Data/InvSys_ItemFragment_DragDrop.h"
+#include "Data/InvSys_ItemFragment_EquipItem.h"
 #include "Data/InvSys_ItemFragment_PickUpItem.h"
 #include "Engine/ActorChannel.h"
 #include "Engine/AssetManager.h"
-#include "Interface/InvSys_DraggingItemInterface.h"
 #include "Net/UnrealNetwork.h"
 #include "Widgets/InvSys_EquipSlotWidget.h"
 #include "Widgets/InvSys_InventoryLayoutWidget.h"
@@ -51,9 +51,8 @@ bool UInvSys_InventoryComponent::RestoreItemInstance(UInvSys_InventoryItemInstan
 	return false;
 }
 
-bool UInvSys_InventoryComponent::TryDragItemInstance(UInvSys_InventoryComponent* PlayerInvComp, UInvSys_InventoryItemInstance* InItemInstance)
+bool UInvSys_InventoryComponent::TryDragItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
 {
-	PlayerInvComp->bIsSuccessDragItem = false;
 	if (InItemInstance == nullptr) return false; // 仅在未拖拽其它物品时可以拖拽。
 
 	auto DragDropFragment = InItemInstance->FindFragmentByClass<UInvSys_ItemFragment_DragDrop>();
@@ -91,8 +90,7 @@ bool UInvSys_InventoryComponent::TryDragItemInstance(UInvSys_InventoryComponent*
 	check(LOCAL_InvComp)
 
 	// 告知目标组件是否成功拖拽
-	PlayerInvComp->bIsSuccessDragItem = LOCAL_InvComp->RemoveItemInstance(InItemInstance);
-	return PlayerInvComp->bIsSuccessDragItem;
+	return LOCAL_InvComp->RemoveItemInstance(InItemInstance);
 }
 
 void UInvSys_InventoryComponent::EquipItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, FGameplayTag SlotTag)
@@ -110,13 +108,13 @@ void UInvSys_InventoryComponent::EquipItemDefinition(TSubclassOf<UInvSys_Invento
 
 void UInvSys_InventoryComponent::EquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag)
 {
-	UInvSys_InventoryItemInstance* TargetItemInstance = InItemInstance;
-	//装备的物品如果是来自其他库存组件
-	if (TargetItemInstance == nullptr)
+	if (InItemInstance == nullptr)
 	{
+		UE_LOG(LogInventorySystem, Log, TEXT("传入的物品实例为空"))
 		return;
 	}
-
+	// 如果装备的物品如果是来自其他库存组件
+	UInvSys_InventoryItemInstance* TargetItemInstance = InItemInstance;
 	if (this != TargetItemInstance->GetInventoryComponent())
 	{
 		UE_LOG(LogInventorySystem, Warning, TEXT("物品是从其他库存组件中转移至当前组件中的，现在正在进行所有权的转移。"))
@@ -276,7 +274,6 @@ void UInvSys_InventoryComponent::ConstructInventoryObjects()
 				continue;
 			}
 			InventoryObjectList.Add(InventoryObject);
-			//AddReplicatedSubObject(InventoryObject, COND_None);//若出现失序问题，请取消这段代码的注释。
 		}
 		if (GetNetMode() != NM_DedicatedServer)
 		{
@@ -285,49 +282,64 @@ void UInvSys_InventoryComponent::ConstructInventoryObjects()
 	}
 }
 
-/*void UInvSys_InventoryComponent::Server_TryDragItemInstance_Implementation(
-	UInvSys_InventoryItemInstance* InItemInstance)
-{
-	bool LOCAL_IsSuccess = TryDragItemInstance(InItemInstance);
-	if (LOCAL_IsSuccess == false)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("[Server] 服务器尝试拽起目标物品失败，可能是目标物品为NULL或服务器未生成该物品。"))
-	}
-}
-
-void UInvSys_InventoryComponent::Server_CancelDragItemInstance_Implementation(
-	UInvSys_InventoryItemInstance* InItemInstance)
-{
-	CancelDragItemInstance();
-}*/
-
 void UInvSys_InventoryComponent::Server_EquipItemInstance_Implementation(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag)
 {
 	check(InvComp);
-	if (InvComp)
+	if (InvComp == nullptr)
 	{
-		InvComp->EquipItemInstance(InItemInstance, SlotTag);
+		UE_LOG(LogInventorySystem, Log, TEXT("传入的库存组件不存在。"))
+		return;
 	}
+	if (InItemInstance == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Log, TEXT("传入的物品实例不存在。"))
+		return;
+	}
+	auto EquipItemFragment = InItemInstance->FindFragmentByClass<UInvSys_ItemFragment_EquipItem>();
+	if (EquipItemFragment == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Log, TEXT("物品[%s]未添加装备片段。"),
+			*InItemInstance->GetItemDisplayName().ToString())
+		return;
+	}
+	if (EquipItemFragment->SupportEquipSlot.HasTagExact(SlotTag) == false)
+	{
+		UE_LOG(LogInventorySystem, Log, TEXT("物品[%s]不支持装备到目标槽位[%s]"),
+			*InItemInstance->GetItemDisplayName().ToString(), *SlotTag.ToString())
+		return;
+	} 
+	InvComp->EquipItemInstance(InItemInstance, SlotTag);
 }
 
 void UInvSys_InventoryComponent::Server_EquipItemDefinition_Implementation(
 	UInvSys_InventoryComponent* InvComp, TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, FGameplayTag SlotTag)
 {
 	check(InvComp);
-	if (InvComp)
+	if (InvComp == nullptr)
 	{
-		InvComp->EquipItemDefinition(ItemDef, SlotTag);
+		UE_LOG(LogInventorySystem, Log, TEXT("传入的库存组件不存在。"))
+		return;
 	}
-}
-
-void UInvSys_InventoryComponent::Server_TryDragItemInstance_Implementation(UInvSys_InventoryComponent* InvComp,
-	UInvSys_InventoryItemInstance* InItemInstance)
-{
-	check(InvComp)
-	if (InvComp)
+	if (ItemDef == nullptr)
 	{
-		InvComp->TryDragItemInstance(this, InItemInstance);
+		UE_LOG(LogInventorySystem, Log, TEXT("传入的物品定义不存在。"))
+		return;
 	}
+	auto DefaultItemDefinition = GetDefault<UInvSys_InventoryItemDefinition>(ItemDef);
+	auto EquipItemFragment = DefaultItemDefinition->FindFragmentByClass<UInvSys_ItemFragment_EquipItem>();
+	if (EquipItemFragment == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Log, TEXT("物品[%s]未添加装备片段。"),
+			*DefaultItemDefinition->GetItemDisplayName().ToString())
+		return;
+	}
+	if (EquipItemFragment->SupportEquipSlot.HasTagExact(SlotTag) == false)
+	{
+		UE_LOG(LogInventorySystem, Log, TEXT("物品[%s]不支持装备到目标槽位[%s]"),
+			*DefaultItemDefinition->GetItemDisplayName().ToString(), *SlotTag.ToString())
+		return;
+	} 
+	InvComp->EquipItemDefinition(ItemDef, SlotTag);
 }
 
 void UInvSys_InventoryComponent::Server_RestoreItemInstance_Implementation(UInvSys_InventoryComponent* InvComp,
@@ -502,12 +514,3 @@ UInvSys_InventoryLayoutWidget* UInvSys_InventoryComponent::CreateDisplayWidget(A
 	return LayoutWidget;
 }
 
-void UInvSys_InventoryComponent::Client_TryRefreshInventoryObject_Implementation()
-{
-	checkNoEntry();
-	for (UInvSys_BaseInventoryObject* InvObj : InventoryObjectList)
-	{
-		
-		InvObj->RefreshInventoryObject("客户端数据与服务器数据不匹配，请求刷新客户端显示效果。");
-	}
-}
