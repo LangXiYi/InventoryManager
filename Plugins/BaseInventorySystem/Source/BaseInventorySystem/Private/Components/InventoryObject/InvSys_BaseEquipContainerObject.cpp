@@ -232,6 +232,12 @@ const UInvSys_InventoryItemInstance* UInvSys_BaseEquipContainerObject::FindItemI
 	return nullptr;
 }
 
+UInvSys_InventoryWidget* UInvSys_BaseEquipContainerObject::GetContainerLayout(
+	TSubclassOf<UInvSys_InventoryWidget> OutClass)
+{
+	return ContainerLayout;
+}
+
 bool UInvSys_BaseEquipContainerObject::ContainsItem(FGuid ItemUniqueID)
 {
 	return Super::ContainsItem(ItemUniqueID) || ContainerList.Contains(ItemUniqueID);

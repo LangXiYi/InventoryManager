@@ -69,6 +69,7 @@ void UGridInvSys_ContainerGridItemWidget::AddItemInstance(UInvSys_InventoryItemI
 	{
 		GridItemWidget->RemoveItemInstance();
 		GridItemWidget->bIsOccupied = true;
+		GridItemWidget->ItemInstance = NewItemInstance;
 		GridItemWidget->OriginGridItemWidget = this;
 	}
 	OnAddItemInstance(NewItemInstance);

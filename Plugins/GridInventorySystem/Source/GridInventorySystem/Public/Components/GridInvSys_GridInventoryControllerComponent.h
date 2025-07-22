@@ -19,4 +19,12 @@ public:
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_TryDropItemInstance(UInvSys_InventoryComponent* InvComp,
 		UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos);
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_SwapItemInstance(UInvSys_InventoryItemInstance* FromItemInstance,
+		UInvSys_InventoryItemInstance* ToItemInstance);
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_UpdateItemInstancePosition(UInvSys_InventoryComponent* InvComp,
+		UInvSys_InventoryItemInstance* ItemInstance, FGridInvSys_ItemPosition NewPosition);
 };

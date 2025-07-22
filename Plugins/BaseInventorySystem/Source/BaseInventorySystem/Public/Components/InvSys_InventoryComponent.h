@@ -154,6 +154,8 @@ public:
 		}
 		return nullptr;
 	}
+
+	UInvSys_EquipSlotWidget* GetInventorySlotWidget(FGameplayTag SlotTag);
 	
 	/** Returns true if the owner's role is ROLE_Authority */
 	FORCEINLINE bool HasAuthority() const;

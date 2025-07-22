@@ -9,7 +9,9 @@
 #include "Data/GridInvSys_InventoryItemInstance.h"
 #include "Engine/ActorChannel.h"
 #include "Net/UnrealNetwork.h"
+#include "Widgets/GridInvSys_ContainerGridLayoutWidget.h"
 #include "Widgets/GridInvSys_DragItemWidget.h"
+#include "Widgets/GridInvSys_EquipContainerSlotWidget.h"
 #include "Widgets/InvSys_EquipSlotWidget.h"
 
 
@@ -269,6 +271,28 @@ bool UGridInvSys_InventoryComponent::FindContainerGridItem(FName ItemUniqueID,  
 UUserWidget* UGridInvSys_InventoryComponent::GetInventoryLayoutWidget() const
 {
 	return nullptr;
+}
+
+UGridInvSys_ContainerGridWidget* UGridInvSys_InventoryComponent::FindContainerGridWidget(FGameplayTag SlotTag,
+	int32 GridID)
+{
+	UInvSys_BaseEquipContainerObject* ContainerObject = GetInventoryObject<UInvSys_BaseEquipContainerObject>(SlotTag);
+	if (ContainerObject)
+	{
+		UGridInvSys_ContainerGridLayoutWidget* ContainerLayoutWidget = ContainerObject->GetContainerLayout<UGridInvSys_ContainerGridLayoutWidget>();
+		if (ContainerLayoutWidget)
+		{
+			return ContainerLayoutWidget->FindContainerGrid(GridID);
+		}
+	}
+	return nullptr;
+}
+
+UGridInvSys_ContainerGridWidget* UGridInvSys_InventoryComponent::FindContainerGridWidget(
+	UGridInvSys_InventoryItemInstance* InItemInstance)
+{
+	check(InItemInstance)
+	return FindContainerGridWidget(InItemInstance->GetSlotTag(), InItemInstance->GetItemPosition().GridID);
 }
 
 void UGridInvSys_InventoryComponent::GetAllContainerSlotName(TArray<FName>& OutArray) const

@@ -6,6 +6,7 @@
 #include "Engine/DataAsset.h"
 #include "InvSys_InventoryContentMapping.generated.h"
 
+class UInvSys_InventoryLayoutWidget;
 /**
  * 
  */
@@ -15,6 +16,9 @@ class BASEINVENTORYSYSTEM_API UInvSys_InventoryContentMapping : public UPrimaryD
 	GENERATED_BODY()
 
 public:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Component")
+	TSubclassOf<UInvSys_InventoryLayoutWidget> InventoryLayout;
+	
 	UPROPERTY(Instanced, EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Component")
 	TArray<class UInvSys_PreEditInventoryObject*> InventoryContentList;
 

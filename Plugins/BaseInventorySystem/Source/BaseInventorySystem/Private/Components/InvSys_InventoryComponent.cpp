@@ -199,15 +199,23 @@ bool UInvSys_InventoryComponent::RemoveItemInstance(UInvSys_InventoryItemInstanc
 {
 	if (InItemInstance)
 	{
-		UE_LOG(LogInventorySystem, Error, TEXT("正在删除目标：%s"), *InItemInstance->GetName());
 		FGameplayTag EquipSlotTag = InItemInstance->GetSlotTag();
 		// 这里的InvObject为最最基础的Object
+		// todo::区分Remove、Add与Equip、UnEquip
 		if (UInvSys_BaseInventoryObject* LOCAL_InvObj = GetInventoryObject(EquipSlotTag))
 		{
+			UE_LOG(LogInventorySystem, Error, TEXT("正在删除目标：%s"), *InItemInstance->GetName());
 			return LOCAL_InvObj->RemoveItemInstance(InItemInstance);
 		}
 	}
 	return false;
+}
+
+UInvSys_EquipSlotWidget* UInvSys_InventoryComponent::GetInventorySlotWidget(FGameplayTag SlotTag)
+{
+	UInvSys_TagSlot* Slot = LayoutWidget->FindTagSlot(SlotTag);
+	check(Slot)
+	return Slot ? Cast<UInvSys_EquipSlotWidget>(Slot->GetChildAt(0)) : nullptr;
 }
 
 bool UInvSys_InventoryComponent::HasAuthority() const
@@ -485,8 +493,10 @@ UInvSys_InventoryLayoutWidget* UInvSys_InventoryComponent::CreateDisplayWidget(A
 		UE_LOG(LogInventorySystem, Log, TEXT("== 正在创建显示控件 [%s:%s] =="),
 			HasAuthority() ? TEXT("Server") : TEXT("Client"), *GetOwner()->GetName())
 
+		check(InventoryContentMapping)
+		check(InventoryContentMapping->InventoryLayout)
 		// 创建布局控件后，收集所有的 TagSlot 供后续控件插入正确位置。
-		LayoutWidget = CreateWidget<UInvSys_InventoryLayoutWidget>(NewPlayerController, LayoutWidgetClass);
+		LayoutWidget = CreateWidget<UInvSys_InventoryLayoutWidget>(NewPlayerController, InventoryContentMapping->InventoryLayout);
 		check(LayoutWidget)
 		LayoutWidget->CollectAllTagSlots();
 		LayoutWidget->SetInventoryComponent(this);

@@ -90,6 +90,16 @@ public:
 	 * Getter Or Setter
 	 **/
 
+	template<class T>
+	T* GetContainerLayout() const
+	{
+		check(ContainerLayout)
+		return Cast<T>(ContainerLayout);
+	}
+
+	UFUNCTION(BlueprintCallable, BlueprintPure = false, Category = "Inventory Object", meta = (DeterminesOutputType = OutClass))
+	UInvSys_InventoryWidget* GetContainerLayout(TSubclassOf<UInvSys_InventoryWidget> OutClass);
+
 	virtual bool ContainsItem(FGuid ItemUniqueID) override;
 
 	virtual void CopyPropertyFromPreEdit(UObject* PreEditPayLoad) override;

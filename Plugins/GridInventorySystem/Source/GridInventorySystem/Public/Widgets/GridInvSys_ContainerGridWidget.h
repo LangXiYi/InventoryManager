@@ -50,8 +50,7 @@ protected:
 	virtual void ResetDragDropData();
 
 	/** 放下物品至容器的目标位置，From必须是来自容器对象而非装备槽，仅在同容器组件下有效！！ */
-	bool TryDropItemFromContainer(UGridInvSys_ContainerGridWidget* FromContainer,
-		UInvSys_InventoryItemInstance* ItemInstance, FIntPoint FromItemSize, FGridInvSys_ItemPosition ItemPositionData);
+	bool TryDropItemFromContainer(UInvSys_InventoryItemInstance* ItemInstance, FGridInvSys_ItemPosition DropPosition);
 
 	void ShowDragGridEffect(FIntPoint Position, FIntPoint Size, bool bIsRight);
 	
@@ -104,6 +103,8 @@ public:
 	void GetOccupiedGridItems(TArray<UGridInvSys_ContainerGridItemWidget*>& OutArray,
 		FIntPoint Position, FIntPoint Size, const TArray<UWidget*>& Ignores = {}) const;
 
+	void GetAllHoveredItemInstances(TArray<class UGridInvSys_InventoryItemInstance*>& OutArray, FIntPoint Position, FIntPoint Size) const;
+
 	void FindAllFreeGridItems(TArray<UGridInvSys_ContainerGridItemWidget*>& OutArray, const TArray<UWidget*>& Ignores = {}) const;
 	
 	FORCEINLINE int32 GetContainerGridID() const;
@@ -122,7 +123,9 @@ public:
 
 protected:
 	// 判断目标位置能否放置物品，注意：使用此方法时From必须是来自其他容器
-	bool IsCanDropItemFromContainer(UGridInvSys_ContainerGridWidget* FromContainer, FIntPoint ToPosition, FIntPoint FromItemSize) const;
+	// todo::优化传参
+	bool IsCanDropItemFromContainer(UInvSys_InventoryItemInstance* ItemInstance,
+		FIntPoint ToPosition, EGridInvSys_ItemDirection ItemDirection) const;
 
 protected:
 	// 废弃！！！

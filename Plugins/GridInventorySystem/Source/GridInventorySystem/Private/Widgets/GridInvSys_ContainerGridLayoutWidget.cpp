@@ -40,11 +40,11 @@ void UGridInvSys_ContainerGridLayoutWidget::ConstructContainerGrid(FName SlotNam
 	}*/
 }
 
-UGridInvSys_ContainerGridWidget* UGridInvSys_ContainerGridLayoutWidget::FindContainerGrid(FName GridID)
+UGridInvSys_ContainerGridWidget* UGridInvSys_ContainerGridLayoutWidget::FindContainerGrid(int32 GridID)
 {
-	if (ContainerGridMap.Contains(GridID))
+	if (ContainerGridWidgets.IsValidIndex(GridID))
 	{
-		return ContainerGridMap[GridID];
+		return ContainerGridWidgets[GridID];
 	}
 	return nullptr;
 }

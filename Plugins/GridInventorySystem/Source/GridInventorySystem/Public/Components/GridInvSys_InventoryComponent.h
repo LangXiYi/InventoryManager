@@ -8,6 +8,8 @@
 #include "GridInvSys_InventoryComponent.generated.h"
 
 
+class UGridInvSys_InventoryItemInstance;
+class UGridInvSys_ContainerGridWidget;
 class UGridInvSys_DragItemWidget;
 class UInvSys_InventoryItemDefinition;
 class UGridInvSys_InventoryItemInfo;
@@ -84,6 +86,9 @@ public:
 	bool FindContainerGridItem(FName ItemUniqueID,  FGridInvSys_InventoryItem& OutItem);
 	
 	UUserWidget* GetInventoryLayoutWidget() const;
+
+	UGridInvSys_ContainerGridWidget* FindContainerGridWidget(FGameplayTag SlotTag, int32 GridID);
+	UGridInvSys_ContainerGridWidget* FindContainerGridWidget(UGridInvSys_InventoryItemInstance* InItemInstance);
 
 	/** 获取所有容器的SlotName */
 	UFUNCTION(BlueprintCallable)

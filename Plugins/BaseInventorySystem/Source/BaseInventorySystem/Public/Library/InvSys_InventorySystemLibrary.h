@@ -18,15 +18,15 @@ class BASEINVENTORYSYSTEM_API UInvSys_InventorySystemLibrary : public UBlueprint
 	GENERATED_BODY()
 
 public:
-	UFUNCTION(BlueprintCallable, Category = "Inventory System Library")
+	UFUNCTION(BlueprintPure, Category = "Inventory System Library")
 	static UInvSys_InventoryComponent* FindInventoryComponent(AActor* InActor);
 
-	UFUNCTION(BlueprintCallable, Category = "Inventory System Library")
-	static UInvSys_InventoryControllerComponent* FindInvControllerComponent(const UWorld* World);
+	UFUNCTION(BlueprintPure, Category="Game", meta=(WorldContext="WorldContextObject", UnsafeDuringActorConstruction="true"))
+	static UInvSys_InventoryControllerComponent* FindInvControllerComponent(const UObject* WorldContextObject);
 
 	template<class T>
-	static T* FindInvControllerComponent(const UWorld* World)
+	static T* FindInvControllerComponent(const UObject* WorldContextObject)
 	{
-		return (T*)FindInvControllerComponent(World);
+		return (T*)FindInvControllerComponent(WorldContextObject);
 	}
 };

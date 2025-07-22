@@ -9,6 +9,8 @@
 #include "Data/InvSys_InventoryItemInstance.h"
 #include "GridInvSys_InventoryItemInstance.generated.h"
 
+class UGridInvSys_ContainerGridWidget;
+
 USTRUCT()
 struct FGridInvSys_ItemPositionChangeMessage{
 	GENERATED_BODY()

@@ -145,7 +145,7 @@ void UGridInvSys_GridEquipContainerObject::OnItemPositionChange(const FGridInvSy
 				UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(Message.Instance);
 				GridItemInstance->OnItemPositionChangeDelegate().Unbind();
 			}
-
+			check(false)
 			UGridInvSys_InventoryComponent* PlayerInvComp = GetWorld()->GetFirstPlayerController()->GetComponentByClass<UGridInvSys_InventoryComponent>();
 			PlayerInvComp->Server_RestoreItemInstanceToPos(Message.Instance->GetLastInventoryComponent(), Message.Instance, Message.OldPosition);
 			UE_LOG(LogInventorySystem, Error, TEXT("[%s]位置已经被其他物品占用！！正在回退至%s")

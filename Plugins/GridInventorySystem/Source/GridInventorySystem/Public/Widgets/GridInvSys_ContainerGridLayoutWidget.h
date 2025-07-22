@@ -24,8 +24,8 @@ public:
 	void ConstructContainerGrid(FName SlotName);
 
 public:
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Container Grid Layout")
-	UGridInvSys_ContainerGridWidget* FindContainerGrid(FName GridID);
+	UFUNCTION(BlueprintPure, Category = "Container Grid Layout", meta = (UnsafeDuringActorConstruction))
+	UGridInvSys_ContainerGridWidget* FindContainerGrid(int32 GridID);
 
 	UGridInvSys_ContainerGridItemWidget* FindGridItemWidget(const FGridInvSys_ItemPosition& ItemPosition) const;
 	UGridInvSys_ContainerGridItemWidget* FindGridItemWidget(const UInvSys_InventoryItemInstance* InItemInstance) const;
