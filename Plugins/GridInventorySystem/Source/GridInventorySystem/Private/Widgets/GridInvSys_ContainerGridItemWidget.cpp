@@ -157,11 +157,11 @@ FName UGridInvSys_ContainerGridItemWidget::GetSlotName() const
 
 TArray<UWidget*> UGridInvSys_ContainerGridItemWidget::GetOccupiedGridItems()
 {
-	TArray<UWidget*> GridItems = {this};
-	/*if (IsOccupied())
+	TArray<UWidget*> GridItems;
+	if (IsOccupied())
 	{
 		ContainerGridWidget->GetContainerGridItems(GridItems, GetOriginPosition(), GetItemSize());
-	}*/
+	}
 	return GridItems;
 }
 

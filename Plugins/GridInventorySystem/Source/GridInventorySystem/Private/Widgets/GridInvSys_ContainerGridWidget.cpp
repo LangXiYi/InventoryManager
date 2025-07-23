@@ -343,6 +343,8 @@ bool UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer(
 	}
 	else
 	{
+#if 1
+		// todo::不是很推荐使用小物品拖拽替换大物品
 		// 如果拖拽物品的大小 < 目标位置的物品大小
 		// 需要判断拖拽物品与目标位置的物品是否再同一容器布局内，若不在同一容器则返回False
 		FIntPoint Position;
@@ -358,6 +360,7 @@ bool UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer(
 		// 在容器内查找其他可以放置该物品的位置，From占据的网格会被视为空闲。
 		// UE_LOG(LogInventorySystem, Log, TEXT("To 的位置已经被其他物品占领，且拖拽的物品大小 < 放置位置的物品的大小"))
 		return FindValidPosition(ToOriginItemWidget->GetItemSize(), Position, Ignores);
+#endif
 	}
 	return false;
 }
@@ -609,6 +612,7 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(
 			PlayerInvComp->Server_TryDropItemInstance(InventoryComponent.Get(), ItemInstance, DropPosition);
 			return true;
 		}
+		return false;
 	}
 	// 相同容器下物品交换 且 拖拽的物品大小 >= 放置位置的物品的大小
 	else if (FromTargetItemSize.X >= ToTargetItemSize.X && FromTargetItemSize.Y >= ToTargetItemSize.Y)
@@ -677,34 +681,27 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(
 		PlayerInvComp->Server_TryDropItemInstance(InventoryComponent.Get(), ItemInstance, DropPosition);
 		return true;
 	}
-#if 0
-	else
+#if 1
+	else // from size 小于 to size
 	{
-		// from size 小于 to size
-		FIntPoint Position;
-		TArray<UWidget*> Ignores = FromContainer->GetOccupiedGridItems();
-		Ignores.Append(ToGridItemWidget->GetOccupiedGridItems());
+		// 获得需要被忽略的网格
+		TArray<UWidget*> Ignores = ToGridItemWidget->GetOccupiedGridItems();
 		TArray<UWidget*> NotIgnores;
-		GetContainerGridItems(NotIgnores, DropPosition.Position, TargetItemSize);
-		// 被From占据的网格不会被忽略
-		for (UWidget* NotIgnore : NotIgnores)
-		{
-			Ignores.Remove(NotIgnore);
-		}
+		GetContainerGridItems(NotIgnores, DropPosition.Position, FromTargetItemSize);
+		GetContainerGridItems(Ignores, ToGridItemWidget->GetOriginPosition(), ToTargetItemSize, NotIgnores);
+		NotIgnores.Empty();
+
 		// 在容器内查找其他可以放置该物品的位置，From占据的网格会被视为空闲。
 		UE_LOG(LogInventorySystem, Log, TEXT("[%d] To 的位置已经被其他物品占领，且拖拽的物品大小 < 放置位置的物品的大小"), Ignores.Num())
 		// 查找 To 物品 可以放置的位置
-		if (FindValidPosition(ToTargetItemSize, Position, Ignores))
+		FIntPoint ValidPosition;
+		if (FindValidPosition(ToTargetItemSize, ValidPosition, Ignores))
 		{
 			// 计算 To 物品在From容器下的位置
-			FGridInvSys_InventoryItemPosition TempItemData;
-			TempItemData.Position = Position;
-			TempItemData.SlotName = FromContainerGrid->GetSlotName();
-			TempItemData.GridID = NAME_None;
-			TempItemData.Direction = ToGridItemWidget->GetItemDirection(); // 方向保持不变。
-			NewItemsData.Add(TempItemData);
-			ChangedItems.Add(ToGridItemWidget->GetItemUniqueID());
-			PlayerInvComp->Server_UpdateInventoryItems(GetInventoryComponent(), ChangedItems, NewItemsData);
+			FGridInvSys_ItemPosition TempItemData = ToGridItemInstance->GetItemPosition();
+			TempItemData.Position = ValidPosition;
+			PlayerInvComp->Server_UpdateItemInstancePosition(GetInventoryComponent(), ToGridItemInstance, TempItemData);
+			PlayerInvComp->Server_TryDropItemInstance(GetInventoryComponent(), ItemInstance, DropPosition);
 			return true;
 		}
 	}
