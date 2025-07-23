@@ -183,15 +183,12 @@ bool UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer(
 		return false;
 	}
 
-	UGridInvSys_ContainerGridItemWidget* ToOriginItemWidget = GetGridItemWidget(ToPosition);
-	if (ToOriginItemWidget)
-	{
-		ToOriginItemWidget = ToOriginItemWidget->GetOriginGridItemWidget();
-	}
-	if (ToOriginItemWidget == nullptr)
+	UGridInvSys_ContainerGridItemWidget* ToGridItemWidget = GetGridItemWidget(ToPosition);
+	if (ToGridItemWidget == nullptr)
 	{
 		return false;
 	}
+	UGridInvSys_InventoryItemInstance* ToGridItemInstance = ToGridItemWidget->GetItemInstance<UGridInvSys_InventoryItemInstance>();
 
 #pragma endregion
 
@@ -227,28 +224,12 @@ bool UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer(
 		}
 	}
 	OutItemInstances.Empty();
-	/*TArray<UGridInvSys_ContainerGridItemWidget*> OutWidgets;
-	GetOccupiedGridItems(OutWidgets, ToPosition, TargetItemSize); // 得到物品想要占据的所有网格控件
-	// 限制条件，只有当 From 物品完全包裹 To 的所有物品 或是 To 完全包裹 From的物品 时才能交换物品。
-	for (UGridInvSys_ContainerGridItemWidget* ItemWidget : OutWidgets) 
-	{
-		// 遍历判断所有网格控件，获取它的锚点位置，判断是否再覆盖范围内。
-		FIntPoint TempOriginPosition = ItemWidget->GetOriginPosition();
-		if (!IsInRange(TempOriginPosition, ItemWidget->GetItemSize(), ToPosition, TargetItemSize))
-		{
-			if (!IsInRange(ToPosition, TargetItemSize, TempOriginPosition, ItemWidget->GetItemSize()))
-			{
-				UE_LOG(LogInventorySystem, Log, TEXT("From物品不在To的范围内"))
-				return false;
-			}
-		}
-	}*/
 
 	/***
 	 * 目标位置未被其他物品占据 & 足够容纳物品实例
 	 */
 
-	if (ToOriginItemWidget->IsOccupied() == false)
+	if (ToGridItemWidget->IsOccupied() == false)
 	{
 		if (HasEnoughFreeSpace(ToPosition, TargetItemSize))
 		{
@@ -261,7 +242,8 @@ bool UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer(
 	 * 目标位置下的物品与传入的物品实例大小一致 & 目标位置与重叠物品的位置一致
 	 */
 
-	if (TargetItemSize == ToOriginItemWidget->GetItemSize() && ToOriginItemWidget == ToOriginItemWidget->GetOriginGridItemWidget())
+	FIntPoint ToTargetItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSize(ToGridItemInstance);
+	if (TargetItemSize == ToTargetItemSize && ToGridItemWidget == ToGridItemWidget->GetOriginGridItemWidget())
 	{
 		//UE_LOG(LogInventorySystem, Log, TEXT("To 的位置已经被其他物品占领，但 From 与 To 的大小一致 且 To 的位置是物品的左上角"))
 		return true;
@@ -274,16 +256,11 @@ bool UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer(
 	UGridInvSys_ContainerGridWidget* FromContainerGridWidget = GridInvComp->FindContainerGridWidget(GridItemInstance);
 	if (FromContainerGridWidget != this)
 	{
-		if (TargetItemSize.X >= ToOriginItemWidget->GetItemSize().X &&
-			TargetItemSize.Y >= ToOriginItemWidget->GetItemSize().Y)
+		if (TargetItemSize.X >= ToTargetItemSize.X &&
+			TargetItemSize.Y >= ToTargetItemSize.Y)
 		{
 			//UE_LOG(LogInventorySystem, Log, TEXT("To 的位置已经被其他物品占领，且拖拽的物品大小 >= 放置位置的物品的大小"))
 			return true;
-		}
-		else
-		{
-			// 不同容器下，当拖拽的物品大小 < 目标位置下物品的大小时，直接返回 False
-			return false;
 		}
 	}
 	
@@ -292,7 +269,7 @@ bool UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer(
 	 * B: 物品实例在当前容器内 & 物品实例的大小 < 占据目标位置的物品的大小
 	 */
 
-	if (TargetItemSize.X >= ToOriginItemWidget->GetItemSize().X && TargetItemSize.Y >= ToOriginItemWidget->GetItemSize().Y)
+	if (TargetItemSize.X >= ToTargetItemSize.X && TargetItemSize.Y >= ToTargetItemSize.Y)
 	{
 		// TODO::转移的位置不在物品实例的覆盖范围内
 		TArray<UGridInvSys_InventoryItemInstance*> AllOccupiedObjects;
@@ -313,18 +290,8 @@ bool UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer(
 				RelativePosition.Y = TempPos;
 			}
 
-			// 计算该物品实例的在容器内占据的大小
-			auto TempOccupiedItemSizeFragment =
-				OccupiedItemInstance->FindFragmentByClass<UGridInvSys_ItemFragment_GridItemSize>();
-			check(TempOccupiedItemSizeFragment)
-			FIntPoint TargetOccupiedItemSize = TempOccupiedItemSizeFragment->ItemSize;
-			if (OccupiedItemInstance->GetItemPosition().Direction == EGridInvSys_ItemDirection::Vertical)
-			{
-				TargetOccupiedItemSize.X = TempOccupiedItemSizeFragment->ItemSize.Y;
-				TargetOccupiedItemSize.Y = TempOccupiedItemSizeFragment->ItemSize.X;
-			}
-
-			// 计算拖拽前目标物品的大小
+			// 计算被覆盖的物品实例的大小 & 拖拽前目标物品的大小
+			FIntPoint TargetOccupiedItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSize(OccupiedItemInstance);
 			FIntPoint PreDragItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSize(ItemInstance);	
 			// 转换为对角坐标
 			FIntPoint DiagonalPosition;
@@ -349,7 +316,7 @@ bool UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer(
 		// 需要判断拖拽物品与目标位置的物品是否再同一容器布局内，若不在同一容器则返回False
 		FIntPoint Position;
 		
-		TArray<UWidget*> Ignores = ToOriginItemWidget->GetOccupiedGridItems();
+		TArray<UWidget*> Ignores = ToGridItemWidget->GetOccupiedGridItems();
 		TArray<UWidget*> NotIgnores;
 		GetContainerGridItems(NotIgnores, ToPosition, TargetItemSize);
 		// 被From占据的网格不会被忽略
@@ -359,7 +326,7 @@ bool UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer(
 		}
 		// 在容器内查找其他可以放置该物品的位置，From占据的网格会被视为空闲。
 		// UE_LOG(LogInventorySystem, Log, TEXT("To 的位置已经被其他物品占领，且拖拽的物品大小 < 放置位置的物品的大小"))
-		return FindValidPosition(ToOriginItemWidget->GetItemSize(), Position, Ignores);
+		return FindValidPosition(ToTargetItemSize, Position, Ignores);
 #endif
 	}
 	return false;
@@ -612,10 +579,10 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(
 			PlayerInvComp->Server_TryDropItemInstance(InventoryComponent.Get(), ItemInstance, DropPosition);
 			return true;
 		}
-		return false;
+		// return false;
 	}
 	// 相同容器下物品交换 且 拖拽的物品大小 >= 放置位置的物品的大小
-	else if (FromTargetItemSize.X >= ToTargetItemSize.X && FromTargetItemSize.Y >= ToTargetItemSize.Y)
+	if (FromTargetItemSize.X >= ToTargetItemSize.X && FromTargetItemSize.Y >= ToTargetItemSize.Y)
 	{
 		UE_LOG(LogInventorySystem, Log, TEXT("[Try Drop Item] 相同容器下交换，To 的位置已经被其他物品占领，且拖拽的物品大小 >= 放置位置的物品的大小"))
 		TArray<UGridInvSys_InventoryItemInstance*> AllHoveredItemInstances;
@@ -682,7 +649,7 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(
 		return true;
 	}
 #if 1
-	else // from size 小于 to size
+	else // from size 小于 to size & 可能在同一容器或不同容器
 	{
 		// 获得需要被忽略的网格
 		TArray<UWidget*> Ignores = ToGridItemWidget->GetOccupiedGridItems();
