@@ -11,6 +11,7 @@
 #include "InvSys_InventoryComponent.generated.h"
 
 
+class AInvSys_PickableItems;
 
 // todo:: 定义装备新物品的代理
 
@@ -20,6 +21,10 @@ class UInvSys_InventoryItemDefinition;
 class UInvSys_PreEditInventoryObject;
 class UInvSys_BaseInventoryObject;
 struct FInvSys_InventoryItem;
+
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDropItemInstanceToWorld, AInvSys_PickableItems*, DropItem);
+
 
 /**
  * 
@@ -108,6 +113,8 @@ public:
 	{
 		return AddItemInstance<T>(InItemInstance, SlotTag, Ags...);
 	}
+
+	void DropItemInstanceToWorld(UInvSys_InventoryItemInstance* InItemInstance);
 	// End Drag Drop ====================
 
 protected:
@@ -207,7 +214,10 @@ protected:
 	TObjectPtr<UInvSys_InventoryLayoutWidget> LayoutWidget;
 	
 	UPROPERTY()
-	TObjectPtr<UUserWidget> DraggingWidget;
+	TObjectPtr<UUserWidget> DraggingWidget_DEPRECATED;
+
+	UPROPERTY(BlueprintReadWrite, BlueprintAssignable, Category = "Inventory Component")
+	FOnDropItemInstanceToWorld OnDropItemInstanceToWorld;
 
 	/**
 	 * 在拖拽需要调用的函数中需要检查该属性是否为True，确保物品是能够被客户端拖拽的物品！！！！

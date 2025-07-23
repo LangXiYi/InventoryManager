@@ -41,6 +41,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_TryDragItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance);
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_DropItemInstanceToWorld(UInvSys_InventoryItemInstance* InItemInstance);
 	
 public:
 	/** Gets the game instance this component is a part of, this will return null if not called during normal gameplay */
@@ -68,6 +71,8 @@ public:
 
 	/** Returns the world's timer manager */
 	class FTimerManager& GetWorldTimerManager() const;
+	
+	APlayerController* GetPlayerController();
 
 private:
 	// 标记玩家是否拖拽起了目标物品

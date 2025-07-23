@@ -7,6 +7,7 @@
 #include "Data/InvSys_InventoryItemDefinition.h"
 #include "InvSys_ItemFragment_DragDrop.generated.h"
 
+class AInvSys_PickableItems;
 class UInvSys_DraggingItemWidget;
 /**
  * 
@@ -16,15 +17,24 @@ class BASEINVENTORYSYSTEM_API UInvSys_ItemFragment_DragDrop : public UInvSys_Inv
 {
 	GENERATED_BODY()
 public:
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment|Drop")
+	TSubclassOf<AInvSys_PickableItems> DropItemClass;
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment|Drop")
+	FVector DropLocationOffset;
+
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment|Drop")
+	TSoftObjectPtr<UStaticMesh> DropDisplayMesh;
+
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment|Drag")
 	TSubclassOf<UInvSys_DraggingItemWidget> DraggingWidgetClass;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Item Fragment")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Item Fragment|Drag")
 	EDragPivot DragPivot = EDragPivot::CenterCenter;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Item Fragment")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Item Fragment|Drag")
 	FVector2D DragOffset = FVector2D(0, 0);
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Item Fragment")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Item Fragment|Drag")
 	bool bIsAutoRotation = true;
 };

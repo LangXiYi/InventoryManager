@@ -24,7 +24,7 @@ UInvSys_InventoryComponent* UInvSys_InventorySystemLibrary::FindInventoryCompone
 	return InActor->FindComponentByClass<UInvSys_InventoryComponent>();
 }
 
-UInvSys_InventoryControllerComponent* UInvSys_InventorySystemLibrary::FindInvControllerComponent(const UObject* WorldContextObject)
+UInvSys_InventoryControllerComponent* UInvSys_InventorySystemLibrary::GetPlayerInventoryComponent(const UObject* WorldContextObject)
 {
 	if (WorldContextObject)
 	{

@@ -4,6 +4,7 @@
 #include "Components/InvSys_InventoryComponent.h"
 
 #include "BaseInventorySystem.h"
+#include "NativeGameplayTags.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/InventoryObject/InvSys_BaseEquipmentObject.h"
 #include "Components/InventoryObject/InvSys_BaseInventoryObject.h"
@@ -11,9 +12,8 @@
 #include "Data/InvSys_InventoryItemInstance.h"
 #include "Data/InvSys_ItemFragment_DragDrop.h"
 #include "Data/InvSys_ItemFragment_EquipItem.h"
-#include "Data/InvSys_ItemFragment_PickUpItem.h"
 #include "Engine/ActorChannel.h"
-#include "Engine/AssetManager.h"
+#include "Items/InvSys_PickableItems.h"
 #include "Net/UnrealNetwork.h"
 #include "Widgets/InvSys_EquipSlotWidget.h"
 #include "Widgets/InvSys_InventoryLayoutWidget.h"
@@ -23,6 +23,7 @@
 #include "Widgets/Notifications/SNotificationList.h"
 #include "Framework/Notifications/NotificationManager.h"
 #endif
+
 
 UInvSys_InventoryComponent::UInvSys_InventoryComponent(const FObjectInitializer& ObjectInitializer)
 	:Super(ObjectInitializer)
@@ -91,6 +92,31 @@ bool UInvSys_InventoryComponent::TryDragItemInstance(UInvSys_InventoryItemInstan
 
 	// 告知目标组件是否成功拖拽
 	return LOCAL_InvComp->RemoveItemInstance(InItemInstance);
+}
+
+void UInvSys_InventoryComponent::DropItemInstanceToWorld(UInvSys_InventoryItemInstance* InItemInstance)
+{
+	check(InItemInstance)
+	if (InItemInstance)
+	{
+		RemoveItemInstance(InItemInstance);
+		auto DropItemFragment = InItemInstance->FindFragmentByClass<UInvSys_ItemFragment_DragDrop>();
+		if (DropItemFragment && DropItemFragment->DropItemClass)
+		{
+			FActorSpawnParameters SpawnParameters;
+			SpawnParameters.Owner = GetOwner();
+			
+			AInvSys_PickableItems* PickableItems = GetWorld()->SpawnActor<AInvSys_PickableItems>(DropItemFragment->DropItemClass, SpawnParameters);
+			PickableItems->InitItemInstance(InItemInstance);
+			
+			
+			OnDropItemInstanceToWorld.Broadcast(PickableItems);
+		}
+		else
+		{
+			UE_LOG(LogInventorySystem, Warning, TEXT("丢弃的物品可能不存在 DragDrop 片段！需要在物品定义中添加并定义属性。"))
+		}
+	}
 }
 
 void UInvSys_InventoryComponent::EquipItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, FGameplayTag SlotTag)
@@ -367,7 +393,7 @@ void UInvSys_InventoryComponent::Server_RestoreItemInstance_Implementation(UInvS
 
 void UInvSys_InventoryComponent::SetDraggingWidget(UUserWidget* NewDraggingWidget)
 {
-	DraggingWidget = NewDraggingWidget;
+	DraggingWidget_DEPRECATED = NewDraggingWidget;
 }
 
 UInvSys_BaseInventoryObject* UInvSys_InventoryComponent::GetInventoryObject(FGameplayTag Tag,

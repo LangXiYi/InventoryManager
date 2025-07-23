@@ -11,6 +11,18 @@ UInvSys_InventoryControllerComponent::UInvSys_InventoryControllerComponent()
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
+void UInvSys_InventoryControllerComponent::Server_DropItemInstanceToWorld_Implementation(UInvSys_InventoryItemInstance* InItemInstance)
+{
+	if (InItemInstance)
+	{
+		UInvSys_InventoryComponent* InvComp = InItemInstance->GetInventoryComponent();
+		if (InvComp)
+		{
+			InvComp->DropItemInstanceToWorld(InItemInstance);
+		}
+	}
+}
+
 void UInvSys_InventoryControllerComponent::Server_TryDragItemInstance_Implementation(
 	UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance)
 {
@@ -32,4 +44,11 @@ FTimerManager& UInvSys_InventoryControllerComponent::GetWorldTimerManager() cons
 	AActor* Owner = GetOwner();
 	check(Owner);
 	return Owner->GetWorldTimerManager();
+}
+
+APlayerController* UInvSys_InventoryControllerComponent::GetPlayerController()
+{
+	APlayerController* MyController = Cast<APlayerController>(GetOwner());
+	check(MyController);
+	return MyController;
 }

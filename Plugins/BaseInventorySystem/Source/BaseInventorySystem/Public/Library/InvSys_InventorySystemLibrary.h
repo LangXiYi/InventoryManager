@@ -21,12 +21,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Inventory System Library")
 	static UInvSys_InventoryComponent* FindInventoryComponent(AActor* InActor);
 
-	UFUNCTION(BlueprintPure, Category="Game", meta=(WorldContext="WorldContextObject", UnsafeDuringActorConstruction="true"))
-	static UInvSys_InventoryControllerComponent* FindInvControllerComponent(const UObject* WorldContextObject);
+	UFUNCTION(BlueprintPure, Category="Inventory System Library", meta=(WorldContext="WorldContextObject", UnsafeDuringActorConstruction="true"))
+	static UInvSys_InventoryControllerComponent* GetPlayerInventoryComponent(const UObject* WorldContextObject);
 
-	template<class T>
+	template<class T = UInvSys_InventoryControllerComponent>
 	static T* FindInvControllerComponent(const UObject* WorldContextObject)
 	{
-		return (T*)FindInvControllerComponent(WorldContextObject);
+		return (T*)GetPlayerInventoryComponent(WorldContextObject);
 	}
 };

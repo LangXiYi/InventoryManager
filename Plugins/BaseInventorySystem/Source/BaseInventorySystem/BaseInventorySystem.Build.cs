@@ -44,6 +44,7 @@ public class BaseInventorySystem : ModuleRules
 				"UMG",
 				"DeveloperSettings",
 				"GameplayTags",
+				"GameplayMessageRuntime",
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
