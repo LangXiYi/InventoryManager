@@ -52,3 +52,49 @@ FIntPoint UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSizeFrom(UInvS
 	}
 	return TargetItemSize;
 }
+
+FIntPoint UGridInvSys_CommonFunctionLibrary::CalculateItemDefinitionSize(
+	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef)
+{
+	if (ItemDef)
+	{
+		return CalculateItemDefinitionSizeFrom(ItemDef, EGridInvSys_ItemDirection::Horizontal);
+	}
+	return FIntPoint(1, 1);
+}
+
+FIntPoint UGridInvSys_CommonFunctionLibrary::CalculateItemDefinitionSizeFrom(
+	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, EGridInvSys_ItemDirection ItemDirection)
+{
+	
+	if (ItemDef == nullptr)
+	{
+		return FIntPoint(1, 1);
+	}
+	auto ItemDefObj = ItemDef->GetDefaultObject<UInvSys_InventoryItemDefinition>();
+	
+	FIntPoint NativeItemSize = FIntPoint(1, 1);
+	FIntPoint TargetItemSize = NativeItemSize;
+	// 根据方向计算物体实际大小
+	if (auto ItemSizeFragment = ItemDefObj->FindFragmentByClass<UGridInvSys_ItemFragment_GridItemSize>())
+	{
+		NativeItemSize = ItemSizeFragment->ItemSize;
+	}
+	else
+	{
+		checkNoEntry();
+		return NativeItemSize;
+	}
+	// 计算旋转后的物品大小
+	switch (ItemDirection)
+	{
+	case EGridInvSys_ItemDirection::Horizontal:
+		TargetItemSize = NativeItemSize;
+		break;
+	case EGridInvSys_ItemDirection::Vertical:
+		TargetItemSize.X = NativeItemSize.Y;
+		TargetItemSize.Y = NativeItemSize.X;
+		break;
+	}
+	return TargetItemSize;
+}

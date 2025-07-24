@@ -6,6 +6,7 @@
 #include "Widgets/InvSys_InventoryWidget.h"
 #include "GridInvSys_ContainerGridLayoutWidget.generated.h"
 
+class UGridInvSys_GridEquipContainerObject;
 class UInvSys_InventoryItemInstance;
 class UGridInvSys_ContainerGridItemWidget;
 struct FGridInvSys_ItemPosition;
@@ -18,6 +19,8 @@ UCLASS()
 class GRIDINVENTORYSYSTEM_API UGridInvSys_ContainerGridLayoutWidget : public UInvSys_InventoryWidget
 {
 	GENERATED_BODY()
+
+	friend UGridInvSys_GridEquipContainerObject;
 
 public:
 	UFUNCTION(BlueprintCallable)

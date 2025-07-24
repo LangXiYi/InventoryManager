@@ -39,7 +39,7 @@ protected:
 	void OnUnEquipInventoryItem();
 
 	UFUNCTION(BlueprintNativeEvent)
-	bool CheckIsCanDrop(UInvSys_InventoryItemInstance* InItemInstance);
+	bool CheckIsCanDrop(UInvSys_InventoryItemInstance* InItemInstance); // DEPRECATED
 	
 protected:
 	UPROPERTY()

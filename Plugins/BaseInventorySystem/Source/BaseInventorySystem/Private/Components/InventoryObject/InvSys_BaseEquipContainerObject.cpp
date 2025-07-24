@@ -135,7 +135,7 @@ void UInvSys_BaseEquipContainerObject::TryRefreshContainerItems()
 	// }
 	for (const FInvSys_ContainerEntry& Entry : ContainerList.Entries)
 	{
-		ContainerList.BroadcastAddEntryMessage(Entry, true);
+		ContainerList.BroadcastAddEntryMessage(Entry);
 	}
 }
 
@@ -193,6 +193,16 @@ bool UInvSys_BaseEquipContainerObject::UpdateItemStackCount(UInvSys_InventoryIte
 void UInvSys_BaseEquipContainerObject::NativeOnEquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
 {
 	Super::NativeOnEquipItemInstance(InItemInstance);
+	if (ContainerLayout == nullptr)
+	{
+		auto ContainerLayoutFragment = InItemInstance->FindFragmentByClass<UInvSys_ItemFragment_ContainerLayout>();
+		if (ContainerLayoutFragment)
+		{
+			ContainerLayout = CreateWidget<UInvSys_InventoryWidget>(GetWorld(), ContainerLayoutFragment->ContainerLayout);
+			ContainerLayout->SetInventoryComponent(InventoryComponent);
+			ContainerLayout->SetSlotTag(EquipSlotTag);
+		}
+	}
 	if (EquipSlotWidget && InItemInstance)
 	{
 		//将布局控件的创建交给蓝图完成。
@@ -201,9 +211,13 @@ void UInvSys_BaseEquipContainerObject::NativeOnEquipItemInstance(UInvSys_Invento
 			UInvSys_EquipContainerSlotWidget* ContainerSlotWidget = Cast<UInvSys_EquipContainerSlotWidget>(EquipSlotWidget);
 			GetWorld()->GetTimerManager().SetTimerForNextTick([this, ContainerSlotWidget]()
 			{
+				if (ContainerSlotWidget->NS_ContainerGridLayout->HasAnyChildren() == false)
+				{
+					ContainerSlotWidget->NS_ContainerGridLayout->AddChild(ContainerLayout);
+				}
 				// 延迟到下一帧执行，确保ContainerLayout创建完成
-				ContainerLayout = ContainerSlotWidget->GetContainerLayoutWidget();
-				UE_LOG(LogInventorySystem, Error, TEXT("尝试刷新容器所有物品"))
+				// ContainerLayout = ContainerSlotWidget->GetContainerLayoutWidget<UInvSys_InventoryWidget>();
+				// UE_LOG(LogInventorySystem, Error, TEXT("尝试刷新容器所有物品"))
 				TryRefreshContainerItems();
 			});
 		}

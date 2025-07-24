@@ -132,15 +132,18 @@ void UInvSys_BaseEquipmentObject::CopyPropertyFromPreEdit(UObject* PreEditPayLoa
 
 void UInvSys_BaseEquipmentObject::NativeOnEquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
 {
-	check(EquipSlotWidget);
-	check(EquipItem);
-	EquipSlotWidget->EquipItemInstance(InItemInstance);
+	if (EquipSlotWidget)
+	{
+		EquipSlotWidget->EquipItemInstance(InItemInstance);
+	}
 }
 
 void UInvSys_BaseEquipmentObject::NativeOnUnEquipItemInstance()
 {
-	check(EquipSlotWidget);
-	EquipSlotWidget->UnEquipItemInstance();
+	if (EquipSlotWidget)
+	{
+		EquipSlotWidget->UnEquipItemInstance();
+	}
 }
 
 bool UInvSys_BaseEquipmentObject::ContainsItem(FGuid ItemUniqueID)
@@ -164,16 +167,13 @@ bool UInvSys_BaseEquipmentObject::ReplicateSubobjects(UActorChannel* Channel, FO
 
 void UInvSys_BaseEquipmentObject::OnRep_EquipItemInstance()
 {
-	if (EquipSlotWidget)
+	if (EquipItem)
 	{
-		if (EquipItem)
-		{
-			NativeOnEquipItemInstance(EquipItem);
-		}
-		else if(LastEquipItemInstance.IsValid())
-		{
-			NativeOnUnEquipItemInstance();
-		}
+		NativeOnEquipItemInstance(EquipItem);
+	}
+	else if(LastEquipItemInstance.IsValid())
+	{
+		NativeOnUnEquipItemInstance();
 	}
 	LastEquipItemInstance = EquipItem;
 }

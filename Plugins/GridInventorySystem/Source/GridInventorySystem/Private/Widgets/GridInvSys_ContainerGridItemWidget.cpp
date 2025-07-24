@@ -117,6 +117,32 @@ UGridInvSys_ContainerGridItemWidget* UGridInvSys_ContainerGridItemWidget::GetOri
 	return OriginGridItemWidget;
 }
 
+bool UGridInvSys_ContainerGridItemWidget::IsOccupied()
+{
+	if (ItemInstance != nullptr)
+	{
+		UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(ItemInstance);
+		if (GridItemInstance)
+		{
+			// 物品有效
+			FGridInvSys_ItemPosition TempItemPos = GridItemInstance->GetItemPosition();
+			if (GetSlotTag() == TempItemPos.EquipSlotTag &&
+				GetGridID() == TempItemPos.GridID &&
+				GetPosition() == TempItemPos.Position &&
+				GetInventoryComponent() == ItemInstance->GetInventoryComponent())
+			{
+				return true;
+			}
+			else
+			{
+				UE_LOG(LogInventorySystem, Log, TEXT("检查槽位是否被占据时发现物品实例与当前槽位的位置不符，故自动将物品移除显示。"))
+				RemoveItemInstance();
+			}
+		}
+	}
+	return false;
+}
+
 EGridInvSys_ItemDirection UGridInvSys_ContainerGridItemWidget::GetItemDirection() const
 {
 	return EGridInvSys_ItemDirection::Horizontal;

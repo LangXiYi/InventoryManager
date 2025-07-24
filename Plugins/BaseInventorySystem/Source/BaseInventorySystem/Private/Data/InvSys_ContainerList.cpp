@@ -2,9 +2,12 @@
 
 
 #include "Data/InvSys_ContainerList.h"
-
+#include "NativeGameplayTags.h"
+#include "GameFramework/GameplayMessageSubsystem.h"
 #include "Data/InvSys_InventoryItemInstance.h"
 
+UE_DEFINE_GAMEPLAY_TAG(Inventory_Message_AddItem, "Inventory.Message.AddItem");
+UE_DEFINE_GAMEPLAY_TAG(Inventory_Message_RemoveItem, "Inventory.Message.RemoveItem");
 
 /*const FInvSys_ContainerEntry& FInvSys_ContainerList::AddEntry(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
 	int32 StackCount)
@@ -41,6 +44,30 @@ FString FInvSys_ContainerEntry::GetDebugString() const
 	}
 
 	return FString::Printf(TEXT("%s (%d x %s)"), *GetNameSafe(Instance), StackCount, *GetNameSafe(ItemDef));
+}
+
+void FInvSys_ContainerList::BroadcastAddEntryMessage(const FInvSys_ContainerEntry& Entry)
+{
+	OnContainerEntryAdded.ExecuteIfBound(Entry, false);
+	// BroadcastStackChangeMessage(Entry, 0, Entry.StackCount);
+
+	FInvSys_InventoryItemChangedMessage ItemChangedMessage;
+	ItemChangedMessage.ItemInstance = Entry.Instance;
+
+	UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(OwnerObject->GetWorld());
+	MessageSubsystem.BroadcastMessage(Inventory_Message_AddItem, ItemChangedMessage);
+}
+
+void FInvSys_ContainerList::BroadcastRemoveEntryMessage(const FInvSys_ContainerEntry& Entry)
+{
+	OnContainerEntryRemove.ExecuteIfBound(Entry, false);
+	// BroadcastStackChangeMessage(Entry, Entry.StackCount, 0);
+
+	FInvSys_InventoryItemChangedMessage ItemChangedMessage;
+	ItemChangedMessage.ItemInstance = Entry.Instance;
+
+	UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(OwnerObject->GetWorld());
+	MessageSubsystem.BroadcastMessage(Inventory_Message_RemoveItem, ItemChangedMessage);
 }
 
 // bool FInvSys_ContainerList::AddEntry(UInvSys_InventoryItemInstance* Instance)
@@ -117,4 +144,31 @@ UInvSys_InventoryItemInstance* FInvSys_ContainerList::FindItem(FGuid ItemUniqueI
 		}
 	}
 	return nullptr;
+}
+
+void FInvSys_ContainerList::PreReplicatedRemove(const TArrayView<int32>& RemovedIndices, int32 FinalSize)
+{
+	for (int32 Index : RemovedIndices)
+	{
+		FInvSys_ContainerEntry& Entry = Entries[Index];
+		BroadcastRemoveEntryMessage(Entry);
+	}
+}
+
+void FInvSys_ContainerList::PostReplicatedAdd(const TArrayView<int32>& AddedIndices, int32 FinalSize)
+{
+	for (int32 Index : AddedIndices)
+	{
+		FInvSys_ContainerEntry& Entry = Entries[Index];
+		BroadcastAddEntryMessage(Entry);
+	}
+}
+
+void FInvSys_ContainerList::PostReplicatedChange(const TArrayView<int32>& ChangedIndices, int32 FinalSize)
+{
+	for (int32 Index : ChangedIndices)
+	{
+		FInvSys_ContainerEntry& Entry = Entries[Index];
+		//BroadcastStackChangeMessage(Entry, Entry.LastObservedCount, Entry.StackCount);
+	}
 }

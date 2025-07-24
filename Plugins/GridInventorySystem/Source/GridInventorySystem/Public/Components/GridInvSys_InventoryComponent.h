@@ -61,6 +61,9 @@ public:
 	UFUNCTION(BlueprintCallable, meta = (DeprecatedFunction))
 	bool FindEnoughFreeSpace(FName SlotName, FIntPoint ItemSize, FGridInvSys_InventoryItemPosition& OutPosition) const;
 
+	UFUNCTION(BlueprintCallable)
+	bool FindEmptyPosition(UInvSys_InventoryItemInstance* InItemInstance, FGridInvSys_ItemPosition& OutPosition);
+
 public:
 	/**
 	 * RPC Function

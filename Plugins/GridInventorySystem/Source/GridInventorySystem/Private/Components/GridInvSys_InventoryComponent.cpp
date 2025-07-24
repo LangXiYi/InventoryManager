@@ -7,7 +7,10 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/InventoryObject/GridInvSys_GridEquipContainerObject.h"
 #include "Data/GridInvSys_InventoryItemInstance.h"
+#include "Data/GridInvSys_ItemFragment_GridItemSize.h"
+#include "Data/InvSys_ItemFragment_ContainerPriority.h"
 #include "Engine/ActorChannel.h"
+#include "Library/GridInvSys_CommonFunctionLibrary.h"
 #include "Net/UnrealNetwork.h"
 #include "Widgets/GridInvSys_ContainerGridLayoutWidget.h"
 #include "Widgets/GridInvSys_DragItemWidget.h"
@@ -52,11 +55,28 @@ void UGridInvSys_InventoryComponent::AddInventoryItemToGridContainer(FGridInvSys
 	}*/
 }
 
-void UGridInvSys_InventoryComponent::AddItemDefinitionToContainerPos(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
-                                                                     int32 StackCount, FGridInvSys_ItemPosition Pos)
+void UGridInvSys_InventoryComponent::AddItemDefinitionToContainerPos(
+	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, FGridInvSys_ItemPosition Pos)
 {
-	auto InvObj = AddItemDefinition<UGridInvSys_InventoryItemInstance>(ItemDef, Pos.EquipSlotTag, StackCount, Pos);
-	check(InvObj)
+	check(ItemDef)
+	if (ItemDef == nullptr)
+	{
+		return;
+	}
+	UInvSys_InventoryItemDefinition* ItemDefObj = ItemDef->GetDefaultObject<UInvSys_InventoryItemDefinition>();
+	if (ItemDefObj)
+	{
+		UGridInvSys_GridEquipContainerObject* ContainerObj =
+			GetInventoryObject<UGridInvSys_GridEquipContainerObject>(Pos.EquipSlotTag);
+		if (ContainerObj)
+		{
+			FIntPoint ItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemDefinitionSizeFrom(ItemDef, Pos.Direction);
+			if (ContainerObj->HasEnoughFreeSpace(Pos.Position, Pos.GridID, ItemSize))
+			{
+				AddItemDefinition<UGridInvSys_InventoryItemInstance>(ItemDef, Pos.EquipSlotTag, StackCount, Pos);
+			}
+		}
+	}
 }
 
 void UGridInvSys_InventoryComponent::AddItemInstanceToContainerPos(UInvSys_InventoryItemInstance* InItemInstance,
@@ -66,8 +86,16 @@ void UGridInvSys_InventoryComponent::AddItemInstanceToContainerPos(UInvSys_Inven
 	check(GridItemInstance)
 	if (GridItemInstance)
 	{
-		bool bIsSuccess = AddItemInstance<UGridInvSys_InventoryItemInstance>(GridItemInstance, InPos.EquipSlotTag, InPos);
-		check(bIsSuccess)
+		UGridInvSys_GridEquipContainerObject* ContainerObj =
+			GetInventoryObject<UGridInvSys_GridEquipContainerObject>(InPos.EquipSlotTag);
+		if (ContainerObj)
+		{
+			FIntPoint ItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSizeFrom(InItemInstance, InPos.Direction);
+			if (ContainerObj->HasEnoughFreeSpace(InPos.Position, InPos.GridID, ItemSize))
+			{
+				AddItemInstance<UGridInvSys_InventoryItemInstance>(GridItemInstance, InPos.EquipSlotTag, InPos);
+			}
+		}
 	}
 }
 
@@ -200,6 +228,51 @@ bool UGridInvSys_InventoryComponent::FindEnoughFreeSpace(FName SlotName, FIntPoi
 			return ContainerObject->FindEnoughFreeSpace(ItemSize, OutPosition);
 		}
 	}*/
+	return false;
+}
+
+bool UGridInvSys_InventoryComponent::FindEmptyPosition(UInvSys_InventoryItemInstance* InItemInstance, FGridInvSys_ItemPosition& OutPosition)
+{
+	if (InItemInstance == nullptr)
+	{
+		return false;
+	}
+	TArray<FGameplayTag> OutContainerTags;
+	auto ContainerPriority = InItemInstance->FindFragmentByClass<UInvSys_ItemFragment_ContainerPriority>();
+	if (ContainerPriority)
+	{
+		// 根据各个物品自定义的优先级，优先寻找对应物品
+		ContainerPriority->ContainerPriority.GetGameplayTagArray(OutContainerTags);
+	}
+	else
+	{
+		OutContainerTags ={
+			FGameplayTag::RequestGameplayTag("Inventory.Container.Backpack"),
+			FGameplayTag::RequestGameplayTag("Inventory.Container.ChestRig"),
+			FGameplayTag::RequestGameplayTag("Inventory.Container.Pocket"),
+			FGameplayTag::RequestGameplayTag("Inventory.Container.SafeBox"),
+		};
+	}
+	for (FGameplayTag ContainerTag : OutContainerTags)
+	{
+		UGridInvSys_GridEquipContainerObject* EquipInvObj = GetInventoryObject<UGridInvSys_GridEquipContainerObject>(ContainerTag);
+		if (EquipInvObj && EquipInvObj->HasEquipItem())
+		{
+			if (auto ItemSizeFragment = InItemInstance->FindFragmentByClass<UGridInvSys_ItemFragment_GridItemSize>())
+			{
+				if (EquipInvObj->FindEmptyPosition(ItemSizeFragment->ItemSize, OutPosition))
+				{
+					OutPosition.Direction = EGridInvSys_ItemDirection::Horizontal;
+					return true;
+				}
+				if (EquipInvObj->FindEmptyPosition(FIntPoint(ItemSizeFragment->ItemSize.Y, ItemSizeFragment->ItemSize.X), OutPosition))
+				{
+					OutPosition.Direction = EGridInvSys_ItemDirection::Vertical;
+					return true;
+				}
+			}
+		}
+	}
 	return false;
 }
 

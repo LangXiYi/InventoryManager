@@ -84,12 +84,12 @@ public:
 	}
 	
 protected:
-	UPROPERTY(ReplicatedUsing = OnRep_ItemPosition)
+	UPROPERTY(BlueprintReadOnly, Category = "Grid Item Instance", ReplicatedUsing = OnRep_ItemPosition)
 	FGridInvSys_ItemPosition ItemPosition;
 	UFUNCTION()
 	void OnRep_ItemPosition();
 
-	UPROPERTY(Replicated)
+	UPROPERTY(BlueprintReadOnly, Category = "Grid Item Instance", Replicated)
 	FGridInvSys_ItemPosition LastItemPosition;
 	
 	UPROPERTY()

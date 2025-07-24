@@ -42,6 +42,7 @@ public class GridInventorySystem : ModuleRules
 				"UMG",
 				"InputCore",
 				"DeveloperSettings",
+				"GameplayMessageRuntime",
 				"GameplayTags",
 				// ... add private dependencies that you statically link with here ...	
 			}

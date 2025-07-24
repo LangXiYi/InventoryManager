@@ -48,14 +48,9 @@ public:
 	
 	FORCEINLINE FIntPoint GetOriginPosition() const;
 
-	FGridInvSys_InventoryItemPosition GetGridItemPosition()const
-	{
-		return FGridInvSys_InventoryItemPosition();
-	}
-	
 	FORCEINLINE UGridInvSys_ContainerGridItemWidget* GetOriginGridItemWidget() const;
 
-	FORCEINLINE bool IsOccupied() const { return bIsOccupied; }
+	bool IsOccupied();
 
 	FORCEINLINE EGridInvSys_ItemDirection GetItemDirection() const;
 
@@ -68,6 +63,7 @@ public:
 
 	FIntPoint CalculateRelativePosition(const UGridInvSys_ContainerGridItemWidget* Parent) const;
 
+	UFUNCTION(BlueprintPure)
 	int32 GetGridID() const;
 
 	template<class T = UInvSys_InventoryItemInstance>

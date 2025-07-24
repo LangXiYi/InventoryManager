@@ -46,12 +46,18 @@ public:
 	virtual void UpdateInventoryItemFromContainer_DEPRECATED(FName ItemUniqueID, FGridInvSys_InventoryItemPosition NewPosition);
 
 	virtual UInvSys_EquipSlotWidget* CreateDisplayWidget(APlayerController* PC) override;
-	
+
 protected:
 	void OnItemPositionChange(const FGridInvSys_ItemPositionChangeMessage& Message);
 	virtual void OnInventoryStackChange(const FInvSys_InventoryStackChangeMessage& ChangeInfo) override;
 	virtual void OnContainerEntryAdded(const FInvSys_ContainerEntry& Entry, bool bIsForceRep) override;
 	virtual void OnContainerEntryRemove(const FInvSys_ContainerEntry& Entry, bool bIsForceRep) override;
+
+	virtual void NativeOnEquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance) override;
+
+	virtual void NativeOnUnEquipItemInstance() override;
+
+	void UpdateContainerGridItemState(UGridInvSys_InventoryItemInstance* GridItemInstance, bool IsOccupy);
 	
 private:
 	int32 FindContainerItemIndex(FName ItemUniqueID);
@@ -61,6 +67,13 @@ public:
 	 * Getter Or Setter
 	 **/
 
+	bool HasEnoughFreeSpace(FIntPoint ToPosition, int32 ToGridID, FIntPoint ItemSize);
+
+	bool FindEmptyPosition(FIntPoint ItemSize, FGridInvSys_ItemPosition& OutPosition);
+
+	UFUNCTION(BlueprintCallable)
+	TArray<bool> GetInventoryOccupyStateByGridID(int32 GridID);
+	
 	/** [Server] */
 	bool IsValidPosition(const FGridInvSys_InventoryItemPosition& ItemPosition);
 
@@ -78,7 +91,7 @@ public:
 protected:
 	/** 该装备槽支持装备的类型 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Equipment Object")
-	EGridInvSys_InventoryItemType EquipmentSupportType = EGridInvSys_InventoryItemType::None;
+	EGridInvSys_InventoryItemType EquipmentSupportType = EGridInvSys_InventoryItemType::None; // DEPRECATED
 
 	/** 当前容器内的所有物品 */
 	TArray<FGridInvSys_InventoryItem> RepNotify_ContainerItems_DEPRECATED;
@@ -94,6 +107,12 @@ private:
 	TMap<FName, UGridInvSys_ContainerGridWidget*> ContainerGridWidgets;
 	/** [Server] 仅服务器使用，存储当前容器内的不同网格的大小 */
 	TMap<FName, FIntPoint> ContainerGridSizeMap;
+
+	// [Client & Server] 记录所有被占据的网格，第一层为 GridID
+	// 第二层为不同格子索引 【0、1、2、3】【4、5、6、7】...
+	TArray<TArray<bool>> OccupiedGrid;
+
+	TArray<FIntPoint> ContainerGridSize; // 容器内各个网格的宽度
 };
 
 /**

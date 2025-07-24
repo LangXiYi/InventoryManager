@@ -7,9 +7,12 @@
 #include "Components/NamedSlot.h"
 #include "Data/GridInvSys_InventoryContainerInfo.h"
 #include "Data/GridInvSys_InventoryItemInstance.h"
+#include "Data/GridInvSys_ItemFragment_GridItemSize.h"
 #include "Data/InvSys_InventoryItemInstance.h"
 #include "Data/InvSys_InventoryItemDefinition.h"
 #include "Data/InvSys_InventoryItemInstance.h"
+#include "Data/InvSys_ItemFragment_ContainerLayout.h"
+#include "Library/GridInvSys_CommonFunctionLibrary.h"
 #include "Net/UnrealNetwork.h"
 #include "Widgets/GridInvSys_ContainerGridItemWidget.h"
 #include "Widgets/GridInvSys_ContainerGridLayoutWidget.h"
@@ -90,7 +93,7 @@ UInvSys_EquipSlotWidget* UGridInvSys_GridEquipContainerObject::CreateDisplayWidg
 	if (LOCAL_EquipSlotWidget && LOCAL_EquipSlotWidget->IsA<UGridInvSys_EquipContainerSlotWidget>())
 	{
 		UGridInvSys_EquipContainerSlotWidget* LOCAL_GridEquipSlowWidget = Cast<UGridInvSys_EquipContainerSlotWidget>(LOCAL_EquipSlotWidget);
-		LOCAL_GridEquipSlowWidget->SetEquipItemType(EquipmentSupportType);
+		// LOCAL_GridEquipSlowWidget->SetEquipItemType(EquipmentSupportType);
 	}
 	return LOCAL_EquipSlotWidget;
 }
@@ -109,6 +112,7 @@ void UGridInvSys_GridEquipContainerObject::GetLifetimeReplicatedProps(TArray<FLi
 
 void UGridInvSys_GridEquipContainerObject::OnItemPositionChange(const FGridInvSys_ItemPositionChangeMessage& Message)
 {
+#if 0
 	if (ContainerLayout == nullptr) return;
 
 	UGridInvSys_ContainerGridLayoutWidget* LOCAL_ContainerLayout = nullptr;
@@ -152,6 +156,7 @@ void UGridInvSys_GridEquipContainerObject::OnItemPositionChange(const FGridInvSy
 				, HasAuthority() ? TEXT("Server"):TEXT("Client"), *Message.OldPosition.ToString())
 		}
 	}
+#endif
 }
 
 void UGridInvSys_GridEquipContainerObject::OnInventoryStackChange(const FInvSys_InventoryStackChangeMessage& ChangeInfo)
@@ -175,38 +180,86 @@ void UGridInvSys_GridEquipContainerObject::OnInventoryStackChange(const FInvSys_
 
 void UGridInvSys_GridEquipContainerObject::OnContainerEntryAdded(const FInvSys_ContainerEntry& Entry, bool bIsForceRep)
 {
-	//UE_LOG(LogInventorySystem, Log, TEXT("[%s]正在为新添加的物品绑定回调，并调用物品的位置改变广播，添加新物品。"), HasAuthority() ? TEXT("Server"):TEXT("Client"))
-	UGridInvSys_InventoryItemInstance* Instance = Entry.GetInstance<UGridInvSys_InventoryItemInstance>();
-	check(Instance)
-	if (Instance->OnItemPositionChangeDelegate().IsBound() == false)
+	if (Entry.Instance)
 	{
-		Instance->OnItemPositionChangeDelegate().BindUObject(this, &UGridInvSys_GridEquipContainerObject::OnItemPositionChange);
+		UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(Entry.Instance);
+		UpdateContainerGridItemState(GridItemInstance, true);
 	}
-	//此时 ItemInstance 处于新添加的状态，所以传入的 OldItemPosition 需要为空
-	// if (bIsForceRep || HasAuthority())
-	// {
-		// Client：!!!客户端环境下复制的对象值优于该对象的属性到达客户端，即先执行该函数然后再执行对象的OnRep函数。
-		// Server: !!!服务器环境则于客户端相反，对象属性的OnRep函数先执行，然后再执行该函数。
-		// 所以为了实现正确的效果，同时避免客户端重复广播位置改变事件，所以限制条件为新增了在服务器环境下才广播
-
-	// GetWorld()->GetTimerManager().SetTimerForNextTick([&, Instance]()
-	// {
-		// 属性的OnRep调用比这里的执行晚，所以在发送广播前需要等待OnRep执行完毕，保证LastPosition的正确获取。
-		Instance->BroadcastItemPositionChangeMessage(Instance->GetLastItemPosition(), Instance->GetItemPosition());
-	// });
-	// }
 }
 
 void UGridInvSys_GridEquipContainerObject::OnContainerEntryRemove(const FInvSys_ContainerEntry& Entry, bool bIsForceRep)
 {
-	//UE_LOG(LogInventorySystem, Log, TEXT("[%s]正在移除目标物品的绑定回调，并调用物品的位置改变广播，将物品移除。"), HasAuthority() ? TEXT("Server"):TEXT("Client"))
-	UGridInvSys_InventoryItemInstance* Instance = Entry.GetInstance<UGridInvSys_InventoryItemInstance>();
-	check(Instance)
-	//此时 ItemInstance 处于待移除的状态，所以传入的 NewItemPosition 需要为空
-	FGridInvSys_ItemPosition RemoveTest;
-	RemoveTest.GridID = 9966888;
-	Instance->BroadcastItemPositionChangeMessage(Instance->GetItemPosition(), RemoveTest);
-	Instance->OnItemPositionChangeDelegate().Unbind();
+	if (Entry.Instance)
+	{
+		UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(Entry.Instance);
+		UpdateContainerGridItemState(GridItemInstance, false);
+	}
+}
+
+void UGridInvSys_GridEquipContainerObject::NativeOnEquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
+{
+	Super::NativeOnEquipItemInstance(InItemInstance);
+
+	if(ContainerLayout)
+	{
+		OccupiedGrid.Empty();
+		ContainerGridSize.Empty();
+		UGridInvSys_ContainerGridLayoutWidget* ContainerGridLayout = Cast<UGridInvSys_ContainerGridLayoutWidget>(ContainerLayout);
+		if (ContainerGridLayout)
+		{
+			TArray<UGridInvSys_ContainerGridWidget*> OutContainerGrids;
+			ContainerGridLayout->GetAllContainerGridWidgets(OutContainerGrids);
+			UE_LOG(LogInventorySystem, Log, TEXT("正在初始化容器各个网格大小[%d]"), OutContainerGrids.Num())
+			for (const UGridInvSys_ContainerGridWidget* ContainerGrid : OutContainerGrids)
+			{
+				FIntPoint Size = ContainerGrid->GetContainerGridSize();
+				ContainerGridSize.Add(Size);
+			
+				TArray<bool> TempArry;
+				TempArry.Init(false, Size.X * Size.Y);
+				OccupiedGrid.Add(TempArry);
+			}
+		}
+	}
+
+}
+
+void UGridInvSys_GridEquipContainerObject::NativeOnUnEquipItemInstance()
+{
+	Super::NativeOnUnEquipItemInstance();
+	OccupiedGrid.Empty();
+	ContainerGridSize.Empty();
+}
+
+void UGridInvSys_GridEquipContainerObject::UpdateContainerGridItemState(
+	UGridInvSys_InventoryItemInstance* GridItemInstance, bool IsOccupy)
+{
+	if (GridItemInstance)
+	{
+		auto ItemSizeFragment = GridItemInstance->FindFragmentByClass<UGridInvSys_ItemFragment_GridItemSize>();
+		if (GridItemInstance && ItemSizeFragment)
+		{
+			FGridInvSys_ItemPosition ItemPosition = GridItemInstance->GetItemPosition();
+			FIntPoint ItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSize(GridItemInstance);
+			if (OccupiedGrid.IsValidIndex(ItemPosition.GridID) && ContainerGridSize.IsValidIndex(ItemPosition.GridID))
+			{
+				FIntPoint GridSize = ContainerGridSize[ItemPosition.GridID];
+				int32 ItemMax_X = ItemPosition.Position.X + ItemSize.X;
+				int32 ItemMax_Y = ItemPosition.Position.Y + ItemSize.Y;
+				for (int X = ItemPosition.Position.X; X < ItemMax_X; ++X)
+				{
+					for (int Y = ItemPosition.Position.Y; Y < ItemMax_Y; ++Y)
+					{
+						int32 Index = X * GridSize.Y + Y;
+						if (OccupiedGrid[ItemPosition.GridID].IsValidIndex(Index))
+						{
+							OccupiedGrid[ItemPosition.GridID][Index] = IsOccupy;
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 int32 UGridInvSys_GridEquipContainerObject::FindContainerItemIndex(FName ItemUniqueID)
@@ -220,6 +273,66 @@ int32 UGridInvSys_GridEquipContainerObject::FindContainerItemIndex(FName ItemUni
 		}
 	}
 	return INDEX_NONE;
+}
+
+bool UGridInvSys_GridEquipContainerObject::HasEnoughFreeSpace(FIntPoint ToPos, int32 ToGridID, FIntPoint ItemSize)
+{
+	int32 ToIndex = ToPos.X * ContainerGridSize[ToGridID].Y + ToPos.Y;
+	int32 MaxGridWidth = ContainerGridSize[ToGridID].Y;
+	int32 MaxGridHeight = ContainerGridSize[ToGridID].Y;
+	for (int X = 0; X < ItemSize.X; ++X)
+	{
+		for (int Y = 0; Y < ItemSize.Y; ++Y)
+		{
+			if (ToPos.X + X >= MaxGridWidth || ToPos.Y + Y >= MaxGridHeight)
+			{
+				return false;
+			}
+			int32 Index = ToIndex + X * ContainerGridSize[ToGridID].Y + Y;
+			if (OccupiedGrid[ToGridID].IsValidIndex(Index) == false ||
+				OccupiedGrid[ToGridID][Index] == true)
+			{
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+bool UGridInvSys_GridEquipContainerObject::FindEmptyPosition(FIntPoint ItemSize,
+	FGridInvSys_ItemPosition& OutPosition)
+{
+	// 循环容器内所有的网格
+	for (int GridID = 0; GridID < OccupiedGrid.Num(); ++GridID)
+	{
+		const TArray<bool>& GridItems = OccupiedGrid[GridID];
+		for (int i = 0; i < GridItems.Num(); ++i) 
+		{
+			if (GridItems[i] == true) continue; // 遍历网格内所有位置，检查是否未被占领
+
+			FIntPoint ToPosition = FIntPoint(i / ContainerGridSize[GridID].Y, i % ContainerGridSize[GridID].Y);
+			if (HasEnoughFreeSpace(ToPosition, GridID, ItemSize))
+			{
+				OutPosition.EquipSlotTag = EquipSlotTag;
+				OutPosition.GridID = GridID;
+				OutPosition.Position = ToPosition;
+				// OutPosition.Direction = EGridInvSys_ItemDirection::Horizontal; // 外部决定方向，因为仅通过Size无法确认它的方向
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+TArray<bool> UGridInvSys_GridEquipContainerObject::GetInventoryOccupyStateByGridID(int32 GridID)
+{
+	if (OccupiedGrid.IsValidIndex(GridID) == false)
+	{
+		checkNoEntry();
+		return TArray<bool>();
+	}
+	return OccupiedGrid[GridID];
 }
 
 bool UGridInvSys_GridEquipContainerObject::IsValidPosition(const FGridInvSys_InventoryItemPosition& ItemPosition)

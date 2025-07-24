@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Components/InventoryObject/GridInvSys_GridEquipContainerObject.h"
 #include "Data/GridInvSys_ItemFragment_ItemType.h"
+#include "GameFramework/GameplayMessageSubsystem.h"
 #include "Widgets/InvSys_EquipContainerSlotWidget.h"
 #include "GridInvSys_EquipContainerSlotWidget.generated.h"
 
@@ -25,12 +26,28 @@ public:
 
 	UGridInvSys_ContainerGridItemWidget* FindGridItemWidget(const UInvSys_InventoryItemInstance* NewItemInstance) const;*/
 
-	void SetEquipItemType(EGridInvSys_InventoryItemType EquipmentSupportType);
+	UFUNCTION(BlueprintCallable, Category = "Grid Container")
+	void AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
+
+	UFUNCTION(BlueprintCallable, Category = "Grid Container")
+	void AddItemInstanceTo(UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPosition);
+
+	UFUNCTION(BlueprintCallable, Category = "Grid Container")
+	void RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
+
+	UFUNCTION(BlueprintCallable, Category = "Grid Container")
+	void RemoveItemInstanceFor(UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPosition);
 
 protected:
-	virtual bool CheckIsCanDrop_Implementation(UInvSys_InventoryItemInstance* InItemInstance) override;
+	virtual void NativeConstruct() override;
+
+	virtual void NativeDestruct() override;
+
+private:
+	FGameplayMessageListenerHandle OnAddItemInstanceHandle;
+	FGameplayMessageListenerHandle OnRemoveItemInstanceHandle;
 	
-protected:
-	UPROPERTY(BlueprintReadOnly, Category = "Equip Slot")
-	EGridInvSys_InventoryItemType EquipItemType;
+	void OnAddItemInstance(FGameplayTag Tag, const FInvSys_InventoryItemChangedMessage& Message);
+
+	void OnRemoveItemInstance(FGameplayTag Tag, const FInvSys_InventoryItemChangedMessage& Message);
 };

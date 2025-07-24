@@ -59,6 +59,11 @@ public:
 		return EquipItem;
 	}
 
+	bool HasEquipItem() const
+	{
+		return EquipItem != nullptr;
+	}
+
 	/*bool IsEquipped() const
 	{
 		return false;

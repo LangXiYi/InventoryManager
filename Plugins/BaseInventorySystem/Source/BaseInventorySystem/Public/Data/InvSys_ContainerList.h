@@ -13,21 +13,15 @@ class UInvSys_InventoryComponent;
 class UInvSys_InventoryItemInstance;
 struct FInvSys_ContainerEntry;
 
-/*USTRUCT(BlueprintType)
-struct FInvSys_InventoryStackChangeMessage
+USTRUCT(BlueprintType)
+struct FInvSys_InventoryItemChangedMessage
 {
 	GENERATED_BODY()
 
 	UPROPERTY(BlueprintReadOnly, Category = Inventory)
 	UInvSys_InventoryItemInstance* ItemInstance = nullptr;
-
-	UPROPERTY(BlueprintReadOnly, Category = Inventory)
-	int32 StackCount;
-
-	UPROPERTY(BlueprintReadOnly, Category = Inventory)
-	int32 Delta;
 };
-
+/*
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnInventoryStackChange, FInvSys_InventoryStackChangeMessage);*/
 DECLARE_DELEGATE_TwoParams(FOnInventoryItemChange, UInvSys_InventoryItemInstance*, bool);
 // 由容器广播给外部。
@@ -66,7 +60,7 @@ public:
  * 库存列表
  */
 USTRUCT()
-struct FInvSys_ContainerList : public FFastArraySerializer
+struct BASEINVENTORYSYSTEM_API FInvSys_ContainerList : public FFastArraySerializer
 {
 	GENERATED_BODY()
 
@@ -78,6 +72,10 @@ public:
 
 	FInvSys_ContainerList(UInvSys_BaseInventoryObject* InOwnerObject) : OwnerObject(InOwnerObject)
 	{	}
+
+	void BroadcastAddEntryMessage(const FInvSys_ContainerEntry& Entry);
+	
+	void BroadcastRemoveEntryMessage(const FInvSys_ContainerEntry& Entry);
 	
 public:
 	UPROPERTY()
@@ -181,47 +179,16 @@ public:
 
 public:
 	//~FFastArraySerializer contract // 仅非Server的客户端接收该数据
-	FORCEINLINE void PreReplicatedRemove(const TArrayView<int32>& RemovedIndices, int32 FinalSize)
-	{
-		for (int32 Index : RemovedIndices)
-		{
-			FInvSys_ContainerEntry& Entry = Entries[Index];
-			BroadcastRemoveEntryMessage(Entry);
-		}
-	}
-	FORCEINLINE void PostReplicatedAdd(const TArrayView<int32>& AddedIndices, int32 FinalSize)
-	{
-		for (int32 Index : AddedIndices)
-		{
-			FInvSys_ContainerEntry& Entry = Entries[Index];
-			BroadcastAddEntryMessage(Entry);
-		}
-	}
-	FORCEINLINE void PostReplicatedChange(const TArrayView<int32>& ChangedIndices, int32 FinalSize)
-	{
-		for (int32 Index : ChangedIndices)
-		{
-			FInvSys_ContainerEntry& Entry = Entries[Index];
-			//BroadcastStackChangeMessage(Entry, Entry.LastObservedCount, Entry.StackCount);
-		}
-	}
+	void PreReplicatedRemove(const TArrayView<int32>& RemovedIndices, int32 FinalSize);
+
+	void PostReplicatedAdd(const TArrayView<int32>& AddedIndices, int32 FinalSize);
+	
+	void PostReplicatedChange(const TArrayView<int32>& ChangedIndices, int32 FinalSize);
 	//~End of FFastArraySerializer contract
 	
 	bool NetDeltaSerialize(FNetDeltaSerializeInfo& DeltaParms)
 	{
 		return FFastArraySerializer::FastArrayDeltaSerialize<FInvSys_ContainerEntry, FInvSys_ContainerList>(Entries, DeltaParms, *this);
-	}
-
-	FORCEINLINE void BroadcastAddEntryMessage(const FInvSys_ContainerEntry& Entry, bool bIsInit = false)
-	{
-		OnContainerEntryAdded.ExecuteIfBound(Entry, bIsInit);
-		// BroadcastStackChangeMessage(Entry, 0, Entry.StackCount);
-	}
-
-	FORCEINLINE void BroadcastRemoveEntryMessage(const FInvSys_ContainerEntry& Entry, bool bIsInit = false)
-	{
-		OnContainerEntryRemove.ExecuteIfBound(Entry, bIsInit);
-		// BroadcastStackChangeMessage(Entry, Entry.StackCount, 0);
 	}
 
 	FORCEINLINE FOnContainerEntryChange& OnContainerEntryAddedDelegate()

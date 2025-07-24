@@ -742,7 +742,7 @@ bool UGridInvSys_ContainerGridWidget::HasEnoughFreeSpace(FIntPoint IntPoint, FIn
 		return true;
 	}
 	// 判断目标格子是否被占据，且不是需要忽略的格子。
-	for (const UGridInvSys_ContainerGridItemWidget* GridItemWidget : OutArray)
+	for (UGridInvSys_ContainerGridItemWidget* GridItemWidget : OutArray)
 	{
 		if (GridItemWidget->IsOccupied() && Ignores.Contains(GridItemWidget) == false)
 		{
