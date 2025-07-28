@@ -18,5 +18,5 @@ class BASEINVENTORYSYSTEM_API UInvSys_ItemFragment_ContainerPriority : public UI
 
 public:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment")
-	FGameplayTagContainer ContainerPriority;
+	TArray<FGameplayTag> ContainerPriority;
 };

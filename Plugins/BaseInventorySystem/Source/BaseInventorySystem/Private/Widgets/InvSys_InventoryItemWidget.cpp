@@ -6,6 +6,7 @@
 #include "BaseInventorySystem.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Components/InvSys_InventoryComponent.h"
+#include "Widgets/InvSys_DraggingItemWidget.h"
 #include "Components/InvSys_InventoryControllerComponent.h"
 #include "Data/InvSys_ItemFragment_DragDrop.h"
 #include "Data/InvSys_InventoryItemInstance.h"
@@ -20,7 +21,8 @@ FReply UInvSys_InventoryItemWidget::NativeOnMouseButtonDown(const FGeometry& InG
 {
 	if (ItemInstance.Get())
 	{
-		return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
+		FEventReply EventReply = UWidgetBlueprintLibrary::DetectDragIfPressed(InMouseEvent, this, EKeys::LeftMouseButton);
+		return EventReply.NativeReply;
 	}
 	return FReply::Unhandled();
 }
@@ -28,19 +30,33 @@ FReply UInvSys_InventoryItemWidget::NativeOnMouseButtonDown(const FGeometry& InG
 void UInvSys_InventoryItemWidget::NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent,
 	UDragDropOperation*& OutOperation)
 {
-	if (false)
+	if (ItemInstance == nullptr)
 	{
-		// todo::禁用拖拽？
 		return;
 	}
-	if (ItemInstance.IsValid() && bIsWaitingServerResponse == false)
+	auto DragDropFragment = ItemInstance->FindFragmentByClass<UInvSys_ItemFragment_DragDrop>();
+	if (DragDropFragment && bIsWaitingServerResponse == false)
 	{
-		Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
 		// 获取当前玩家的库存组件
-		UInvSys_InventoryControllerComponent* PlayerInvComp = UInvSys_InventorySystemLibrary::FindInvControllerComponent(GetWorld());
+		UInvSys_DraggingItemWidget* DraggingWidget = CreateWidget<UInvSys_DraggingItemWidget>(this, DragDropFragment->DraggingWidgetClass);
+		UInvSys_InventoryControllerComponent* PlayerInvComp = UInvSys_InventorySystemLibrary::GetInventoryControllerComponent(GetWorld());
 		UInvSys_InventoryComponent* FromInvComp = ItemInstance->GetInventoryComponent();
+		if (DraggingWidget ==nullptr || PlayerInvComp == nullptr || FromInvComp == nullptr)
+		{
+			return;
+		}
 		/** 等待服务器响应用户拖拽事件 */
 		bIsWaitingServerResponse = true;
+
+		DraggingWidget->ItemInstance = ItemInstance.Get();
+
+		UDragDropOperation* DragDropOperation = NewObject<UDragDropOperation>();
+		DragDropOperation->Payload = ItemInstance.Get();
+		DragDropOperation->DefaultDragVisual = DraggingWidget;
+		DragDropOperation->Pivot = DragDropFragment->DragPivot;
+		DragDropOperation->Offset = DragDropFragment->DragOffset;
+		OutOperation = DragDropOperation;
+		
 		PlayerInvComp->Server_TryDragItemInstance(FromInvComp, ItemInstance.Get()); //通知服务器: 玩家正在拖拽物品
 		GetWorld()->GetTimerManager().SetTimer(ServerTimeoutHandle, [&]()
 		{

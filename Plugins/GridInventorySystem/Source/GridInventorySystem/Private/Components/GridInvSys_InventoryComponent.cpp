@@ -4,18 +4,13 @@
 #include "Components/GridInvSys_InventoryComponent.h"
 
 #include "BaseInventorySystem.h"
-#include "Blueprint/UserWidget.h"
-#include "Components/InventoryObject/GridInvSys_GridEquipContainerObject.h"
+#include "Components/InventoryObject/Fragment/GridInvSys_InventoryFragment_Container.h"
+#include "Components/InventoryObject/Fragment/InvSys_InventoryFragment_DisplayWidget.h"
 #include "Data/GridInvSys_InventoryItemInstance.h"
 #include "Data/GridInvSys_ItemFragment_GridItemSize.h"
 #include "Data/InvSys_ItemFragment_ContainerPriority.h"
-#include "Engine/ActorChannel.h"
 #include "Library/GridInvSys_CommonFunctionLibrary.h"
-#include "Net/UnrealNetwork.h"
 #include "Widgets/GridInvSys_ContainerGridLayoutWidget.h"
-#include "Widgets/GridInvSys_DragItemWidget.h"
-#include "Widgets/GridInvSys_EquipContainerSlotWidget.h"
-#include "Widgets/InvSys_EquipSlotWidget.h"
 
 
 // Sets default values for this component's properties
@@ -24,35 +19,10 @@ UGridInvSys_InventoryComponent::UGridInvSys_InventoryComponent()
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = false;
-
-}
-
-void UGridInvSys_InventoryComponent::AddInventoryItemToGridContainer(FGridInvSys_InventoryItem GridContainerItem)
-{
-	// 检查位置是否合法
-	/*const FGridInvSys_InventoryItemPosition& ItemPosition = GridContainerItem.ItemPosition;
-	FName SlotName = ItemPosition.SlotName;
-	if (InventoryObjectMap_DEPRECATED.Contains(SlotName) == false)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%s 必须在 InventoryObjectMap 中存在的。"), *GridContainerItem.BaseItemData.SlotName.ToString());
-		return;
-	}
-	
-	if(InventoryObjectMap_DEPRECATED[SlotName]->IsA(UGridInvSys_GridEquipContainerObject::StaticClass()) == false)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("SlotName [%s] 不是容器对象。"), *SlotName.ToString());
-		return;
-	}
-	
-	// 可装备的网格容器对象
-	UGridInvSys_GridEquipContainerObject* ContainerObj = Cast<UGridInvSys_GridEquipContainerObject>(InventoryObjectMap_DEPRECATED[SlotName]);
-	if (ContainerObj->IsValidPosition(ItemPosition))
-	{
-		UE_LOG(LogInventorySystem, Log, TEXT("[%s:%s] Container add item [%s] to [%s]."),
-			HasAuthority() ? TEXT("Server") : TEXT("Client"), *GetOwner()->GetName(),
-			*GridContainerItem.BaseItemData.ItemID.ToString(), *SlotName.ToString());
-		ContainerObj->AddInventoryItemToContainer_DEPRECATED(GridContainerItem);
-	}*/
+	DefaultContainerPriority.Add(FGameplayTag::RequestGameplayTag("Inventory.Container.Backpack"));
+	DefaultContainerPriority.Add(FGameplayTag::RequestGameplayTag("Inventory.Container.ChestRig"));
+	DefaultContainerPriority.Add(FGameplayTag::RequestGameplayTag("Inventory.Container.Pocket"));
+	DefaultContainerPriority.Add(FGameplayTag::RequestGameplayTag("Inventory.Container.SafeBox"));
 }
 
 void UGridInvSys_InventoryComponent::AddItemDefinitionToContainerPos(
@@ -66,15 +36,19 @@ void UGridInvSys_InventoryComponent::AddItemDefinitionToContainerPos(
 	UInvSys_InventoryItemDefinition* ItemDefObj = ItemDef->GetDefaultObject<UInvSys_InventoryItemDefinition>();
 	if (ItemDefObj)
 	{
-		UGridInvSys_GridEquipContainerObject* ContainerObj =
-			GetInventoryObject<UGridInvSys_GridEquipContainerObject>(Pos.EquipSlotTag);
-		if (ContainerObj)
+		UGridInvSys_InventoryFragment_Container* ContainerFragment =
+			FindInventoryObjectFragment<UGridInvSys_InventoryFragment_Container>(Pos.EquipSlotTag);
+		if (ContainerFragment)
 		{
 			FIntPoint ItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemDefinitionSizeFrom(ItemDef, Pos.Direction);
-			if (ContainerObj->HasEnoughFreeSpace(Pos.Position, Pos.GridID, ItemSize))
+			if (ContainerFragment->HasEnoughFreeSpace(Pos.Position, Pos.GridID, ItemSize))
 			{
 				AddItemDefinition<UGridInvSys_InventoryItemInstance>(ItemDef, Pos.EquipSlotTag, StackCount, Pos);
 			}
+		}
+		else
+		{
+			UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("无有效的容器片段: %s"), *Pos.ToString())
 		}
 	}
 }
@@ -86,12 +60,12 @@ void UGridInvSys_InventoryComponent::AddItemInstanceToContainerPos(UInvSys_Inven
 	check(GridItemInstance)
 	if (GridItemInstance)
 	{
-		UGridInvSys_GridEquipContainerObject* ContainerObj =
-			GetInventoryObject<UGridInvSys_GridEquipContainerObject>(InPos.EquipSlotTag);
-		if (ContainerObj)
+		UGridInvSys_InventoryFragment_Container* ContainerFragment =
+			FindInventoryObjectFragment<UGridInvSys_InventoryFragment_Container>(InPos.EquipSlotTag);
+		if (ContainerFragment)
 		{
 			FIntPoint ItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSizeFrom(InItemInstance, InPos.Direction);
-			if (ContainerObj->HasEnoughFreeSpace(InPos.Position, InPos.GridID, ItemSize))
+			if (ContainerFragment->HasEnoughFreeSpace(InPos.Position, InPos.GridID, ItemSize))
 			{
 				AddItemInstance<UGridInvSys_InventoryItemInstance>(GridItemInstance, InPos.EquipSlotTag, InPos);
 			}
@@ -120,117 +94,6 @@ void UGridInvSys_InventoryComponent::RestoreItemInstanceToPos(UInvSys_InventoryI
 	}
 }
 
-void UGridInvSys_InventoryComponent::UpdateContainerItemsPosition(TArray<FName> ChangedItems, TArray<FGridInvSys_InventoryItemPosition> NewItemData)
-{
-	if (HasAuthority() == false)
-	{
-		return;
-	}
-
-	// 验证数据在服务器中是否存在
-	for (FName ChangedItemUniqueID : ChangedItems)
-	{
-		if (IsContainsInventoryItem(ChangedItemUniqueID) == false)
-		{
-			check(false)
-			UE_LOG(LogInventorySystem, Error, TEXT("用户可能存在作弊行为，传入数据与服务器数据不匹配。"))
-			//Client_TryRefreshInventoryObject();
-			return;
-		}
-	}
-
-	// 验证目标位置的数据在已修改列表中
-	for (FGridInvSys_InventoryItemPosition ItemData : NewItemData)
-	{
-		FGridInvSys_InventoryItem TempItem;
-		bool bIsFind = FindInventoryItem(ItemData.SlotName, ItemData.Position, TempItem);
-		// 判断目标位置的数据是否为待修改的对象，或目标位置为空
-		if (bIsFind && ChangedItems.Contains(TempItem.BaseItemData.UniqueID) == false)
-		{
-			check(false)
-			UE_LOG(LogInventorySystem, Error, TEXT("用户可能存在作弊行为，传入数据与服务器数据不匹配。"))
-			//Client_TryRefreshInventoryObject();
-			return;
-		}
-	}
-
-	// 服务器开始更新数据，执行前请确保数据的正确性。
-	for (int i = 0; i < NewItemData.Num(); ++i)
-	{
-		FGridInvSys_InventoryItem OldItemData;
-		FindContainerGridItem(ChangedItems[i], OldItemData);
-
-		UE_LOG(LogInventorySystem, Warning, TEXT("[%s]:%s-%s:(%d,%d) ===> %s-%s:(%d,%d)"),
-			*ChangedItems[i].ToString(),
-			*OldItemData.ItemPosition.SlotName.ToString(), *OldItemData.ItemPosition.GridID.ToString(),
-			OldItemData.ItemPosition.Position.X, OldItemData.ItemPosition.Position.Y,
-			*NewItemData[i].SlotName.ToString(), *NewItemData[i].GridID.ToString(),
-			NewItemData[i].Position.X, NewItemData[i].Position.Y);
-		
-		// 判断物品最新的位置与之前的位置在同一容器内
-		if (OldItemData.ItemPosition.SlotName == NewItemData[i].SlotName)
-		{
-			/*UInvSys_BaseInventoryObject* InventoryObject = InventoryObjectMap_DEPRECATED[NewItemData[i].SlotName];
-			if(InventoryObject->IsA(UGridInvSys_GridEquipContainerObject::StaticClass()))
-			{
-				UGridInvSys_GridEquipContainerObject* EquipContainerObj = Cast<UGridInvSys_GridEquipContainerObject>(InventoryObject);
-				EquipContainerObj->UpdateInventoryItemFromContainer_DEPRECATED(ChangedItems[i], NewItemData[i]);
-			}*/
-		}
-		else
-		{
-			// 删除旧物品
-			/*UInvSys_BaseInventoryObject* OldInvObject = InventoryObjectMap_DEPRECATED[OldItemData.ItemPosition.SlotName];
-			if(OldInvObject->IsA(UGridInvSys_GridEquipContainerObject::StaticClass()))
-			{
-				UGridInvSys_GridEquipContainerObject* EquipContainerObj = Cast<UGridInvSys_GridEquipContainerObject>(OldInvObject);
-				EquipContainerObj->RemoveInventoryItemFromContainer_DEPRECATED(OldItemData);
-			}
-			// 添加新物品
-			UInvSys_BaseInventoryObject* NewInvObject = InventoryObjectMap_DEPRECATED[NewItemData[i].SlotName];
-			if(NewInvObject->IsA(UGridInvSys_GridEquipContainerObject::StaticClass()))
-			{
-				UGridInvSys_GridEquipContainerObject* EquipContainerObj = Cast<UGridInvSys_GridEquipContainerObject>(NewInvObject);
-				FGridInvSys_InventoryItem NewInventoryItemData = OldItemData;
-				NewInventoryItemData.ItemPosition = NewItemData[i];
-				EquipContainerObj->AddInventoryItemToContainer_DEPRECATED(NewInventoryItemData);
-			}*/
-		}
-	}
-}
-
-void UGridInvSys_InventoryComponent::UpdateOtherContainerItemsPosition(UGridInvSys_InventoryComponent* ToInvCom,
-	TArray<FGridInvSys_InventoryItem> FromItemData, TArray<FGridInvSys_InventoryItem> ToItemData)
-{
-	/*
-	 * 检查AddDataFrom在From组件中是否存在
-	 * 检查AddDataTo在To组件中是否存在
-	 * 检查AddDataFrom在To组件中的合法性
-	 * 检查AddDataTo在From组件中的合法性
-	 * 验证通过，向FromInvCom发送删除命令以及添加命令
-	 * 验证通过，向ToInvCom发送删除命令以及添加命令
-	 */
-	// todo::发送的删除命令与添加命令若与客户端冲突如何处理？直接整体刷新？
-}
-
-bool UGridInvSys_InventoryComponent::FindEnoughFreeSpace(FName SlotName, FIntPoint ItemSize,
-	FGridInvSys_InventoryItemPosition& OutPosition) const
-{
-	/*if (InventoryObjectMap_DEPRECATED.Contains(SlotName))
-	{
-		UInvSys_BaseInventoryObject* InvObj = InventoryObjectMap_DEPRECATED[SlotName];
-		if (InvObj->IsA(UInvSys_BaseEquipContainerObject::StaticClass()))
-		{
-			OutPosition.SlotName = SlotName;
-			OutPosition.ItemSize = ItemSize;
-			// OutPosition.Direction = EGridInvSys_ItemDirection::Horizontal;
-			UGridInvSys_GridEquipContainerObject* ContainerObject = Cast<UGridInvSys_GridEquipContainerObject>(InvObj);
-			return ContainerObject->FindEnoughFreeSpace(ItemSize, OutPosition);
-		}
-	}*/
-	return false;
-}
-
 bool UGridInvSys_InventoryComponent::FindEmptyPosition(UInvSys_InventoryItemInstance* InItemInstance, FGridInvSys_ItemPosition& OutPosition)
 {
 	if (InItemInstance == nullptr)
@@ -241,31 +104,27 @@ bool UGridInvSys_InventoryComponent::FindEmptyPosition(UInvSys_InventoryItemInst
 	auto ContainerPriority = InItemInstance->FindFragmentByClass<UInvSys_ItemFragment_ContainerPriority>();
 	if (ContainerPriority)
 	{
-		// 根据各个物品自定义的优先级，优先寻找对应物品
-		ContainerPriority->ContainerPriority.GetGameplayTagArray(OutContainerTags);
+		OutContainerTags = ContainerPriority->ContainerPriority; // 根据各个物品自定义的优先级，优先寻找对应物品
 	}
 	else
 	{
-		OutContainerTags ={
-			FGameplayTag::RequestGameplayTag("Inventory.Container.Backpack"),
-			FGameplayTag::RequestGameplayTag("Inventory.Container.ChestRig"),
-			FGameplayTag::RequestGameplayTag("Inventory.Container.Pocket"),
-			FGameplayTag::RequestGameplayTag("Inventory.Container.SafeBox"),
-		};
+		OutContainerTags = DefaultContainerPriority;
 	}
 	for (FGameplayTag ContainerTag : OutContainerTags)
 	{
-		UGridInvSys_GridEquipContainerObject* EquipInvObj = GetInventoryObject<UGridInvSys_GridEquipContainerObject>(ContainerTag);
-		if (EquipInvObj && EquipInvObj->HasEquipItem())
+		UGridInvSys_InventoryFragment_Container* ContainerFragment =
+			FindInventoryObjectFragment<UGridInvSys_InventoryFragment_Container>(ContainerTag);
+
+		if (ContainerFragment)
 		{
 			if (auto ItemSizeFragment = InItemInstance->FindFragmentByClass<UGridInvSys_ItemFragment_GridItemSize>())
 			{
-				if (EquipInvObj->FindEmptyPosition(ItemSizeFragment->ItemSize, OutPosition))
+				if (ContainerFragment->FindEmptyPosition(ItemSizeFragment->ItemSize, OutPosition))
 				{
 					OutPosition.Direction = EGridInvSys_ItemDirection::Horizontal;
 					return true;
 				}
-				if (EquipInvObj->FindEmptyPosition(FIntPoint(ItemSizeFragment->ItemSize.Y, ItemSizeFragment->ItemSize.X), OutPosition))
+				if (ContainerFragment->FindEmptyPosition(FIntPoint(ItemSizeFragment->ItemSize.Y, ItemSizeFragment->ItemSize.X), OutPosition))
 				{
 					OutPosition.Direction = EGridInvSys_ItemDirection::Vertical;
 					return true;
@@ -276,83 +135,16 @@ bool UGridInvSys_InventoryComponent::FindEmptyPosition(UInvSys_InventoryItemInst
 	return false;
 }
 
-
-void UGridInvSys_InventoryComponent::Server_AddItemInstancesToContainerPos_Implementation(
-	UInvSys_InventoryComponent* InvComp, const TArray<UInvSys_InventoryItemInstance*>& InItemInstances,
-	const TArray<FGridInvSys_ItemPosition>& InPosArray)
-{
-	check(InvComp)
-	if (InvComp && InvComp->IsA<UGridInvSys_InventoryComponent>())
-	{
-		UGridInvSys_InventoryComponent* GridInvComp = Cast<UGridInvSys_InventoryComponent>(InvComp);
-		int32 ItemNum = InItemInstances.Num();
-		int32 PosNum = InPosArray.Num();
-
-		check(GridInvComp)
-		check(ItemNum == PosNum)
-		if (GridInvComp && ItemNum == PosNum)
-		{
-			for (int i = 0; i < ItemNum; ++i)
-			{
-				GridInvComp->AddItemInstanceToContainerPos(InItemInstances[i], InPosArray[i]);
-			}
-		}
-	}
-}
-
-void UGridInvSys_InventoryComponent::Server_RestoreItemInstanceToPos_Implementation(UInvSys_InventoryComponent* InvComp,
-	UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos)
-{
-	check(InvComp)
-	if (InvComp && InvComp->IsA<UGridInvSys_InventoryComponent>())
-	{
-		UGridInvSys_InventoryComponent* GridInvComp = Cast<UGridInvSys_InventoryComponent>(InvComp);
-		GridInvComp->RestoreItemInstanceToPos(InItemInstance, InPos);
-	}
-}
-
-bool UGridInvSys_InventoryComponent::FindInventoryItem(FName SlotName, const FIntPoint& ItemPosition, FGridInvSys_InventoryItem& OutItem)
-{
-	/*if (InventoryObjectMap_DEPRECATED.Contains(SlotName))
-	{
-		UInvSys_BaseInventoryObject* InventoryObject = InventoryObjectMap_DEPRECATED[SlotName];
-		if(InventoryObject->IsA(UGridInvSys_GridEquipContainerObject::StaticClass()))
-		{
-			const UGridInvSys_GridEquipContainerObject* EquipContainerObj = Cast<UGridInvSys_GridEquipContainerObject>(InventoryObject);
-			return EquipContainerObj->FindContainerGridItem(ItemPosition, OutItem);
-		}
-	}*/
-	return false;
-}
-
-bool UGridInvSys_InventoryComponent::FindContainerGridItem(FName ItemUniqueID,  FGridInvSys_InventoryItem& OutItem)
-{
-	for (UInvSys_BaseInventoryObject* InvObject : InventoryObjectList)
-	{
-		if(InvObject->IsA(UGridInvSys_GridEquipContainerObject::StaticClass()))
-		{
-			const UGridInvSys_GridEquipContainerObject* EquipContainerObj = Cast<UGridInvSys_GridEquipContainerObject>(InvObject);
-			if (EquipContainerObj->FindContainerGridItem(ItemUniqueID, OutItem))
-			{
-				return true;
-			}
-		}
-	}
-	return false;
-}
-
-UUserWidget* UGridInvSys_InventoryComponent::GetInventoryLayoutWidget() const
-{
-	return nullptr;
-}
-
 UGridInvSys_ContainerGridWidget* UGridInvSys_InventoryComponent::FindContainerGridWidget(FGameplayTag SlotTag,
 	int32 GridID)
 {
-	UInvSys_BaseEquipContainerObject* ContainerObject = GetInventoryObject<UInvSys_BaseEquipContainerObject>(SlotTag);
-	if (ContainerObject)
+	UInvSys_InventoryFragment_DisplayWidget* DisplayFragment =
+		FindInventoryObjectFragment<UInvSys_InventoryFragment_DisplayWidget>(SlotTag);
+	if (DisplayFragment)
 	{
-		UGridInvSys_ContainerGridLayoutWidget* ContainerLayoutWidget = ContainerObject->GetContainerLayout<UGridInvSys_ContainerGridLayoutWidget>();
+		UGridInvSys_ContainerGridLayoutWidget* ContainerLayoutWidget =
+			DisplayFragment->GetDisplayWidget<UGridInvSys_ContainerGridLayoutWidget>();
+
 		if (ContainerLayoutWidget)
 		{
 			return ContainerLayoutWidget->FindContainerGrid(GridID);
@@ -366,20 +158,4 @@ UGridInvSys_ContainerGridWidget* UGridInvSys_InventoryComponent::FindContainerGr
 {
 	check(InItemInstance)
 	return FindContainerGridWidget(InItemInstance->GetSlotTag(), InItemInstance->GetItemPosition().GridID);
-}
-
-void UGridInvSys_InventoryComponent::GetAllContainerSlotName(TArray<FName>& OutArray) const
-{
-	/*for (auto InventoryObjectTuple : InventoryObjectMap_DEPRECATED)
-	{
-		if (InventoryObjectTuple.Value->IsA(UInvSys_BaseEquipContainerObject::StaticClass()))
-		{
-			OutArray.Add(InventoryObjectTuple.Key);
-		}
-	}*/
-}
-
-void UGridInvSys_InventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 }

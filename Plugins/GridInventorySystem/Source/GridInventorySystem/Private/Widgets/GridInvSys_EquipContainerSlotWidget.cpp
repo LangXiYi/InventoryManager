@@ -12,9 +12,8 @@
 #include "Library/GridInvSys_CommonFunctionLibrary.h"
 #include "Library/InvSys_InventorySystemLibrary.h"
 #include "Widgets/GridInvSys_ContainerGridWidget.h"
-
-UE_DEFINE_GAMEPLAY_TAG(Inventory_Message_AddItem, "Inventory.Message.AddItem");
-UE_DEFINE_GAMEPLAY_TAG(Inventory_Message_RemoveItem, "Inventory.Message.RemoveItem");
+#include "BaseInventorySystem.h"
+#include "Data/InvSys_ItemFragment_ContainerLayout.h"
 
 void UGridInvSys_EquipContainerSlotWidget::NativeConstruct()
 {
@@ -22,14 +21,28 @@ void UGridInvSys_EquipContainerSlotWidget::NativeConstruct()
 
 	auto WarpAddItemFunc = [this](FGameplayTag Tag, const FInvSys_InventoryItemChangedMessage& Message)
 	{
-		this->OnAddItemInstance(Tag, Message);
+		if (Message.InventoryObjectTag == GetSlotTag() && Message.InvComp == GetInventoryComponent())
+		{
+			check(ContainerLayout)
+			if (ContainerLayout)
+			{
+				ContainerLayout->AddItemInstance(Message.ItemInstance);
+			}
+		}
 	};
 
 	auto WarpRemoveItemFunc = [this](FGameplayTag Tag, const FInvSys_InventoryItemChangedMessage& Message)
 	{
-		this->OnRemoveItemInstance(Tag, Message);
+		if (Message.InventoryObjectTag == GetSlotTag() && Message.InvComp == GetInventoryComponent())
+		{
+			check(ContainerLayout)
+			if (ContainerLayout)
+			{
+				ContainerLayout->RemoveItemInstance(Message.ItemInstance);
+			}
+		}
 	};
-	
+
 	UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(GetWorld());
 	OnAddItemInstanceHandle =MessageSubsystem.RegisterListener<FInvSys_InventoryItemChangedMessage>(
 		Inventory_Message_AddItem, MoveTemp(WarpAddItemFunc));
@@ -46,150 +59,39 @@ void UGridInvSys_EquipContainerSlotWidget::NativeDestruct()
 	OnRemoveItemInstanceHandle.Unregister();
 }
 
-void UGridInvSys_EquipContainerSlotWidget::OnAddItemInstance(FGameplayTag Tag,
-                                                             const FInvSys_InventoryItemChangedMessage& Message)
+void UGridInvSys_EquipContainerSlotWidget::RefreshWidget()
 {
-	AddItemInstance(Message.ItemInstance);
+	Super::RefreshWidget();
+	// 为什么不在这里调用 ContainerLayout 的 RefreshWidget？
+	// 因为在 EquipItemInstance 在 RefreshWidget中已经被调用了，为了避免重复调用，故只需要在 EquipItemInstance 中调用即可
+	// ContainerLayout->RefreshWidget();
 }
 
-void UGridInvSys_EquipContainerSlotWidget::OnRemoveItemInstance(FGameplayTag Tag,
-	const FInvSys_InventoryItemChangedMessage& Message)
+void UGridInvSys_EquipContainerSlotWidget::EquipItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)
 {
-	RemoveItemInstance(Message.ItemInstance);
-}
-
-/*
-UGridInvSys_ContainerGridItemWidget* UGridInvSys_EquipContainerSlotWidget::FindGridItemWidget(
-	const FGridInvSys_ItemPosition& ItemPosition) const
-{
-	if (GetSlotTag() != ItemPosition.EquipSlotTag)
+	Super::EquipItemInstance(NewItemInstance);
+	if (NewItemInstance)
 	{
-		return nullptr;
-	}
-	if (ContainerLayoutWidget && ContainerLayoutWidget->IsA(UGridInvSys_ContainerGridLayoutWidget::StaticClass()))
-	{
-		UGridInvSys_ContainerGridLayoutWidget* LayoutWidget = Cast<UGridInvSys_ContainerGridLayoutWidget>(ContainerLayoutWidget);
-		check(LayoutWidget);
-		return LayoutWidget->FindGridItemWidget(ItemPosition);
-	}
-	return nullptr;
-}
-
-UGridInvSys_ContainerGridItemWidget* UGridInvSys_EquipContainerSlotWidget::FindGridItemWidget(
-	const UInvSys_InventoryItemInstance* NewItemInstance) const
-{
-	if (NewItemInstance && NewItemInstance->IsA(UGridInvSys_InventoryItemInstance::StaticClass()))
-	{
-		UGridInvSys_InventoryItemInstance* TempItemInstance = (UGridInvSys_InventoryItemInstance*)NewItemInstance;
-		check(TempItemInstance);
-		return FindGridItemWidget(TempItemInstance->GetItemPosition());
-	}
-	return nullptr;
-}
-*/
-
-void UGridInvSys_EquipContainerSlotWidget::AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
-{
-	if (InItemInstance == nullptr)
-	{
-		return;
-	}
-	if (InItemInstance->IsA<UGridInvSys_InventoryItemInstance>())
-	{
-		UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(InItemInstance);
-		AddItemInstanceTo(GridItemInstance, GridItemInstance->GetItemPosition());
-	}
-}
-
-void UGridInvSys_EquipContainerSlotWidget::AddItemInstanceTo(
-	UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPosition)
-{
-	if (InItemInstance == nullptr)
-	{
-		return;
-	}
-	if (InItemInstance->GetInventoryComponent() != InventoryComponent)
-	{
-		// 添加的物品必须是在同一组件下的。
-		return;
-	}
-	if (SlotTag != InPosition.EquipSlotTag)
-	{
-		return;
-	}
-	UGridInvSys_ContainerGridLayoutWidget* GridContainerLayout = GetContainerLayoutWidget<UGridInvSys_ContainerGridLayoutWidget>();
-	if (GridContainerLayout)
-	{
-		UGridInvSys_ContainerGridItemWidget* GridItemWidget = GridContainerLayout->FindGridItemWidget(InPosition);
-		if (GridItemWidget)
+		auto ContainerLayoutFragment = NewItemInstance->FindFragmentByClass<UInvSys_ItemFragment_ContainerLayout>();
+		check(ContainerLayoutFragment)
+		if (ContainerLayoutFragment)
 		{
-			if (GridItemWidget->IsOccupied() == false)
-			{
-				UE_LOG(LogInventorySystem, Log, TEXT("正在为新位置添加物品==>[%s]"), *InPosition.ToString())
-				GridItemWidget->AddItemInstance(InItemInstance);
-			}
-			else
-			{
-				UInvSys_InventoryControllerComponent* PlayerInvComp = UInvSys_InventorySystemLibrary::FindInvControllerComponent(GetWorld());
-				if (PlayerInvComp)
-				{
-					// PlayerInvComp->Server_RestoreItemInstance(InItemInstance);
-					PlayerInvComp->Server_DropItemInstanceToWorld(InItemInstance);
-				}
-			}
+			ContainerLayout = CreateWidget<UGridInvSys_ContainerGridLayoutWidget>(this, ContainerLayoutFragment->ContainerLayout);
+			check(ContainerLayout)
+			ContainerLayout->SetInventoryObject(GetInventoryObject());
+			ContainerLayout->RefreshWidget();
+			NS_ContainerGridLayout->AddChild(ContainerLayout);
 		}
 	}
 }
 
-void UGridInvSys_EquipContainerSlotWidget::RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
+void UGridInvSys_EquipContainerSlotWidget::UnEquipItemInstance()
 {
-	if (InItemInstance == nullptr)
+	Super::UnEquipItemInstance();
+	if (ContainerLayout)
 	{
-		return;
-	}
-	if (InItemInstance->IsA<UGridInvSys_InventoryItemInstance>())
-	{
-		UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(InItemInstance);
-		RemoveItemInstanceFor(GridItemInstance, GridItemInstance->GetItemPosition());
-	}
-	else
-	{
-		UGridInvSys_ContainerGridLayoutWidget* GridContainerLayout = GetContainerLayoutWidget<UGridInvSys_ContainerGridLayoutWidget>();
-		if (GridContainerLayout)
-		{
-			// 寻找内部所有的网格，判断物品在容器内是否存在
-			TArray<UGridInvSys_ContainerGridWidget*> ContainerGridWidgets = GridContainerLayout->GetContainerGridWidgets();
-			for (UGridInvSys_ContainerGridWidget* ContainerGridWidget : ContainerGridWidgets)
-			{
-				TArray<UGridInvSys_ContainerGridItemWidget*> GridItemWidgets = ContainerGridWidget->GetAllContainerGridItems();
-				for (UGridInvSys_ContainerGridItemWidget* GridItemWidget : GridItemWidgets)
-				{
-					if (GridItemWidget && GridItemWidget->GetItemInstance() == InItemInstance)
-					{
-						GridItemWidget->RemoveItemInstance();
-						return;
-					}
-				}
-			}
-			UE_LOG(LogInventorySystem, Warning, TEXT("移除物品失败，指定的物品实例在容器内部不存在！"))
-		}
-	}
-}
-
-void UGridInvSys_EquipContainerSlotWidget::RemoveItemInstanceFor(UInvSys_InventoryItemInstance* InItemInstance,
-	const FGridInvSys_ItemPosition& InPosition)
-{
-	if (InItemInstance == nullptr)
-	{
-		return;
-	}
-	UGridInvSys_ContainerGridLayoutWidget* GridContainerLayout = GetContainerLayoutWidget<UGridInvSys_ContainerGridLayoutWidget>();
-	if (GridContainerLayout)
-	{
-		UGridInvSys_ContainerGridItemWidget* GridItemWidget = GridContainerLayout->FindGridItemWidget(InPosition);
-		if (GridItemWidget && GridItemWidget->GetItemInstance() == InItemInstance)
-		{
-			GridItemWidget->RemoveItemInstance();
-		}
+		ContainerLayout->RemoveFromParent();
+		ContainerLayout->ConditionalBeginDestroy();
+		ContainerLayout = nullptr;
 	}
 }

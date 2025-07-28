@@ -31,7 +31,7 @@ void UGridInvSys_InventoryItemInstance::OnRep_ItemPosition()
 	// {
 	// 	LastItemPosition = NewTempItemPosition;
 	// 	NewTempItemPosition = ItemPosition;
-	// 	UE_LOG(LogInventorySystem, Error, TEXT("LastItemPosition ===> %s"), *LastItemPosition.ToString())
+	// 	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Error, TEXT("LastItemPosition ===> %s"), *LastItemPosition.ToString())
 	// }
 	// LastItemPosition = ItemPosition;
 }

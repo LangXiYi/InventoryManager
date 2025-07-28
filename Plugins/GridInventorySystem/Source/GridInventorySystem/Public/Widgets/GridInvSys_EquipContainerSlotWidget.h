@@ -3,10 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/InventoryObject/GridInvSys_GridEquipContainerObject.h"
+#include "BaseInventorySystem.h"
+#include "GridInvSys_EquipmentSlotWidget.h"
 #include "Data/GridInvSys_ItemFragment_ItemType.h"
+#include "Data/InvSys_ContainerList.h"
+#include "Components/NamedSlot.h"
 #include "GameFramework/GameplayMessageSubsystem.h"
-#include "Widgets/InvSys_EquipContainerSlotWidget.h"
 #include "GridInvSys_EquipContainerSlotWidget.generated.h"
 
 struct FGridInvSys_ItemPosition;
@@ -17,37 +19,49 @@ class UGridInvSys_ContainerGridItemWidget;
  * 
  */
 UCLASS()
-class GRIDINVENTORYSYSTEM_API UGridInvSys_EquipContainerSlotWidget : public UInvSys_EquipContainerSlotWidget
+class GRIDINVENTORYSYSTEM_API UGridInvSys_EquipContainerSlotWidget : public UGridInvSys_EquipmentSlotWidget
 {
 	GENERATED_BODY()
 
 public:
-	/*UGridInvSys_ContainerGridItemWidget* FindGridItemWidget(const FGridInvSys_ItemPosition& ItemPosition) const;
+	virtual void RefreshWidget() override;
 
-	UGridInvSys_ContainerGridItemWidget* FindGridItemWidget(const UInvSys_InventoryItemInstance* NewItemInstance) const;*/
+	virtual void EquipItemInstance(UInvSys_InventoryItemInstance* NewItemInstance) override;
 
-	UFUNCTION(BlueprintCallable, Category = "Grid Container")
-	void AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
+	virtual void UnEquipItemInstance() override;
 
-	UFUNCTION(BlueprintCallable, Category = "Grid Container")
-	void AddItemInstanceTo(UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPosition);
-
-	UFUNCTION(BlueprintCallable, Category = "Grid Container")
-	void RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
-
-	UFUNCTION(BlueprintCallable, Category = "Grid Container")
-	void RemoveItemInstanceFor(UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPosition);
+	template<class T>
+	T* GetContainerLayoutWidget() const
+	{
+		if (NS_ContainerGridLayout->HasAnyChildren())
+		{
+			UWidget* ChildAt = NS_ContainerGridLayout->GetChildAt(0);
+			if (ChildAt->IsA<T>())
+			{
+				return (T*)NS_ContainerGridLayout->GetChildAt(0);
+			}
+			checkNoEntry()
+		}
+		else
+		{
+			UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("未在 NS_ContainerGridLayout 下发现任何控件，容器布局必须添加在 NS_ContainerGridLayout 下。"))
+		}
+		return nullptr;
+	}
 
 protected:
 	virtual void NativeConstruct() override;
-
 	virtual void NativeDestruct() override;
 
+protected:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
+	TObjectPtr<UNamedSlot> NS_ContainerGridLayout;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Equipment Container Slot Widget")
+	UGridInvSys_ContainerGridLayoutWidget* ContainerLayout;
+	
 private:
 	FGameplayMessageListenerHandle OnAddItemInstanceHandle;
 	FGameplayMessageListenerHandle OnRemoveItemInstanceHandle;
-	
-	void OnAddItemInstance(FGameplayTag Tag, const FInvSys_InventoryItemChangedMessage& Message);
 
-	void OnRemoveItemInstance(FGameplayTag Tag, const FInvSys_InventoryItemChangedMessage& Message);
 };

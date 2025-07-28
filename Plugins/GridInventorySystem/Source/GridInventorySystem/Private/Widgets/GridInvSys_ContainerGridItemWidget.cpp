@@ -45,12 +45,12 @@ void UGridInvSys_ContainerGridItemWidget::AddItemInstance(UInvSys_InventoryItemI
 	/*UCanvasPanelSlot* GridSlot = Cast<UCanvasPanelSlot>(Slot);
 	if (GridSlot == nullptr)
 	{
-		UE_LOG(LogInventorySystem, Warning, TEXT("更新 ItemInfo 失败 InventoryItemWidget 父级类型不是 GridPanel 。"));
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("更新 ItemInfo 失败 InventoryItemWidget 父级类型不是 GridPanel 。"));
 		return;
 	}*/
 	if (NewItemInstance == nullptr || NewItemInstance->GetItemDefinition() == nullptr)
 	{
-		UE_LOG(LogInventorySystem, Warning, TEXT("NewItemInstance 为空。"));
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("NewItemInstance 为空。"));
 		return;
 	}
 
@@ -135,7 +135,7 @@ bool UGridInvSys_ContainerGridItemWidget::IsOccupied()
 			}
 			else
 			{
-				UE_LOG(LogInventorySystem, Log, TEXT("检查槽位是否被占据时发现物品实例与当前槽位的位置不符，故自动将物品移除显示。"))
+				UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("检查槽位是否被占据时发现物品实例与当前槽位的位置不符，故自动将物品移除显示。"))
 				RemoveItemInstance();
 			}
 		}
@@ -196,7 +196,7 @@ FIntPoint UGridInvSys_ContainerGridItemWidget::CalculateRelativePosition(const U
 	check(Parent);
 	if (Parent->GetContainerGridWidget() != this->GetContainerGridWidget())
 	{
-		UE_LOG(LogInventorySystem, Error, TEXT("无法计算相对位置，因为两个物品格所处容器不同。"))
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Error, TEXT("无法计算相对位置，因为两个物品格所处容器不同。"))
 		return false;
 	}
 	FIntPoint OutRelativePosition;

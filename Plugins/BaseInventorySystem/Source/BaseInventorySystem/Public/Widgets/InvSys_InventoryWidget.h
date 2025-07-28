@@ -5,10 +5,13 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "GameplayTagContainer.h"
+#include "Components/InventoryObject/InvSys_BaseInventoryObject.h"
 #include "InvSys_InventoryWidget.generated.h"
 
+class UInvSys_BaseInventoryObject;
 class UInvSys_TagSlot;
 class UInvSys_InventoryComponent;
+
 /**
  * 
  */
@@ -17,7 +20,18 @@ class BASEINVENTORYSYSTEM_API UInvSys_InventoryWidget : public UUserWidget
 {
 	GENERATED_BODY()
 
+	friend class UInvSys_InventoryFragment_DisplayWidget;
+
 public:
+	UInvSys_InventoryWidget(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+
+	virtual void RefreshWidget();
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnRefreshWidget();
+	
+	virtual void NativeConstruct() override;
+	
 	virtual void SetInventoryComponent(UInvSys_InventoryComponent* NewInvComp);
 
 	UInvSys_InventoryComponent* GetInventoryComponent() const;
@@ -28,7 +42,8 @@ public:
 	template<class T>
 	T* GetInventoryComponent() const
 	{
-		return Cast<T>(InventoryComponent);		
+		check(InventoryObject)
+		return Cast<T>(InventoryObject->GetInventoryComponent());		
 	}
 
 	FORCEINLINE void SetSlotTag(FGameplayTag InSlotTag)
@@ -38,13 +53,25 @@ public:
 
 	FORCEINLINE FGameplayTag GetSlotTag() const
 	{
-		return SlotTag;
+		check(InventoryObject)
+		return InventoryObject->GetInventoryObjectTag();
 	}
-	
+
+	void SetInventoryObject(UInvSys_BaseInventoryObject* NewInventoryObject);
+
+	UInvSys_BaseInventoryObject* GetInventoryObject()
+	{
+		check(InventoryObject);
+		return InventoryObject;
+	}
+
 protected:
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Widget", meta = (ExposeOnSpawn))
+	UPROPERTY(BlueprintReadOnly, Category = "Container Grid Layout", meta = (ExposeOnSpawn))
+	TObjectPtr<UInvSys_BaseInventoryObject> InventoryObject;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory Widget")
 	TWeakObjectPtr<UInvSys_InventoryComponent> InventoryComponent;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Container Grid Layout", meta = (ExposeOnSpawn))
+	UPROPERTY(BlueprintReadOnly, Category = "Container Grid Layout")
 	FGameplayTag SlotTag;
 };

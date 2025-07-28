@@ -16,6 +16,18 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_GridInventoryControllerComponent : pub
 public:
 	UGridInvSys_GridInventoryControllerComponent();
 
+	/**
+	 * RPC Function
+	 **/
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_AddItemInstancesToContainerPos(UInvSys_InventoryComponent* InvComp,
+		const TArray<UInvSys_InventoryItemInstance*>& InItemInstances, const TArray<FGridInvSys_ItemPosition>& InPosArray);
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_RestoreItemInstanceToPos(UInvSys_InventoryComponent* InvComp,
+		UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos);
+	
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_TryDropItemInstance(UInvSys_InventoryComponent* InvComp,
 		UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos);

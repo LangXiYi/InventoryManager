@@ -5,30 +5,19 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "GameplayTagContainer.h"
-#include "InventoryObject/InvSys_BaseEquipContainerObject.h"
-#include "InventoryObject/InvSys_BaseEquipmentObject.h"
 #include "InventoryObject/InvSys_BaseInventoryObject.h"
+#include "InventoryObject/Fragment/InvSys_InventoryFragment_Container.h"
 #include "InvSys_InventoryComponent.generated.h"
 
-
+class UInvSys_InventoryFragment_Container;
 class AInvSys_PickableItems;
-
-// todo:: 定义装备新物品的代理
-
-class UInvSys_BaseEquipContainerObject;
 class UInvSys_InventoryLayoutWidget;
 class UInvSys_InventoryItemDefinition;
 class UInvSys_PreEditInventoryObject;
 class UInvSys_BaseInventoryObject;
-struct FInvSys_InventoryItem;
-
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDropItemInstanceToWorld, AInvSys_PickableItems*, DropItem);
 
-
-/**
- * 
- */
 UCLASS(Abstract, BlueprintType, meta=(BlueprintSpawnableComponent))
 class BASEINVENTORYSYSTEM_API UInvSys_InventoryComponent : public UActorComponent
 {
@@ -42,21 +31,20 @@ public:
 
 	/** 构建库存对象列表，推荐在BeginPlay阶段就调用该函数 */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
-	void ConstructInventoryObjects();
+	virtual void ConstructInventoryObjects();
 
 	/** 仅本地控制器，由用户手动调用。===> CreateDisplayWidget */
 	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "Inventory Component")
-	UInvSys_InventoryLayoutWidget* CreateDisplayWidget(APlayerController* NewPlayerController);
+	virtual UInvSys_InventoryLayoutWidget* CreateDisplayWidget(APlayerController* NewPlayerController);
 
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
 	void EquipItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, FGameplayTag SlotTag);
 
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
-	void EquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag);
+	bool EquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag);
 
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
-	void UnEquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
-
+	bool UnEquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
 
 	/**
 	 * 支持自定义参数传入物品实例，支持在不同库存组件下转移物品，在转移时需要注意将旧物品的实例删除。
@@ -71,35 +59,35 @@ public:
 	T* AddItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
 		FGameplayTag InSlotTag,	int32 InStackCount, const Arg&... Args)
 	{
-		UInvSys_BaseEquipContainerObject* ContainerObj = GetInventoryObject<UInvSys_BaseEquipContainerObject>(InSlotTag);
-		if (ContainerObj)
+		UInvSys_InventoryFragment_Container* ContainerFragment =
+			FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(InSlotTag);
+		if (ContainerFragment)
 		{
-			return ContainerObj->AddItemDefinition<T>(ItemDef, InStackCount, Args...);
+			return ContainerFragment->AddItemDefinition<T>(ItemDef, InStackCount, Args...);
 		}
 		return nullptr;
 	}
-
 	template<class T, class... Arg>
 	bool AddItemInstance(T* InItemInstance, FGameplayTag SlotTag, const Arg&... Args)
 	{
-		UInvSys_BaseEquipContainerObject* InvObj = GetInventoryObject<UInvSys_BaseEquipContainerObject>(SlotTag);
-		if (InItemInstance == nullptr || InvObj == nullptr)
+		UInvSys_InventoryFragment_Container* ContainerFragment =
+			FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(SlotTag);
+		if (InItemInstance == nullptr || ContainerFragment == nullptr)
 		{
 			checkNoEntry()
 			return false;
 		}
 		/**
 		 * 判断物品实例之前所在的库存组件与当前组件是否一致
-		 * 一致：正常处理即可
-		 * 不一致：说明物品实例的 Outer 不是当前组件的 Owner 所以需要重新复制一份并更新 Outer 为当前组件的 Owner
+		 * 不一致时，说明物品实例的 Outer 不是当前组件的 Owner 所以需要重新复制一份并更新 Outer
 		 */
 		T* TargetItemInstance = InItemInstance;
 		if (this != InItemInstance->GetInventoryComponent())
 		{
-			TargetItemInstance = DuplicateObject<T>(InItemInstance, GetOwner());
+			TargetItemInstance = DuplicateObject<T>(InItemInstance, this);
 			InItemInstance->ConditionalBeginDestroy();//标记目标待删除
 		}
-		return InvObj->AddItemInstance<T>(TargetItemInstance, Args...);
+		return ContainerFragment->AddItemInstance<T>(TargetItemInstance, Args...);
 	}
 	
 	bool RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
@@ -107,12 +95,6 @@ public:
 
 	// Begin Drag Drop ====================
 	bool TryDragItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
-
-	template<class T = UInvSys_InventoryItemInstance, class... Arg>
-	bool TryDropItemInstance(T* InItemInstance, FGameplayTag SlotTag, const Arg&... Ags)
-	{
-		return AddItemInstance<T>(InItemInstance, SlotTag, Ags...);
-	}
 
 	void DropItemInstanceToWorld(UInvSys_InventoryItemInstance* InItemInstance);
 	// End Drag Drop ====================
@@ -122,47 +104,40 @@ protected:
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCosmetic, Category = "Inventory Component")
 	void OnConstructInventoryObjects();
 
-	UFUNCTION(BlueprintImplementableEvent)
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCosmetic, Category = "Inventory Component")
 	void OnEquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
 	
-	UFUNCTION(BlueprintImplementableEvent)
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCosmetic, Category = "Inventory Component")
 	void OnUnEquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
-	
-public:
-	/**
-	 * RPC Functions
-	 **/
-
-	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_EquipItemDefinition(UInvSys_InventoryComponent* InvComp,TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, FGameplayTag SlotTag);
-	
-	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_EquipItemInstance(UInvSys_InventoryComponent* InvComp,UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag);
-
-	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_RestoreItemInstance(UInvSys_InventoryComponent* InvComp,UInvSys_InventoryItemInstance* InItemInstance);
 	
 public:
 	/**
 	 * Getter Or Setter
 	 **/
-
-	void SetDraggingWidget(UUserWidget* NewDraggingWidget);
-
-	UFUNCTION(BlueprintCallable, meta = (DeterminesOutputType = OutClass))
-	UInvSys_BaseInventoryObject* GetInventoryObject(FGameplayTag Tag, TSubclassOf<UInvSys_BaseInventoryObject> OutClass) const;
-
-	template<class T = UInvSys_BaseInventoryObject>
-	T* GetInventoryObject(FGameplayTag Tag) const
+	template<class T>
+	T* FindInventoryObjectFragment(FGameplayTag Tag) const
 	{
-		if (InventoryObjectMap.Contains(Tag) && InventoryObjectMap[Tag]->IsA<T>())
+		if (InventoryObjectMap.Contains(Tag))
 		{
-			return Cast<T>(InventoryObjectMap[Tag]);
+			return InventoryObjectMap[Tag]->FindInventoryFragment<T>();
 		}
 		return nullptr;
 	}
 
-	UInvSys_EquipSlotWidget* GetInventorySlotWidget(FGameplayTag SlotTag);
+	template<class T = UInvSys_BaseInventoryObject>
+	T* FindInventoryObject(FGameplayTag Tag) const
+	{
+		if (InventoryObjectMap.Contains(Tag))
+		{
+			return InventoryObjectMap[Tag];
+		}
+		return nullptr;
+	}
+
+	UFUNCTION(BlueprintCallable, BlueprintPure = false, meta = (DeterminesOutputType = OutClass))
+	UInvSys_BaseInventoryFragment* FindInventoryObjectFragment(FGameplayTag Tag, TSubclassOf<UInvSys_BaseInventoryFragment> OutClass) const;
+
+	// UInvSys_EquipSlotWidget* GetInventorySlotWidget(FGameplayTag SlotTag);
 	
 	/** Returns true if the owner's role is ROLE_Authority */
 	FORCEINLINE bool HasAuthority() const;
@@ -179,6 +154,12 @@ protected:
 	//~UObject interface
 	virtual void ReadyForReplication() override;
 
+	/**
+	 * 复制到客户端的对象的顺序为
+	 * 1、Inventory Fragments SubObjects
+	 * 2、Inventory Fragments
+	 * 3、Inventory Object
+	 */
 	virtual bool ReplicateSubobjects(class UActorChannel* Channel, class FOutBunch* Bunch, FReplicationFlags* RepFlags) override;
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -197,7 +178,7 @@ protected:
 	
 	/** [CDO]库存内容映射，使用数据资产方便管理 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Component")
-	TObjectPtr<class UInvSys_InventoryContentMapping> InventoryContentMapping;
+	TSoftClassPtr<class UInvSys_InventoryContentMapping> InventoryObjectContent;
 
 	/** [Client] 拥有该组件的玩家控制器。 */
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Component")
@@ -212,15 +193,7 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Component")
 	TObjectPtr<UInvSys_InventoryLayoutWidget> LayoutWidget;
-	
-	UPROPERTY()
-	TObjectPtr<UUserWidget> DraggingWidget_DEPRECATED;
 
 	UPROPERTY(BlueprintReadWrite, BlueprintAssignable, Category = "Inventory Component")
 	FOnDropItemInstanceToWorld OnDropItemInstanceToWorld;
-
-	/**
-	 * 在拖拽需要调用的函数中需要检查该属性是否为True，确保物品是能够被客户端拖拽的物品！！！！
-	 */
-	bool bIsSuccessDragItem = false;
 };

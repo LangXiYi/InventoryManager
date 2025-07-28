@@ -4,11 +4,18 @@
 
 DEFINE_LOG_CATEGORY(LogInventorySystem);
 
+UE_DEFINE_GAMEPLAY_TAG(Inventory_Message_AddItem, "Inventory.Message.AddItem")
+UE_DEFINE_GAMEPLAY_TAG(Inventory_Message_RemoveItem, "Inventory.Message.RemoveItem")
+UE_DEFINE_GAMEPLAY_TAG(Inventory_Message_StackChanged, "Inventory.Message.StackChanged")
+
+UE_DEFINE_GAMEPLAY_TAG(Inventory_Message_EquipItem, "Inventory.Message.EquipItem");
+UE_DEFINE_GAMEPLAY_TAG(Inventory_Message_UnEquipItem, "Inventory.Message.UnEquipItem");
+
 #define LOCTEXT_NAMESPACE "FBaseInventorySystemModule"
 
 void FBaseInventorySystemModule::StartupModule()
 {
-	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
+
 }
 
 void FBaseInventorySystemModule::ShutdownModule()
@@ -20,3 +27,5 @@ void FBaseInventorySystemModule::ShutdownModule()
 #undef LOCTEXT_NAMESPACE
 	
 IMPLEMENT_MODULE(FBaseInventorySystemModule, BaseInventorySystem)
+
+

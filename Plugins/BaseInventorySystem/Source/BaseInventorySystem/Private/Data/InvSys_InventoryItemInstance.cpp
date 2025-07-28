@@ -3,11 +3,20 @@
 
 #include "Data/InvSys_InventoryItemInstance.h"
 
+#include "Components/InvSys_InventoryComponent.h"
 #include "Data/InvSys_InventoryItemDefinition.h"
 #include "Net/UnrealNetwork.h"
 
 UInvSys_InventoryItemInstance::UInvSys_InventoryItemInstance(const FObjectInitializer& ObjectInitializer)
 {
+	UObject* MyOuter = GetOuter();
+	if (MyOuter)
+	{
+		if (MyOuter->IsA<UInvSys_InventoryComponent>())
+		{
+			InvComp = Cast<UInvSys_InventoryComponent>(MyOuter);
+		}
+	}
 }
 
 void UInvSys_InventoryItemInstance::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

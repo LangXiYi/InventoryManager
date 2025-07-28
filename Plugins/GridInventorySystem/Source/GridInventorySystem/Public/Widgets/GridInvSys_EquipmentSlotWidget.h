@@ -4,7 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Data/GridInvSys_ItemFragment_ItemType.h"
-#include "Widgets/InvSys_EquipSlotWidget.h"
+#include "GameFramework/GameplayMessageSubsystem.h"
+#include "Widgets/InvSys_InventoryWidget.h"
 #include "GridInvSys_EquipmentSlotWidget.generated.h"
 
 class UInvSys_InventoryItemInstance;
@@ -16,20 +17,36 @@ struct FInvSys_InventoryItem;
  * 
  */
 UCLASS()
-class GRIDINVENTORYSYSTEM_API UGridInvSys_EquipmentSlotWidget : public UInvSys_EquipSlotWidget
+class GRIDINVENTORYSYSTEM_API UGridInvSys_EquipmentSlotWidget : public UInvSys_InventoryWidget
 {
 	GENERATED_BODY()
 
 public:
-	void SetEquipItemType(EGridInvSys_InventoryItemType NewEquipItemType)
-	{
-		EquipItemType = NewEquipItemType;
-	}
+	virtual void RefreshWidget() override;
 	
+	virtual void EquipItemInstance(UInvSys_InventoryItemInstance* NewItemInstance);
+	virtual void UnEquipItemInstance();
+
 protected:
-	virtual bool CheckIsCanDrop_Implementation(UInvSys_InventoryItemInstance* InItemInstance) override;
-	
+	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
+	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
+
 protected:
-	UPROPERTY(BlueprintReadOnly, Category = "Equip Slot")
-	EGridInvSys_InventoryItemType EquipItemType;
+	/**
+	 * 创建 InventoryItemWidget 
+	 * @param NewItemInstance 
+	 */
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnEquipInventoryItem(UInvSys_InventoryItemInstance* NewItemInstance);
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnUnEquipInventoryItem();
+
+protected:
+	UPROPERTY()
+	TWeakObjectPtr<UInvSys_InventoryItemInstance> ItemInstance;
+
+	FGameplayMessageListenerHandle OnEquipItemInstanceHandle;
+	FGameplayMessageListenerHandle OnUnEquipItemInstanceHandle;
 };

@@ -8,26 +8,14 @@
 #include "UObject/Object.h"
 #include "InvSys_InventoryItemInstance.generated.h"
 
+class UInvSys_BaseInventoryObject;
 class UInvSys_InventoryComponent;
 class UInvSys_InventoryItemFragment;
 class UGridInvSys_InventoryItemDefinition;
 
-USTRUCT(BlueprintType)
-struct FInvSys_InventoryStackChangeMessage
-{
-	GENERATED_BODY()
 
-	UPROPERTY(BlueprintReadOnly, Category = Inventory)
-	UInvSys_InventoryItemInstance* ItemInstance = nullptr;
 
-	UPROPERTY(BlueprintReadOnly, Category = Inventory)
-	int32 StackCount = 1;
-
-	UPROPERTY(BlueprintReadOnly, Category = Inventory)
-	int32 Delta = 0;
-};
-
-DECLARE_DELEGATE_OneParam(FOnInventoryStackChange, FInvSys_InventoryStackChangeMessage);
+// DECLARE_DELEGATE_OneParam(FOnInventoryStackChange, FInvSys_InventoryStackChangeMessage);
 
 /**
  * 
@@ -51,22 +39,22 @@ public:
 	virtual bool IsSupportedForNetworking() const override { return true; }
 	//~End of UObject interface
 
-	FORCEINLINE FOnInventoryStackChange& OnInventoryStackChangeDelegate()
-	{
-		return OnInventoryStackChange;
-	}
+	// FORCEINLINE FOnInventoryStackChange& OnInventoryStackChangeDelegate()
+	// {
+	// 	return OnInventoryStackChange;
+	// }
 
 	FORCEINLINE void BroadcastStackChangeMessage(int32 OldCount, int32 NewCount) // 广播堆叠数量变化事件
 	{
-		FInvSys_InventoryStackChangeMessage StackChangeMessage;
-		StackChangeMessage.ItemInstance = this;
-		StackChangeMessage.StackCount = NewCount;
-		StackChangeMessage.Delta = NewCount - OldCount;
-
-		if (OnInventoryStackChange.ExecuteIfBound(StackChangeMessage))
-		{
-			//广播物品堆叠数量变化
-		}
+		// FInvSys_InventoryStackChangeMessage StackChangeMessage;
+		// StackChangeMessage.ItemInstance = this;
+		// StackChangeMessage.StackCount = NewCount;
+		// StackChangeMessage.Delta = NewCount - OldCount;
+		//
+		// if (OnInventoryStackChange.ExecuteIfBound(StackChangeMessage))
+		// {
+		// 	//广播物品堆叠数量变化
+		// }
 	}
 	
 	/**
@@ -131,7 +119,6 @@ public:
 		return ItemUniqueID;
 	}
 
-
 	FGameplayTag GetSlotTag() const
 	{
 		return SlotTag;
@@ -176,5 +163,5 @@ protected:
 	FGameplayTag  SlotTag;
 
 private:
-	FOnInventoryStackChange OnInventoryStackChange;
+	// FOnInventoryStackChange OnInventoryStackChange;
 };

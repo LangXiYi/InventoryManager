@@ -6,6 +6,13 @@
 
 DEFINE_LOG_CATEGORY(LogInventorySystem);
 
+UE_DEFINE_GAMEPLAY_TAG(Inventory_Message_AddItem, "Inventory.Message.AddItem")
+UE_DEFINE_GAMEPLAY_TAG(Inventory_Message_RemoveItem, "Inventory.Message.RemoveItem")
+UE_DEFINE_GAMEPLAY_TAG(Inventory_Message_StackChanged, "Inventory.Message.StackChanged")
+
+UE_DEFINE_GAMEPLAY_TAG(Inventory_Message_EquipItem, "Inventory.Message.EquipItem");
+UE_DEFINE_GAMEPLAY_TAG(Inventory_Message_UnEquipItem, "Inventory.Message.UnEquipItem");
+
 #define LOCTEXT_NAMESPACE "FGridInventorySystemModule"
 
 void FGridInventorySystemModule::StartupModule()

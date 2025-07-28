@@ -10,14 +10,14 @@
  * 
  */
 UCLASS()
-class BASEINVENTORYSYSTEM_API UInvSys_InventoryLayoutWidget : public UInvSys_InventoryWidget
+class BASEINVENTORYSYSTEM_API UInvSys_InventoryLayoutWidget : public UUserWidget
 {
 	GENERATED_BODY()
 
 public:
 	UInvSys_TagSlot* FindTagSlot(FGameplayTag InSlotTag);
 
-	void CollectAllTagSlots();
+	virtual void NativeOnInitialized() override;
 
 protected:
 	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;

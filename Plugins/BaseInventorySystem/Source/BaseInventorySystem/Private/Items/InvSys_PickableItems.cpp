@@ -33,11 +33,12 @@ AInvSys_PickableItems::AInvSys_PickableItems()
 
 void AInvSys_PickableItems::InitItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)
 {
-	if (NewItemInstance->GetOuter() != this)
+	/*if (NewItemInstance->GetOuter() != this)
 	{
 		NewItemInstance = DuplicateObject(NewItemInstance, this);
-	}
-	ItemInstance = NewItemInstance;
+	}*/
+	ItemInstance = DuplicateObject(NewItemInstance, this);
+	NewItemInstance->ConditionalBeginDestroy();
 	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
 	{
 		OnRepItemInstance();
@@ -46,13 +47,16 @@ void AInvSys_PickableItems::InitItemInstance(UInvSys_InventoryItemInstance* NewI
 
 bool AInvSys_PickableItems::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags)
 {
-	bool WroteSomething = false;
-	if (ItemInstance)
+	bool WroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
+	if (ItemInstance && IsValid(ItemInstance))
 	{
 		UActorChannel::SetCurrentSubObjectOwner(this);
+		for (UInvSys_InventoryItemInstance* MyInstance : ItemInstance->MyInstances)
+		{
+			WroteSomething |= Channel->ReplicateSubobject(MyInstance, *Bunch, *RepFlags);
+		}
 		WroteSomething |= Channel->ReplicateSubobject(ItemInstance, *Bunch, *RepFlags);
 	}
-	WroteSomething |= Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
 	return WroteSomething;
 }
 

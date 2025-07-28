@@ -8,36 +8,53 @@
 #include "Data/GridInvSys_InventoryContainerInfo.h"
 #include "Data/GridInvSys_InventoryItemInstance.h"
 #include "Data/InvSys_InventoryItemInstance.h"
+#include "Library/InvSys_InventorySystemLibrary.h"
+#include "Widgets/GridInvSys_ContainerGridItemWidget.h"
 #include "Widgets/GridInvSys_ContainerGridWidget.h"
 
-#if WITH_EDITOR
-#include "Widgets/Notifications/SNotificationList.h"
-#include "Framework/Notifications/NotificationManager.h"
-#endif
-
-void UGridInvSys_ContainerGridLayoutWidget::ConstructContainerGrid(FName SlotName)
+void UGridInvSys_ContainerGridLayoutWidget::RefreshWidget()
 {
-	/*if (ContainerInfo == nullptr)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("[%s] 控件未设置 Container Info。"), *GetName())
-		return;
-	}
-	// 初始化容器网格
-	ContainerGridWidgets.Empty();
-	GetAllContainerGridWidgets(ContainerGridWidgets);
-	ContainerGridMap.Empty();
-	ContainerGridMap.Reserve(ContainerGridWidgets.Num());
-	for (int i = 0; i < ContainerGridWidgets.Num(); ++i)
-	{
-		FName GridID = *FString::FromInt(i);
-		ContainerGridWidgets[i]->SetContainerGridID(GridID);
-		
-		ContainerGridWidgets[i]->UpdateContainerGridSize();
+	Super::RefreshWidget();
 
-		ContainerGridWidgets[i]->SetInventoryComponent(GetInventoryComponent());
-		ContainerGridWidgets[i]->ConstructGridItems(SlotName);
-		ContainerGridMap.Add(ContainerGridWidgets[i]->GetContainerGridID(), ContainerGridWidgets[i]);
-	}*/
+	if (ContainerGridWidgets.IsEmpty())
+	{
+		ContainerGridWidgets.Empty();
+		GetAllContainerGridWidgets(ContainerGridWidgets);
+		for (int i = 0; i < ContainerGridWidgets.Num(); ++i)
+		{
+			if (UInvSys_BaseInventoryObject* InvObj = GetInventoryObject())
+			{
+				ContainerGridWidgets[i]->SetInventoryObject(InvObj);
+				ContainerGridWidgets[i]->ConstructGridItems(i);
+			}
+		}
+	}
+
+	if (InventoryObject)
+	{
+		auto ContainerFragment = InventoryObject->FindInventoryFragment<UInvSys_InventoryFragment_Container>();
+		if (ContainerFragment)
+		{
+			RemoveAllItemInstance();
+			TArray<UInvSys_InventoryItemInstance*> AllItemInstances = ContainerFragment->GetAllItemInstance();
+
+			UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
+				TEXT("刷新容器布局控件 --- { 容器标签 = %s, 当前物品数量 = %d }"),
+				*GetInventoryObject()->GetInventoryObjectTag().ToString(), AllItemInstances.Num())
+			
+			for (UInvSys_InventoryItemInstance* TempItemInstance : AllItemInstances)
+			{
+				if (TempItemInstance)
+				{
+					AddItemInstance(TempItemInstance);
+				}
+			}
+		}
+		else
+		{
+			UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("目标库存对象未包含容器片段"))
+		}
+	}
 }
 
 UGridInvSys_ContainerGridWidget* UGridInvSys_ContainerGridLayoutWidget::FindContainerGrid(int32 GridID)
@@ -49,46 +66,27 @@ UGridInvSys_ContainerGridWidget* UGridInvSys_ContainerGridLayoutWidget::FindCont
 	return nullptr;
 }
 
-void UGridInvSys_ContainerGridLayoutWidget::NativeOnInitialized()
-{
-	Super::NativeOnInitialized();
-
-	// ToDo::初始化网格ID
-	/*ContainerGridWidgets.Empty();
-	GetAllContainerGridWidgets(ContainerGridWidgets);
-	for (int i = 0; i < ContainerGridWidgets.Num(); ++i)
-	{
-		ContainerGridWidgets[i]->ConstructGridItems(this, i);
-	}*/
-}
-
 void UGridInvSys_ContainerGridLayoutWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-	ContainerGridWidgets.Empty();
-	GetAllContainerGridWidgets(ContainerGridWidgets);
-	UE_LOG(LogInventorySystem, Error, TEXT("布局控件的构建函数"))
-	for (int i = 0; i < ContainerGridWidgets.Num(); ++i)
-	{
-		ContainerGridWidgets[i]->SetInventoryComponent(InventoryComponent.Get());
-		ContainerGridWidgets[i]->SetSlotTag(SlotTag);
-		ContainerGridWidgets[i]->ConstructGridItems(i);
-	}
 }
 
-UGridInvSys_ContainerGridItemWidget* UGridInvSys_ContainerGridLayoutWidget::FindGridItemWidget(const FGridInvSys_ItemPosition& ItemPosition) const
+UGridInvSys_ContainerGridItemWidget* UGridInvSys_ContainerGridLayoutWidget::FindGridItemWidgetByPos(const FGridInvSys_ItemPosition& ItemPosition) const
 {
+	UGridInvSys_ContainerGridItemWidget* Result = nullptr;
 	if (SlotTag == ItemPosition.EquipSlotTag)
 	{
 		if (ContainerGridWidgets.IsValidIndex(ItemPosition.GridID))
 		{
 			if (UGridInvSys_ContainerGridWidget* GridWidget = ContainerGridWidgets[ItemPosition.GridID])
 			{
-				return GridWidget->GetGridItemWidget(ItemPosition.Position);
+				Result = GridWidget->GetGridItemWidget(ItemPosition.Position);
 			}
 		}
 	}
-	return nullptr;
+	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG && Result == nullptr, LogInventorySystem, Warning,
+		TEXT("未找到指定位置的网格控件 ---> %s"), *ItemPosition.ToString())
+	return Result;
 }
 
 UGridInvSys_ContainerGridItemWidget* UGridInvSys_ContainerGridLayoutWidget::FindGridItemWidget(
@@ -98,7 +96,7 @@ UGridInvSys_ContainerGridItemWidget* UGridInvSys_ContainerGridLayoutWidget::Find
 	{
 		UGridInvSys_InventoryItemInstance* TempItemInstance = (UGridInvSys_InventoryItemInstance*)InItemInstance;
 		check(TempItemInstance);
-		return FindGridItemWidget(TempItemInstance->GetItemPosition());
+		return FindGridItemWidgetByPos(TempItemInstance->GetItemPosition());
 	}
 	return nullptr;
 }
@@ -136,5 +134,122 @@ void UGridInvSys_ContainerGridLayoutWidget::Private_GetAllContainerGridWidgets(
 		}
 		// 递归查找子集中是否存在 UContainerGridWidget
 		Private_GetAllContainerGridWidgets(OutArray, ChildWidget);
+	}
+}
+
+
+void UGridInvSys_ContainerGridLayoutWidget::AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
+{
+	check(InItemInstance)
+	if (InItemInstance == nullptr)
+	{
+		return;
+	}
+	check(InItemInstance->IsA<UGridInvSys_InventoryItemInstance>())
+	if (InItemInstance->IsA<UGridInvSys_InventoryItemInstance>())
+	{
+		UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(InItemInstance);
+		AddItemInstanceTo(GridItemInstance, GridItemInstance->GetItemPosition());
+	}
+}
+
+void UGridInvSys_ContainerGridLayoutWidget::AddItemInstanceTo(
+	UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPosition)
+{
+	if (InItemInstance == nullptr)
+	{
+		check(false)
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("物品添加失败，物品实例为空"))
+		return;
+	}
+	if (InItemInstance->GetInventoryComponent() != InventoryComponent)
+	{
+		// 添加的物品必须是在同一组件下的。
+		check(false)
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("物品添加失败，物品实例与当前控件的库存组件不一致"))
+		return;
+	}
+	if (SlotTag != InPosition.EquipSlotTag)
+	{
+		check(false)
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("物品添加失败，物品实例与当前控件的标签不一致"))
+		return;
+	}
+
+	UGridInvSys_ContainerGridItemWidget* GridItemWidget = FindGridItemWidgetByPos(InPosition);
+	check(GridItemWidget)
+	if (GridItemWidget)
+	{
+		if (GridItemWidget->IsOccupied() == false)
+		{
+			GridItemWidget->AddItemInstance(InItemInstance);
+		}
+		// bug::重复刷新出现问题！！！
+		else if(InItemInstance != GridItemWidget->GetItemInstance())
+		{
+			UInvSys_InventoryControllerComponent* PlayerInvComp = UInvSys_InventorySystemLibrary::GetInventoryControllerComponent(GetWorld());
+			if (PlayerInvComp)
+			{
+				UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Error, TEXT("位置已经被其他物品占领，物品已被丢弃至世界"))
+				PlayerInvComp->Server_DropItemInstanceToWorld(InItemInstance);
+				return;
+			}
+		}
+	}
+}
+
+void UGridInvSys_ContainerGridLayoutWidget::RemoveAllItemInstance()
+{
+	for (UGridInvSys_ContainerGridWidget* ContainerGridWidget : ContainerGridWidgets)
+	{
+		if (ContainerGridWidget)
+		{
+			ContainerGridWidget->RemoveAllInventoryItem();
+		}
+	}
+}
+
+void UGridInvSys_ContainerGridLayoutWidget::RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
+{
+	if (InItemInstance == nullptr)
+	{
+		return;
+	}
+	if (InItemInstance->IsA<UGridInvSys_InventoryItemInstance>())
+	{
+		UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(InItemInstance);
+		RemoveItemInstanceFrom(GridItemInstance, GridItemInstance->GetItemPosition());
+	}
+	else
+	{
+		// 寻找内部所有的网格，判断物品在容器内是否存在
+		for (UGridInvSys_ContainerGridWidget* ContainerGridWidget : ContainerGridWidgets)
+		{
+			TArray<UGridInvSys_ContainerGridItemWidget*> GridItemWidgets = ContainerGridWidget->GetAllContainerGridItems();
+			for (UGridInvSys_ContainerGridItemWidget* GridItemWidget : GridItemWidgets)
+			{
+				if (GridItemWidget && GridItemWidget->GetItemInstance() == InItemInstance)
+				{
+					GridItemWidget->RemoveItemInstance();
+					return;
+				}
+			}
+		}
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("移除物品失败，指定的物品实例在容器内部不存在！"))
+	}
+}
+
+void UGridInvSys_ContainerGridLayoutWidget::RemoveItemInstanceFrom(UInvSys_InventoryItemInstance* InItemInstance,
+	const FGridInvSys_ItemPosition& InPosition)
+{
+	if (InItemInstance == nullptr)
+	{
+		return;
+	}
+
+	UGridInvSys_ContainerGridItemWidget* GridItemWidget = FindGridItemWidgetByPos(InPosition);
+	if (GridItemWidget && GridItemWidget->GetItemInstance() == InItemInstance)
+	{
+		GridItemWidget->RemoveItemInstance();
 	}
 }

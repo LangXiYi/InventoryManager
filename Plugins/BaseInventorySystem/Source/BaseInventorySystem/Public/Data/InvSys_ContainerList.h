@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "InvSys_InventoryItemDefinition.h"
 #include "InvSys_InventoryItemInstance.h"
+#include "NativeGameplayTags.h"
 #include "Components/InventoryObject/InvSys_BaseInventoryObject.h"
 #include "Net/Serialization/FastArraySerializer.h"
 #include "InvSys_ContainerList.generated.h"
@@ -18,9 +19,37 @@ struct FInvSys_InventoryItemChangedMessage
 {
 	GENERATED_BODY()
 
-	UPROPERTY(BlueprintReadOnly, Category = Inventory)
+	UPROPERTY(BlueprintReadOnly, Category = "Message")
+	TObjectPtr<UInvSys_InventoryComponent> InvComp;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Message")
+	FGameplayTag InventoryObjectTag;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Message")
 	UInvSys_InventoryItemInstance* ItemInstance = nullptr;
 };
+
+USTRUCT(BlueprintType)
+struct FInvSys_InventoryStackChangeMessage
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "Message")
+	TObjectPtr<UInvSys_InventoryComponent> InvComp;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Message")
+	FGameplayTag InventoryObjectTag;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Message")
+	UInvSys_InventoryItemInstance* ItemInstance = nullptr;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Message")
+	int32 StackCount = 1;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Message")
+	int32 Delta = 0;
+};
+
 /*
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnInventoryStackChange, FInvSys_InventoryStackChangeMessage);*/
 DECLARE_DELEGATE_TwoParams(FOnInventoryItemChange, UInvSys_InventoryItemInstance*, bool);
@@ -55,7 +84,6 @@ public:
 	}
 };
 
-
 /*
  * 库存列表
  */
@@ -70,20 +98,24 @@ public:
 	FInvSys_ContainerList()
 	{	}
 
-	FInvSys_ContainerList(UInvSys_BaseInventoryObject* InOwnerObject) : OwnerObject(InOwnerObject)
+	FInvSys_ContainerList(UInvSys_BaseInventoryFragment* InOwnerObject) : OwnerObject(InOwnerObject)
 	{	}
 
 	void BroadcastAddEntryMessage(const FInvSys_ContainerEntry& Entry);
 	
 	void BroadcastRemoveEntryMessage(const FInvSys_ContainerEntry& Entry);
+
+	void BroadcastStackChangeMessage(const FInvSys_ContainerEntry& Entry, int32 OldCount, int32 NewCount); // 广播堆叠数量变化事件
 	
 public:
 	UPROPERTY()
 	TArray<FInvSys_ContainerEntry> Entries;
 
+	// UPROPERTY()
+	// TArray<FInvSys_ContainerEntry> PostRepEntries; // 在RepSubObject中使用
+
 	UPROPERTY(NotReplicated)
-	TObjectPtr<UInvSys_BaseInventoryObject> OwnerObject;
-	
+	TObjectPtr<UInvSys_BaseInventoryFragment> OwnerObject;
 public:
 	template<class T, class... Arg>
 	T* AddEntry(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, const Arg&... Args)
@@ -96,12 +128,11 @@ public:
 		
 		check(OwnerObject->HasAuthority());
 		FInvSys_ContainerEntry& NewEntry = Entries.AddDefaulted_GetRef();
-		T* Result = NewObject<T>(OwnerObject->GetOwner());
+		T* Result = NewObject<T>(OwnerObject->GetInventoryComponent());
 		Result->SetItemDefinition(ItemDef);
 		Result->SetItemUniqueID(FGuid::NewGuid());
-		Result->SetStackCount(StackCount);
 		// 这两个属性表明了这个对象的最基础的位置信息
-		Result->SetSlotTag(OwnerObject->GetSlotTag());
+		Result->SetSlotTag(OwnerObject->GetInventoryObjectTag());
 		Result->SetInventoryComponent(OwnerObject->GetInventoryComponent());
 
 		for (const UInvSys_InventoryItemFragment* Fragment : GetDefault<UInvSys_InventoryItemDefinition>(ItemDef)->GetFragments())
@@ -113,7 +144,7 @@ public:
 		}
 		
 		NewEntry.Instance = Result;
-		//NewEntry.StackCount = StackCount;
+		NewEntry.StackCount = StackCount;
 		//执行可变参数模板，将参数列表中的值赋予目标对象。
 		int32 Arr[] = {0, (InitItemInstanceProps(Result, Args), 0)...}; 
 		
@@ -135,7 +166,7 @@ public:
 		if (Instance)
 		{
 			// 更新物品的基础信息
-			Instance->SetSlotTag(OwnerObject->GetSlotTag());
+			Instance->SetSlotTag(OwnerObject->GetInventoryObjectTag());
 			Instance->SetInventoryComponent(OwnerObject->GetInventoryComponent());
 			//执行可变参数模板，将参数列表中的值赋予目标对象。
 
@@ -155,6 +186,8 @@ public:
 		}
 		return false;
 	}
+
+	void RemoveAll();
 	
 	bool RemoveEntry(UInvSys_InventoryItemInstance* Instance);
 
@@ -201,11 +234,11 @@ public:
 		return OnContainerEntryRemove;
 	}
 
-	bool Contains(FGuid ItemUniqueID)
+	bool Contains(UInvSys_InventoryItemInstance* ItemInstance) const
 	{
 		for (FInvSys_ContainerEntry Entry : Entries)
 		{
-			if (Entry.Instance->GetItemUniqueID() == ItemUniqueID)
+			if (Entry.Instance == ItemInstance)
 			{
 				return true;
 			}
@@ -219,15 +252,6 @@ public:
 	}*/
 
 protected:
-	/*FORCEINLINE void BroadcastStackChangeMessage(const FInvSys_ContainerEntry& Entry, int32 OldCount, int32 NewCount) // 广播堆叠数量变化事件
-	{
-		FInvSys_InventoryStackChangeMessage StackChangeMessage;
-		StackChangeMessage.ItemInstance = Entry.Instance;
-		StackChangeMessage.StackCount = NewCount;
-		StackChangeMessage.Delta = NewCount - OldCount;
-
-		OnInventoryStackChange.Broadcast(StackChangeMessage);
-	}*/
 
 private:
 	template<class C, class V>

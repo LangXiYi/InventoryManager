@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Components/InvSys_InventoryControllerComponent.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "InvSys_InventorySystemLibrary.generated.h"
 
@@ -25,8 +26,14 @@ public:
 	static UInvSys_InventoryControllerComponent* GetPlayerInventoryComponent(const UObject* WorldContextObject);
 
 	template<class T = UInvSys_InventoryControllerComponent>
-	static T* FindInvControllerComponent(const UObject* WorldContextObject)
+	static T* GetInventoryControllerComponent(const UObject* WorldContextObject)
 	{
-		return (T*)GetPlayerInventoryComponent(WorldContextObject);
+		UInvSys_InventoryControllerComponent* ICC = GetPlayerInventoryComponent(WorldContextObject);
+		check(ICC && ICC->IsA<T>());
+		if (ICC && ICC->IsA<T>())
+		{
+			return (T*)ICC;
+		}
+		return nullptr;
 	}
 };

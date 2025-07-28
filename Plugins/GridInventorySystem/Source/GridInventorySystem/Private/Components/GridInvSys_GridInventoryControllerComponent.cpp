@@ -11,6 +11,41 @@ UGridInvSys_GridInventoryControllerComponent::UGridInvSys_GridInventoryControlle
 {
 }
 
+void UGridInvSys_GridInventoryControllerComponent::Server_AddItemInstancesToContainerPos_Implementation(
+	UInvSys_InventoryComponent* InvComp, const TArray<UInvSys_InventoryItemInstance*>& InItemInstances,
+	const TArray<FGridInvSys_ItemPosition>& InPosArray)
+{
+	check(InvComp)
+	if (InvComp && InvComp->IsA<UGridInvSys_InventoryComponent>())
+	{
+		UGridInvSys_InventoryComponent* GridInvComp = Cast<UGridInvSys_InventoryComponent>(InvComp);
+		int32 ItemNum = InItemInstances.Num();
+		int32 PosNum = InPosArray.Num();
+
+		check(GridInvComp)
+		check(ItemNum == PosNum)
+		if (GridInvComp && ItemNum == PosNum)
+		{
+			for (int i = 0; i < ItemNum; ++i)
+			{
+				GridInvComp->AddItemInstanceToContainerPos(InItemInstances[i], InPosArray[i]);
+			}
+		}
+	}
+}
+
+void UGridInvSys_GridInventoryControllerComponent::Server_RestoreItemInstanceToPos_Implementation(
+	UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance,
+	const FGridInvSys_ItemPosition& InPos)
+{
+	check(InvComp)
+	if (InvComp && InvComp->IsA<UGridInvSys_InventoryComponent>())
+	{
+		UGridInvSys_InventoryComponent* GridInvComp = Cast<UGridInvSys_InventoryComponent>(InvComp);
+		GridInvComp->RestoreItemInstanceToPos(InItemInstance, InPos);
+	}
+}
+
 void UGridInvSys_GridInventoryControllerComponent::Server_UpdateItemInstancePosition_Implementation(
 	UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* ItemInstance,
 	FGridInvSys_ItemPosition NewPosition)
@@ -42,7 +77,7 @@ void UGridInvSys_GridInventoryControllerComponent::Server_SwapItemInstance_Imple
 		UInvSys_InventoryComponent* ToInvComp = ToGridItem->GetInventoryComponent<UInvSys_InventoryComponent>();
 		if (FromInvComp != nullptr && ToInvComp != nullptr)
 		{
-			UE_LOG(LogInventorySystem, Log, TEXT("交换两物品的位置 {%s:%s} <----> {%s%s}"),
+			UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("交换两物品的位置 {%s:%s} <----> {%s%s}"),
 				*FromItemInstance->GetItemDisplayName().ToString(), *FromGridItem->GetItemPosition().ToString(),
 				*ToGridItem->GetItemDisplayName().ToString(), *ToGridItem->GetItemPosition().ToString())
 
@@ -71,12 +106,14 @@ void UGridInvSys_GridInventoryControllerComponent::Server_TryDropItemInstance_Im
 {
 	bool bIsSuccess = false;
 	UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(InItemInstance);
+	const FGridInvSys_ItemPosition& OldPosition = GridItemInstance->GetItemPosition();
 	if (GridItemInstance)
 	{
 		bIsSuccess = TryDropItemInstance<UGridInvSys_InventoryItemInstance>(InvComp, GridItemInstance,
 			InPos.EquipSlotTag, InPos);
 	}
-	UE_LOG(LogInventorySystem, Log, TEXT("[Server:%s] 尝试放置物品[%s] --> {%s}"),
+	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("[Server:%s] 更新物品位置信息[%s] {%s}--> {%s}"),
 		bIsSuccess ? TEXT("TRUE") : TEXT("FALSE"),
-		*InItemInstance->GetItemDisplayName().ToString(), *InPos.ToString())
+		*InItemInstance->GetItemDisplayName().ToString(),
+		*OldPosition.ToString(), *InPos.ToString())
 }

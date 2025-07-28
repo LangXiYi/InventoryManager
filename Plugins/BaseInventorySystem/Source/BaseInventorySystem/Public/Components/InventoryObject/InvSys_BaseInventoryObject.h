@@ -3,66 +3,66 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "UObject/Object.h"
 #include "GameplayTagContainer.h"
 #include "Components/ActorComponent.h"
-#include "UObject/Object.h"
+#include "Fragment/InvSys_BaseInventoryFragment.h"
 #include "InvSys_BaseInventoryObject.generated.h"
 
+class UInvSys_InventoryItemDefinition;
 class UInvSys_InventoryItemInstance;
 class UInvSys_EquipSlotWidget;
-class UInvSys_InventoryComponent;
 
-
-// FReplicationSystemFactory::CreateReplicationSystem(Params);	
-
-/**
- * 
- */
 UCLASS()
 class BASEINVENTORYSYSTEM_API UInvSys_BaseInventoryObject : public UObject
 {
 	GENERATED_BODY()
 
-	friend UInvSys_InventoryComponent;
+	friend class UInvSys_InventoryComponent;
 	friend class UInvSys_PreEditInventoryObject;
-	
-#define COPY_INVENTORY_OBJECT_PROPERTY(c, v)\
-	v = static_cast<c*>(PreEditPayLoad)->v;
 
 public:
 	UInvSys_BaseInventoryObject();
 
-	// [Server & Client] 在服务器创建库存对象后自动调用
-	virtual void OnConstructInventoryObject(UInvSys_InventoryComponent* NewInvComp, UObject* PreEditPayLoad);
-	
-	/** 初始化库存对象，仅由客户端调用 */
-	virtual void InitInventoryObject(UInvSys_InventoryComponent* NewInventoryComponent, UObject* PreEditPayLoad);
+	// [Only Server] 在构建库存对象后调用
+	// InvComp::ConstructInventoryObject ---> UInvSys_PreEditInventoryObject::NewInventoryObject ---> This Func
+	virtual void ConstructInventoryFragment(const TArray<UInvSys_BaseInventoryFragment*>& Fragments);
 
-	virtual void RefreshInventoryObject(const FString& Reason = "");
+	// [Server & Client] 在服务器创建库存对象后由库存组件的 OnRep_InventoryObjectList 调用
+	virtual void InitInventoryObject(UObject* PreEditPayLoad);
 
-	/** 移除目标物品实例在库存对象中的引用。注意：Remove不会强制摧毁该目标。 */
-	virtual bool RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
+	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "Inventory Object")
+	virtual void RefreshInventoryObject();
 
-	virtual bool RestoreItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
-	
-	virtual UInvSys_EquipSlotWidget* CreateDisplayWidget(APlayerController* PC);
+	UFUNCTION(BlueprintCallable, BlueprintPure = false)
+	void RefreshInventoryFragment(TSubclassOf<UInvSys_BaseInventoryFragment> OutClass);
 
-protected:
-	virtual bool ReplicateSubobjects(UActorChannel *Channel, FOutBunch *Bunch, FReplicationFlags *RepFlags);
+	/** Only Server todo:: wait edit. */
+	void AddInventoryFragment(UInvSys_BaseInventoryFragment* NewFragment);
 
-	/** 从预设对象中复制属性 */
-	virtual void CopyPropertyFromPreEdit(UObject* PreEditPayLoad);
-	
-public:
+	UFUNCTION(BlueprintCallable, BlueprintPure = false, meta = (DeterminesOutputType = OutClass))
+	UInvSys_BaseInventoryFragment* FindInventoryFragment(TSubclassOf<UInvSys_BaseInventoryFragment> OutClass);
+
 	/**
 	 * Getter Or Setter
 	 **/
 
-	/** 传入 Item Unique ID 判断其在库存对象中是否存在 */
-	virtual bool ContainsItem(FGuid ItemUniqueID);
-	
+	template<class FragmentType>
+	FragmentType* FindInventoryFragment()
+	{
+		for (UInvSys_BaseInventoryFragment* Fragment : InventoryObjectFragments)
+		{
+			check(Fragment)
+			if (Fragment && Fragment->IsA<FragmentType>())
+			{
+				return (FragmentType*)Fragment;
+			}
+		}
+		return nullptr;
+	}
+
 	UFUNCTION(BlueprintPure)
-	FORCEINLINE FGameplayTag GetSlotTag() const{ return EquipSlotTag; }
+	FORCEINLINE FGameplayTag GetInventoryObjectTag() const{ return InventoryObjectTag; }
 
 	FORCEINLINE UInvSys_InventoryComponent* GetInventoryComponent() const;
 
@@ -73,10 +73,16 @@ public:
 	FORCEINLINE AActor* GetOwner() const;
 
 	FORCEINLINE bool IsReadyForReplication() const;
-
+	
 	FORCEINLINE bool IsUsingRegisteredSubObjectList();
-
+	
 	FORCEINLINE virtual bool IsSupportedForNetworking() const override { return true; }
+
+	/**
+	 * 复制子对象列表
+	 * 允许库存对象复制其他子对象至库存组件
+	 */
+	virtual bool ReplicateSubobjects(UActorChannel *Channel, FOutBunch *Bunch, FReplicationFlags *RepFlags);
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
@@ -85,35 +91,46 @@ protected:
 	UInvSys_InventoryComponent* InventoryComponent = nullptr;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Object")
-	FGameplayTag EquipSlotTag;
+	FGameplayTag InventoryObjectTag;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Replicated, Category = "Inventory Object")
+	TArray<UInvSys_BaseInventoryFragment*> InventoryObjectFragments;
 
 private:
 	bool bIsInitInventoryObject = false;
+
+	UPROPERTY()
+	AActor* Owner_Private;
 };
 
 /**
  * Pre Edit Inventory Object
  */
 
-UCLASS(EditInlineNew, Blueprintable)
+UCLASS(EditInlineNew, DefaultToInstanced, Blueprintable)
 class BASEINVENTORYSYSTEM_API UInvSys_PreEditInventoryObject : public UObject
 {
 	GENERATED_BODY()
-	
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Container Type")
-	FGameplayTag EquipSlotTag;
-	
-protected:
-#define CONSTRUCT_INVENTORY_OBJECT(C) \
-	virtual UInvSys_BaseInventoryObject* ConstructInventoryObject(UActorComponent* InvComp)\
-	{\
-		check(InvComp);\
-		C* InvObj = NewObject<C>(InvComp->GetOwner());\
-		return InvObj;\
-	}
+
+	friend class UInvSys_BaseInventoryObject;
 
 public:
-	/** 容器构建函数 */
-	CONSTRUCT_INVENTORY_OBJECT(UInvSys_BaseInventoryObject);
+	template<class InventoryObjectType = UInvSys_BaseInventoryObject>
+	InventoryObjectType* NewInventoryObject(UInvSys_InventoryComponent* InvComp)
+	{
+		if (InvComp)
+		{
+			InventoryObjectType* InvObj = NewObject<InventoryObjectType>(InvComp);
+			InvObj->ConstructInventoryFragment(Fragments);
+			return InvObj;
+		}
+		return nullptr;
+	}
+
+protected:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory Object")
+	FGameplayTag InventoryObjectTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "Inventory Object")
+	TArray<UInvSys_BaseInventoryFragment*> Fragments;
 };

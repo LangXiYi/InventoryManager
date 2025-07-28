@@ -20,21 +20,34 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_ContainerGridLayoutWidget : public UIn
 {
 	GENERATED_BODY()
 
-	friend UGridInvSys_GridEquipContainerObject;
-
 public:
-	UFUNCTION(BlueprintCallable)
-	void ConstructContainerGrid(FName SlotName);
+	virtual void RefreshWidget() override;
 
-public:
+	UFUNCTION(BlueprintCallable, Category = "Grid Grid Layout")
+	void AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
+
+	UFUNCTION(BlueprintCallable, Category = "Grid Grid Layout")
+	void AddItemInstanceTo(UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPosition);
+
+	UFUNCTION(BlueprintCallable, Category = "Grid Grid Layout")
+	void RemoveAllItemInstance();
+
+	UFUNCTION(BlueprintCallable, Category = "Grid Grid Layout")
+	void RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
+
+	UFUNCTION(BlueprintCallable, Category = "Container Grid Layout")
+	void RemoveItemInstanceFrom(UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPosition);
+
 	UFUNCTION(BlueprintPure, Category = "Container Grid Layout", meta = (UnsafeDuringActorConstruction))
 	UGridInvSys_ContainerGridWidget* FindContainerGrid(int32 GridID);
 
-	UGridInvSys_ContainerGridItemWidget* FindGridItemWidget(const FGridInvSys_ItemPosition& ItemPosition) const;
+	UFUNCTION(BlueprintPure, Category = "Container Grid Layout", meta = (UnsafeDuringActorConstruction))
+	UGridInvSys_ContainerGridItemWidget* FindGridItemWidgetByPos(const FGridInvSys_ItemPosition& ItemPosition) const;
+
+	UFUNCTION(BlueprintPure, Category = "Container Grid Layout", meta = (UnsafeDuringActorConstruction))
 	UGridInvSys_ContainerGridItemWidget* FindGridItemWidget(const UInvSys_InventoryItemInstance* InItemInstance) const;
 
 protected:
-	virtual void NativeOnInitialized() override;
 	virtual void NativeConstruct() override;
 
 public:
@@ -43,13 +56,9 @@ public:
 		return ContainerGridWidgets;
 	}
 
-	/*FORCEINLINE FGameplayTag GetContainerTag() const
-	{
-		return ContainerTag;
-	}*/
+	void GetAllContainerGridWidgets(TArray<UGridInvSys_ContainerGridWidget*>& OutArray) const;
 
 private:
-	void GetAllContainerGridWidgets(TArray<UGridInvSys_ContainerGridWidget*>& OutArray) const;
 
 	void Private_GetAllContainerGridWidgets(TArray<UGridInvSys_ContainerGridWidget*>& OutArray, UWidget* Parent) const;
 
