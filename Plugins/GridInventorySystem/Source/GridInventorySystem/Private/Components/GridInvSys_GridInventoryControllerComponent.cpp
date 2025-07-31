@@ -11,6 +11,23 @@ UGridInvSys_GridInventoryControllerComponent::UGridInvSys_GridInventoryControlle
 {
 }
 
+void UGridInvSys_GridInventoryControllerComponent::TryDropItemInstance(UInvSys_InventoryComponent* InvComp,
+	UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos)
+{
+	bool bIsSuccess = false;
+	UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(InItemInstance);
+	const FGridInvSys_ItemPosition& OldPosition = GridItemInstance->GetItemPosition();
+	if (GridItemInstance)
+	{
+		bIsSuccess = DropItemInstance<UGridInvSys_InventoryItemInstance>(InvComp, GridItemInstance,
+			InPos.EquipSlotTag, InPos);
+	}
+	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("[Server:%s] 更新物品位置信息[%s] {%s}--> {%s}"),
+		bIsSuccess ? TEXT("TRUE") : TEXT("FALSE"),
+		*InItemInstance->GetItemDisplayName().ToString(),
+		*OldPosition.ToString(), *InPos.ToString())
+}
+
 void UGridInvSys_GridInventoryControllerComponent::Server_AddItemInstancesToContainerPos_Implementation(
 	UInvSys_InventoryComponent* InvComp, const TArray<UInvSys_InventoryItemInstance*>& InItemInstances,
 	const TArray<FGridInvSys_ItemPosition>& InPosArray)
@@ -53,13 +70,14 @@ void UGridInvSys_GridInventoryControllerComponent::Server_UpdateItemInstancePosi
 	check(ItemInstance)
 	if (ItemInstance)
 	{
-		UGridInvSys_InventoryItemInstance* GridItem = Cast<UGridInvSys_InventoryItemInstance>(ItemInstance);
-		UInvSys_InventoryComponent* OldInvComp = ItemInstance->GetInventoryComponent();
-		check(OldInvComp && InvComp && GridItem)
-		if (OldInvComp && InvComp && GridItem)
+		// UGridInvSys_InventoryItemInstance* GridItem = Cast<UGridInvSys_InventoryItemInstance>(ItemInstance);
+		UGridInvSys_InventoryComponent* GridComp = ItemInstance->GetInventoryComponent<UGridInvSys_InventoryComponent>();
+		check(GridComp)
+		if (GridComp)
 		{
-			OldInvComp->RemoveItemInstance(ItemInstance); // 将物品从原先的库存组件中删除
-			InvComp->AddItemInstance<UGridInvSys_InventoryItemInstance>(GridItem, NewPosition.EquipSlotTag, NewPosition);
+			GridComp->UpdateItemInstancePosition(ItemInstance, NewPosition);
+			// OldInvComp->RemoveItemInstance(ItemInstance); // 将物品从原先的库存组件中删除
+			// InvComp->AddItemInstance<UGridInvSys_InventoryItemInstance>(GridItem, NewPosition.EquipSlotTag, NewPosition);
 		}
 	}
 }
@@ -104,16 +122,20 @@ void UGridInvSys_GridInventoryControllerComponent::Server_TryDropItemInstance_Im
 	UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance,
 	const FGridInvSys_ItemPosition& InPos)
 {
-	bool bIsSuccess = false;
-	UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(InItemInstance);
-	const FGridInvSys_ItemPosition& OldPosition = GridItemInstance->GetItemPosition();
-	if (GridItemInstance)
-	{
-		bIsSuccess = TryDropItemInstance<UGridInvSys_InventoryItemInstance>(InvComp, GridItemInstance,
-			InPos.EquipSlotTag, InPos);
-	}
-	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("[Server:%s] 更新物品位置信息[%s] {%s}--> {%s}"),
-		bIsSuccess ? TEXT("TRUE") : TEXT("FALSE"),
-		*InItemInstance->GetItemDisplayName().ToString(),
-		*OldPosition.ToString(), *InPos.ToString())
+	// FTimerHandle TempHandler;
+	// GetWorld()->GetTimerManager().SetTimer(TempHandler,[this, InItemInstance, InvComp, InPos]()
+	// {
+		bool bIsSuccess = false;
+		UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(InItemInstance);
+		const FGridInvSys_ItemPosition& OldPosition = GridItemInstance->GetItemPosition();
+		if (GridItemInstance)
+		{
+			bIsSuccess = DropItemInstance<UGridInvSys_InventoryItemInstance>(InvComp, GridItemInstance,
+				InPos.EquipSlotTag, InPos);
+		}
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("[Server:%s] 更新物品位置信息[%s] {%s}--> {%s}"),
+			bIsSuccess ? TEXT("TRUE") : TEXT("FALSE"),
+			*InItemInstance->GetItemDisplayName().ToString(),
+			*OldPosition.ToString(), *InPos.ToString())
+	// }, 0.2f, false);
 }

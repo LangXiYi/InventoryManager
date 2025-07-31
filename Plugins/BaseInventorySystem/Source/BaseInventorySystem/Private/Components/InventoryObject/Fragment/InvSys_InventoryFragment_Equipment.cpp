@@ -59,7 +59,7 @@ void UInvSys_InventoryFragment_Equipment::EquipItemInstance(UInvSys_InventoryIte
 		if (NewItemInstance)
 		{
 			ItemInstance = NewItemInstance;
-			ItemInstance->SetInventoryComponent(GetInventoryComponent());
+			// ItemInstance->SetInventoryComponent(GetInventoryComponent());
 			ItemInstance->SetSlotTag(GetInventoryObjectTag());
 			if (GetNetMode() != NM_DedicatedServer)
 			{

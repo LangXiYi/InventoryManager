@@ -32,6 +32,24 @@ void UGridInvSys_InventoryFragment_Container::InitInventoryFragment(UObject* Pre
 	}
 }
 
+bool UGridInvSys_InventoryFragment_Container::UpdateItemInstancePosition(
+	UGridInvSys_InventoryItemInstance* GridItemInstance, const FGridInvSys_ItemPosition& NewPosition)
+{
+	check(GridItemInstance)
+	if (GridItemInstance)
+	{
+		FIntPoint Size = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSizeFrom(GridItemInstance, NewPosition.Direction);
+		if (HasEnoughFreeSpace(NewPosition.Position, NewPosition.GridID, Size))
+		{
+			GridItemInstance->SetItemPosition(NewPosition);
+			MarkItemInstanceDirty(GridItemInstance);
+			Owner_Private->ForceNetUpdate();
+			return true;
+		}
+	}
+	return false;
+}
+
 bool UGridInvSys_InventoryFragment_Container::HasEnoughFreeSpace(
 	FIntPoint ToPosition, int32 ToGridID, FIntPoint ItemSize)
 {

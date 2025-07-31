@@ -119,7 +119,7 @@ UGridInvSys_ContainerGridItemWidget* UGridInvSys_ContainerGridItemWidget::GetOri
 
 bool UGridInvSys_ContainerGridItemWidget::IsOccupied()
 {
-	if (ItemInstance != nullptr)
+	if (ItemInstance.IsValid())
 	{
 		UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(ItemInstance);
 		if (GridItemInstance)
@@ -128,13 +128,15 @@ bool UGridInvSys_ContainerGridItemWidget::IsOccupied()
 			FGridInvSys_ItemPosition TempItemPos = GridItemInstance->GetItemPosition();
 			if (GetSlotTag() == TempItemPos.EquipSlotTag &&
 				GetGridID() == TempItemPos.GridID &&
-				GetPosition() == TempItemPos.Position &&
+				GetOriginPosition() == TempItemPos.Position &&
 				GetInventoryComponent() == ItemInstance->GetInventoryComponent())
 			{
 				return true;
 			}
 			else
 			{
+				checkNoEntry()
+				// bug 在 1x2 大小的物品替换 两个 1x1 大小的物品时会报错
 				UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("检查槽位是否被占据时发现物品实例与当前槽位的位置不符，故自动将物品移除显示。"))
 				RemoveItemInstance();
 			}

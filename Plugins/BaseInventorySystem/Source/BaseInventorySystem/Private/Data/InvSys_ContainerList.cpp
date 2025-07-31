@@ -55,6 +55,26 @@ bool FInvSys_ContainerList::RemoveEntry(UInvSys_InventoryItemInstance* Instance)
 	return false;
 }
 
+bool FInvSys_ContainerList::RemoveEntry(UInvSys_InventoryItemInstance* Instance, int32& OutIndex)
+{
+	for (auto EntryIt = Entries.CreateIterator(); EntryIt; ++EntryIt)
+	{
+		FInvSys_ContainerEntry& Entry = *EntryIt;
+		if (Entry.Instance == Instance)
+		{
+			if (OwnerObject->GetNetMode() != NM_DedicatedServer)
+			{
+				BroadcastRemoveEntryMessage(Entry);
+			}
+			OutIndex = EntryIt.GetIndex();
+			EntryIt.RemoveCurrent(); //这里Remove后，Entry的值会同步改变
+			MarkArrayDirty();
+			return true;
+		}
+	}
+	return false;
+}
+
 UInvSys_InventoryItemInstance* FInvSys_ContainerList::FindItem(FGuid ItemUniqueID) const
 {
 	for (FInvSys_ContainerEntry Entry : Entries)
@@ -85,12 +105,23 @@ void FInvSys_ContainerList::PostReplicatedAdd(const TArrayView<int32>& AddedIndi
 	for (int32 Index : AddedIndices)
 	{
 		FInvSys_ContainerEntry& Entry = Entries[Index];
-		BroadcastAddEntryMessage(Entry);
+
+		/*
+		 * 由于 FastArray 的属性同步优于其内部对象 ItemInstance 的属性同步，所以需要延迟一段时间
+		 * 在大部分情况下，如修改数组内其他对象的属性后，添加新的对象，若新对象需要检查其他对象的属性，那么这里就会出现问题。
+		 * 此时的其他对象的onRep函数未执行，客户端在执行中可能出现其他问题。
+		 */
+
+		OwnerObject->GetWorld()->GetTimerManager().SetTimerForNextTick([this, Entry]()
+		{
+			BroadcastAddEntryMessage(Entry);
+		});
 	}
 }
 
 void FInvSys_ContainerList::PostReplicatedChange(const TArrayView<int32>& ChangedIndices, int32 FinalSize)
 {
+	UE_LOG(LogInventorySystem, Error, TEXT("[%s]PostReplicatedChange"), *OwnerObject->GetOwner()->GetName())
 	for (int32 Index : ChangedIndices)
 	{
 		FInvSys_ContainerEntry& Entry = Entries[Index];

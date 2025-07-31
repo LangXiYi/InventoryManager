@@ -19,44 +19,44 @@ void UGridInvSys_EquipContainerSlotWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	auto WarpAddItemFunc = [this](FGameplayTag Tag, const FInvSys_InventoryItemChangedMessage& Message)
-	{
-		if (Message.InventoryObjectTag == GetSlotTag() && Message.InvComp == GetInventoryComponent())
-		{
-			check(ContainerLayout)
-			if (ContainerLayout)
-			{
-				ContainerLayout->AddItemInstance(Message.ItemInstance);
-			}
-		}
-	};
-
-	auto WarpRemoveItemFunc = [this](FGameplayTag Tag, const FInvSys_InventoryItemChangedMessage& Message)
-	{
-		if (Message.InventoryObjectTag == GetSlotTag() && Message.InvComp == GetInventoryComponent())
-		{
-			check(ContainerLayout)
-			if (ContainerLayout)
-			{
-				ContainerLayout->RemoveItemInstance(Message.ItemInstance);
-			}
-		}
-	};
-
-	UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(GetWorld());
-	OnAddItemInstanceHandle =MessageSubsystem.RegisterListener<FInvSys_InventoryItemChangedMessage>(
-		Inventory_Message_AddItem, MoveTemp(WarpAddItemFunc));
-
-	OnRemoveItemInstanceHandle =MessageSubsystem.RegisterListener<FInvSys_InventoryItemChangedMessage>(
-		Inventory_Message_RemoveItem, MoveTemp(WarpRemoveItemFunc));
+	// auto WarpAddItemFunc = [this](FGameplayTag Tag, const FInvSys_InventoryItemChangedMessage& Message)
+	// {
+	// 	if (Message.InventoryObjectTag == GetSlotTag() && Message.InvComp == GetInventoryComponent())
+	// 	{
+	// 		check(ContainerLayout)
+	// 		if (ContainerLayout)
+	// 		{
+	// 			ContainerLayout->AddItemInstance(Message.ItemInstance);
+	// 		}
+	// 	}
+	// };
+	//
+	// auto WarpRemoveItemFunc = [this](FGameplayTag Tag, const FInvSys_InventoryItemChangedMessage& Message)
+	// {
+	// 	if (Message.InventoryObjectTag == GetSlotTag() && Message.InvComp == GetInventoryComponent())
+	// 	{
+	// 		check(ContainerLayout)
+	// 		if (ContainerLayout)
+	// 		{
+	// 			ContainerLayout->RemoveItemInstance(Message.ItemInstance);
+	// 		}
+	// 	}
+	// };
+	//
+	// UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(GetWorld());
+	// OnAddItemInstanceHandle =MessageSubsystem.RegisterListener<FInvSys_InventoryItemChangedMessage>(
+	// 	Inventory_Message_AddItem, MoveTemp(WarpAddItemFunc));
+	//
+	// OnRemoveItemInstanceHandle =MessageSubsystem.RegisterListener<FInvSys_InventoryItemChangedMessage>(
+	// 	Inventory_Message_RemoveItem, MoveTemp(WarpRemoveItemFunc));
 }
 
 void UGridInvSys_EquipContainerSlotWidget::NativeDestruct()
 {
 	Super::NativeDestruct();
 
-	OnAddItemInstanceHandle.Unregister();
-	OnRemoveItemInstanceHandle.Unregister();
+	// OnAddItemInstanceHandle.Unregister();
+	// OnRemoveItemInstanceHandle.Unregister();
 }
 
 void UGridInvSys_EquipContainerSlotWidget::RefreshWidget()

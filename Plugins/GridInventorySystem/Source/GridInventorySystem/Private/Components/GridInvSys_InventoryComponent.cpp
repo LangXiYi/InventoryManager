@@ -135,8 +135,24 @@ bool UGridInvSys_InventoryComponent::FindEmptyPosition(UInvSys_InventoryItemInst
 	return false;
 }
 
+void UGridInvSys_InventoryComponent::UpdateItemInstancePosition(UInvSys_InventoryItemInstance* ItemInstance,
+	FGridInvSys_ItemPosition NewPosition)
+{
+	if (ItemInstance && ItemInstance->IsA<UGridInvSys_InventoryItemInstance>())
+	{
+		UGridInvSys_InventoryItemInstance* GridItem = Cast<UGridInvSys_InventoryItemInstance>(ItemInstance);
+		check(GridItem)
+		auto ContainerFragment = FindInventoryObjectFragment<UGridInvSys_InventoryFragment_Container>(NewPosition.EquipSlotTag);
+		if (ContainerFragment)
+		{
+			bool bIsSuccess = ContainerFragment->UpdateItemInstancePosition(GridItem, NewPosition);
+			UE_CLOG(bIsSuccess == false, LogInventorySystem, Error, TEXT("更新物品实例位置失败！！！"))
+		}
+	}
+}
+
 UGridInvSys_ContainerGridWidget* UGridInvSys_InventoryComponent::FindContainerGridWidget(FGameplayTag SlotTag,
-	int32 GridID)
+                                                                                         int32 GridID)
 {
 	UInvSys_InventoryFragment_DisplayWidget* DisplayFragment =
 		FindInventoryObjectFragment<UInvSys_InventoryFragment_DisplayWidget>(SlotTag);

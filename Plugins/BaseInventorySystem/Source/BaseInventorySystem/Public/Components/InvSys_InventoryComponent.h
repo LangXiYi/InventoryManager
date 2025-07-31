@@ -24,6 +24,7 @@ class BASEINVENTORYSYSTEM_API UInvSys_InventoryComponent : public UActorComponen
 	GENERATED_BODY()
 
 	friend class UInvSys_InventoryControllerComponent;
+	friend class AInvSys_PickableContainer;
 
 public:
 	// Sets default values for this component's properties

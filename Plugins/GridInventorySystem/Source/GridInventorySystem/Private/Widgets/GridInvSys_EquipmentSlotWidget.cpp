@@ -91,7 +91,7 @@ bool UGridInvSys_EquipmentSlotWidget::NativeOnDrop(const FGeometry& InGeometry, 
                                                    UDragDropOperation* InOperation)
 {
 	UInvSys_InventoryControllerComponent* ICC =
-		UInvSys_InventorySystemLibrary::GetInventoryControllerComponent<UInvSys_InventoryControllerComponent>(GetWorld());
+		UInvSys_InventorySystemLibrary::GetPlayerInventoryComponent<UInvSys_InventoryControllerComponent>(GetWorld());
 	check(ICC)
 	if (ICC == nullptr)
 	{

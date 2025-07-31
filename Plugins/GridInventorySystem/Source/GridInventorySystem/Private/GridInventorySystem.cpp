@@ -13,6 +13,8 @@ UE_DEFINE_GAMEPLAY_TAG(Inventory_Message_StackChanged, "Inventory.Message.StackC
 UE_DEFINE_GAMEPLAY_TAG(Inventory_Message_EquipItem, "Inventory.Message.EquipItem");
 UE_DEFINE_GAMEPLAY_TAG(Inventory_Message_UnEquipItem, "Inventory.Message.UnEquipItem");
 
+UE_DEFINE_GAMEPLAY_TAG(Inventory_Message_ItemPositionChanged, "Inventory.Message.ItemPositionChanged");
+
 #define LOCTEXT_NAMESPACE "FGridInventorySystemModule"
 
 void FGridInventorySystemModule::StartupModule()

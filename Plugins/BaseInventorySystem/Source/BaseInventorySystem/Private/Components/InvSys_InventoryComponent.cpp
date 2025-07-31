@@ -114,16 +114,7 @@ UInvSys_InventoryLayoutWidget* UInvSys_InventoryComponent::CreateDisplayWidget(A
 			{
 				// 将库存对象的控件插入对应位置的插槽。
 				UUserWidget* DisplayWidget = DisplayWidgetFragment->CreateDisplayWidget(NewPlayerController);
-				// 根据库存对象的标签查询对应的槽位，然后将需要显示的控件添加到目标槽位下。
-				FGameplayTag InvObjTag = InvObj->GetInventoryObjectTag();
-				if (UInvSys_TagSlot* TagSlot = LayoutWidget->FindTagSlot(InvObjTag))
-				{
-					TagSlot->AddChild(DisplayWidget);
-				}
-				else
-				{
-					UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("标签为 %s 的控件在布局中未找到"), *InvObjTag.ToString());
-				}
+				LayoutWidget->AddWidget(DisplayWidget, InvObj->GetInventoryObjectTag());
 			}
 			// 延迟下一帧执行刷新函数，确保控件创建流程执行完毕。
 			GetWorld()->GetTimerManager().SetTimerForNextTick([InvObj]()
@@ -180,17 +171,17 @@ bool UInvSys_InventoryComponent::TryDragItemInstance(UInvSys_InventoryItemInstan
 	FGameplayTag ItemTag = InItemInstance->GetSlotTag();
 	//判断拖拽的物品是不是装备槽正在装备的物品
 	auto EquipmentFragment = FindInventoryObjectFragment<UInvSys_InventoryFragment_Equipment>(ItemTag);
-	if (EquipmentFragment->GetEquipItemInstance() == InItemInstance)
+	if (EquipmentFragment && EquipmentFragment->GetEquipItemInstance() == InItemInstance)
 	{
-		return EquipmentFragment->UnEquipItemInstance();
+		return UnEquipItemInstance(InItemInstance);
 	}
 
 	//判断拖拽这个物品之前判断物品在它容器中是否存在
 	UInvSys_InventoryFragment_Container* ContainerFragment =
 		FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(ItemTag);
-	if (ContainerFragment && ContainerFragment->ContainsItem(InItemInstance))
+	if (ContainerFragment)
 	{
-		return ContainerFragment->RemoveItemInstance(InItemInstance);
+		return RemoveItemInstance(InItemInstance);
 	}
 	return false;
 }
@@ -308,10 +299,11 @@ bool UInvSys_InventoryComponent::UnEquipItemInstance(UInvSys_InventoryItemInstan
 			FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(InItemInstance->GetSlotTag());
 		if (ContainerFragment)
 		{
+			TArray<UInvSys_InventoryItemInstance*> AllItemInstance = ContainerFragment->GetAllItemInstance();
+			UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("卸下的装备是一个容器，正在保存其内部物品，数量 = %d"), AllItemInstance.Num())
 			// 将所有物品转移至该物品实例的内部
 			InItemInstance->MyInstances.Empty();
-			InItemInstance->MyInstances.Append(ContainerFragment->GetAllItemInstance());
-
+			InItemInstance->MyInstances.Append(AllItemInstance);
 			ContainerFragment->RemoveAllItemInstance();
 		}
 
@@ -328,7 +320,7 @@ bool UInvSys_InventoryComponent::RemoveItemInstance(UInvSys_InventoryItemInstanc
 		UInvSys_InventoryFragment_Container* ContainerFragment =
 			FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(InItemInstance->GetSlotTag());
 		
-		if (ContainerFragment)
+		if (ContainerFragment && ContainerFragment->ContainsItem(InItemInstance))
 		{
 			return ContainerFragment->RemoveItemInstance(InItemInstance);
 		}

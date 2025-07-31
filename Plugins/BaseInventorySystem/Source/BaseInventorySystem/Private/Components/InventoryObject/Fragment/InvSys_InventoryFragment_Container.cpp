@@ -14,10 +14,9 @@ UInvSys_InventoryFragment_Container::UInvSys_InventoryFragment_Container() : Con
 	Priority = 20;
 }
 
-void UInvSys_InventoryFragment_Container::InitInventoryFragment(/*UInvSys_BaseInventoryObject* InvObj,*/
-	UObject* PreEditFragment)
+void UInvSys_InventoryFragment_Container::InitInventoryFragment(UObject* PreEditFragment)
 {
-	Super::InitInventoryFragment(/*InvObj, */PreEditFragment);
+	Super::InitInventoryFragment(PreEditFragment);
 	auto WarpAddItemFunc = [this](FGameplayTag Tag, const FInvSys_InventoryItemChangedMessage& Message)
 	{
 		if (Message.InventoryObjectTag == GetInventoryObjectTag() && Message.InvComp == GetInventoryComponent())
@@ -34,34 +33,38 @@ void UInvSys_InventoryFragment_Container::InitInventoryFragment(/*UInvSys_BaseIn
 		}
 	};
 
+	auto WarpItemStackChangedFunc = [this](FGameplayTag Tag, const FInvSys_InventoryStackChangeMessage& Message)
+	{
+		if (Message.InventoryObjectTag == GetInventoryObjectTag() && Message.InvComp == GetInventoryComponent())
+		{
+			NativeOnItemStackChange(Message);
+		}
+	};
+
 	UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(GetWorld());
 	OnAddItemInstanceHandle = MessageSubsystem.RegisterListener<FInvSys_InventoryItemChangedMessage>(
 		Inventory_Message_AddItem, MoveTemp(WarpAddItemFunc));
 
 	OnRemoveItemInstanceHandle = MessageSubsystem.RegisterListener<FInvSys_InventoryItemChangedMessage>(
 		Inventory_Message_RemoveItem, MoveTemp(WarpRemoveItemFunc));
+
+	OnItemStackChangedHandle = MessageSubsystem.RegisterListener<FInvSys_InventoryStackChangeMessage>(
+		Inventory_Message_StackChanged, MoveTemp(WarpItemStackChangedFunc));
 }
 
 void UInvSys_InventoryFragment_Container::RefreshInventoryFragment()
 {
 	Super::RefreshInventoryFragment();
 	TArray<UInvSys_InventoryItemInstance*> AllItems = ContainerList.GetAllItems();
-	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("正在刷新容器片段, 该片段内物品数量 = %d"), AllItems.Num())
+	Debug_PrintContainerAllItems();
 	if (AllItems.Num() > 0)
 	{
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
-			TEXT("============ 物品数据============"))
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
-			TEXT("Name \t Stack Count \t Inv Obj Tags"))
 		for (UInvSys_InventoryItemInstance* ItemInstance : AllItems)
 		{
 			FInvSys_InventoryItemChangedMessage AddItemMessage;
 			AddItemMessage.InvComp = GetInventoryComponent();
 			AddItemMessage.InventoryObjectTag = GetInventoryObjectTag();
 			AddItemMessage.ItemInstance = ItemInstance;
-
-			UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("%s \t %d \t %s"),
-				*ItemInstance->GetItemDisplayName().ToString(), ItemInstance->GetStackCount(), *ItemInstance->GetSlotTag().ToString())
 
 			UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(GetWorld());
 			MessageSubsystem.BroadcastMessage(Inventory_Message_AddItem, AddItemMessage);
@@ -72,20 +75,30 @@ void UInvSys_InventoryFragment_Container::RefreshInventoryFragment()
 void UInvSys_InventoryFragment_Container::RemoveAllItemInstance()
 {
 	ContainerList.RemoveAll();
+	ContainerEntryRepKeyMap.Reset();
+	MarkContainerDirty();
 }
 
 bool UInvSys_InventoryFragment_Container::RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
 {
+	bool bIsSuccess = false;
 	if (InItemInstance)
 	{
-		return ContainerList.RemoveEntry(InItemInstance);
+		int32 Index = INDEX_NONE;
+		bIsSuccess = ContainerList.RemoveEntry(InItemInstance, Index);
+		if (bIsSuccess && ContainerEntryRepKeyMap.Contains(Index + 1))
+		{
+			MarkItemInstanceDirty(InItemInstance);
+			ContainerEntryRepKeyMap.Remove(Index + 1); // 数组内部成员从下标 1 开始计数
+		}
 	}
-	return false;
+	return bIsSuccess;
 }
 
 bool UInvSys_InventoryFragment_Container::UpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance,
 	int32 NewStackCount)
 {
+	MarkItemInstanceDirty(ItemInstance);
 	return false;
 }
 
@@ -99,12 +112,36 @@ TArray<UInvSys_InventoryItemInstance*> UInvSys_InventoryFragment_Container::GetA
 	return ContainerList.GetAllItems<UInvSys_InventoryItemInstance>();
 }
 
+void UInvSys_InventoryFragment_Container::MarkItemInstanceDirty(UInvSys_InventoryItemInstance* ItemInstance)
+{
+	ItemInstance->ReplicationKey++;
+	MarkContainerDirty();
+}
+
+void UInvSys_InventoryFragment_Container::MarkContainerDirty()
+{
+	ContainerReplicationKey++;
+}
+
+bool UInvSys_InventoryFragment_Container::KeyNeedsToReplicate(int32 ObjID, int32 RepKey)
+{
+	int32 &MapKey = ContainerEntryRepKeyMap.FindOrAdd(ObjID, INDEX_NONE);
+	if (MapKey == RepKey)
+	{
+		return false;
+	}
+	MapKey = RepKey;
+	return true;
+}
+
 void UInvSys_InventoryFragment_Container::GetLifetimeReplicatedProps(
 	TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME_CONDITION(UInvSys_InventoryFragment_Container, ContainerList, COND_None)
 
-	DOREPLIFETIME(UInvSys_InventoryFragment_Container, ContainerList)
+
+	// DOREPLIFETIME_CONDITION()
 }
 
 bool UInvSys_InventoryFragment_Container::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch,
@@ -112,22 +149,47 @@ bool UInvSys_InventoryFragment_Container::ReplicateSubobjects(UActorChannel* Cha
 {
 	bool bWroteSomething =  Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
 	// 优化执行流程，只在 ContainerList 被标记为脏时，才会触发循环执行复制！
-	// if (Channel->KeyNeedsToReplicate(ContainerList.RepIndex, ContainerList.ArrayReplicationKey))
+	// 是否会影响 RepNotify？ 答案：会影响
+	if (KeyNeedsToReplicate(0, ContainerReplicationKey)) // 容器内成员从下标 1 开始标记，所以数组本身可以直接使用 0 
 	{
-		// UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning,
-		// 	TEXT("容器数据被标记为脏，即将同步容器内所有物品至客户端 %d:%d"), ContainerList.RepIndex, ContainerList.ArrayReplicationKey);
-		for (FInvSys_ContainerEntry Entry : ContainerList.Entries)
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("ReplicateSubobjects ==========="))
+		for (const FInvSys_ContainerEntry& Entry : ContainerList.Entries)
 		{
-			//if (Channel->KeyNeedsToReplicate(Entry.ReplicationID, Entry.ReplicationKey))
+			if (KeyNeedsToReplicate(Entry.ReplicationID, Entry.Instance->ReplicationKey))
 			{
-				UInvSys_InventoryItemInstance* Instance = Entry.Instance;
-				if (Instance && IsValid(Instance))
+				UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("\t RepObject = %s"), *Entry.Instance->GetItemDisplayName().ToString())
+				if (Entry.Instance && IsValid(Entry.Instance))
 				{
-					bWroteSomething |= Channel->ReplicateSubobject(Instance, *Bunch, *RepFlags);
+					// 同步所有需要同步的数据
+					bWroteSomething |= Channel->ReplicateSubobject(Entry.Instance, *Bunch, *RepFlags);
 				}
 			}
-			// UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Error, TEXT("复制 Fast Array 的子对象 = %s]"), *Instance->GetName());
 		}
+		// Owner_Private->ForceNetUpdate();
 	}
 	return bWroteSomething;
+}
+
+void UInvSys_InventoryFragment_Container::Debug_PrintContainerAllItems()
+{
+	TArray<UInvSys_InventoryItemInstance*> AllItems = GetAllItemInstance();
+
+	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
+		TEXT("= BEG =========================================================================="))
+	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
+		TEXT("\t Owner: %s \t Tag: %s \t Count: %d"),
+		*GetOwner()->GetName(), *GetInventoryObjectTag().ToString(), AllItems.Num())
+	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
+		TEXT("--------------------------------------------------------------------------------"))
+	for (UInvSys_InventoryItemInstance* ItemInstance : AllItems)
+	{
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
+			TEXT("DisplayName = %s \t Tag = %s \t Name: %s \t OuterName = %s \t"),
+			*ItemInstance->GetItemDisplayName().ToString(),
+			*ItemInstance->GetSlotTag().ToString(),
+			*ItemInstance->GetName(),
+			*ItemInstance->GetOuter()->GetName())
+	}
+	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
+		TEXT("= END =========================================================================="))
 }

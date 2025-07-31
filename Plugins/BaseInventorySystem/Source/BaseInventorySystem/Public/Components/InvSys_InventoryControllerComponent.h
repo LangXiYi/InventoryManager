@@ -36,7 +36,7 @@ public:
 	 * void Server_TryDropItemInstance(InvComp, ItemInstance, SlotTag, Args...);
 	 */
 	template<class T, class... Arg>
-	bool TryDropItemInstance(UInvSys_InventoryComponent* InvComp, T* InItemInstance, FGameplayTag SlotTag, const Arg&... Ags)
+	bool DropItemInstance(UInvSys_InventoryComponent* InvComp, T* InItemInstance, FGameplayTag SlotTag, const Arg&... Ags)
 	{
 		if (bIsSuccessDragItem && InvComp)
 		{

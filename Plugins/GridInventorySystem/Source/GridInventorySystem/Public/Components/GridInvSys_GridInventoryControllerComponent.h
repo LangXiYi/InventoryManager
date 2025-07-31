@@ -17,6 +17,14 @@ public:
 	UGridInvSys_GridInventoryControllerComponent();
 
 	/**
+	 * Local Prediction Function
+	 **/
+
+	UFUNCTION(BlueprintCallable)
+	void TryDropItemInstance(UInvSys_InventoryComponent* InvComp,
+		UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos);
+
+	/**
 	 * RPC Function
 	 **/
 

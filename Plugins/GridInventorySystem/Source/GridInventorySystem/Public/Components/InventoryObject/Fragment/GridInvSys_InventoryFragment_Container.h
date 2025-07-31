@@ -30,6 +30,8 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_InventoryFragment_Container : public U
 public:
 	virtual void InitInventoryFragment(UObject* PreEditFragment) override;
 
+	bool UpdateItemInstancePosition(UGridInvSys_InventoryItemInstance* GridItemInstance, const FGridInvSys_ItemPosition& NewPosition);
+
 	bool HasEnoughFreeSpace(FIntPoint ToPosition, int32 ToGridID, FIntPoint ItemSize);
 
 	void UpdateContainerGridItemState(UGridInvSys_InventoryItemInstance* GridItemInstance, bool IsOccupy);

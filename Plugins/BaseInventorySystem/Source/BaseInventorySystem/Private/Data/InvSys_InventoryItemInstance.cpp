@@ -15,6 +15,7 @@ UInvSys_InventoryItemInstance::UInvSys_InventoryItemInstance(const FObjectInitia
 		if (MyOuter->IsA<UInvSys_InventoryComponent>())
 		{
 			InvComp = Cast<UInvSys_InventoryComponent>(MyOuter);
+			Owner = InvComp->GetOwner();
 		}
 	}
 }
@@ -25,27 +26,12 @@ void UInvSys_InventoryItemInstance::GetLifetimeReplicatedProps(TArray<FLifetimeP
 
 	DOREPLIFETIME(UInvSys_InventoryItemInstance, ItemDefinition);
 	DOREPLIFETIME(UInvSys_InventoryItemInstance, ItemUniqueID);
-	DOREPLIFETIME(UInvSys_InventoryItemInstance, StackCount);
-	DOREPLIFETIME(UInvSys_InventoryItemInstance, InvComp);
-	DOREPLIFETIME(UInvSys_InventoryItemInstance, LastInvComp);
 	DOREPLIFETIME(UInvSys_InventoryItemInstance, SlotTag);
-}
-
-void UInvSys_InventoryItemInstance::OnRep_StackCount()
-{
-	BroadcastStackChangeMessage(LastStackCount, StackCount);
-	LastStackCount = StackCount;
 }
 
 void UInvSys_InventoryItemInstance::SetItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> NewItemDef)
 {
 	ItemDefinition = NewItemDef;
-}
-
-void UInvSys_InventoryItemInstance::SetInventoryComponent(UInvSys_InventoryComponent* NewInvComp)
-{
-	LastInvComp = InvComp;
-	InvComp = NewInvComp;
 }
 
 void UInvSys_InventoryItemInstance::SetItemUniqueID(FGuid Guid)
@@ -56,6 +42,11 @@ void UInvSys_InventoryItemInstance::SetItemUniqueID(FGuid Guid)
 void UInvSys_InventoryItemInstance::SetSlotTag(FGameplayTag Tag)
 {
 	SlotTag = Tag;
+}
+
+void UInvSys_InventoryItemInstance::SetInventoryComponent(UInvSys_InventoryComponent* NewInvComp)
+{
+	InvComp = NewInvComp;
 }
 
 void UInvSys_InventoryItemInstance::RemoveFromInventory()

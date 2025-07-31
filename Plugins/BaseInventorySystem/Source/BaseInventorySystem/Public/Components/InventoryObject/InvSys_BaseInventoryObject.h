@@ -29,10 +29,10 @@ public:
 	virtual void ConstructInventoryFragment(const TArray<UInvSys_BaseInventoryFragment*>& Fragments);
 
 	// [Server & Client] 在服务器创建库存对象后由库存组件的 OnRep_InventoryObjectList 调用
-	virtual void InitInventoryObject(UObject* PreEditPayLoad);
+	virtual void InitInventoryObject(UInvSys_PreEditInventoryObject* PreEditPayLoad);
 
 	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "Inventory Object")
-	virtual void RefreshInventoryObject();
+	void RefreshInventoryObject();
 
 	UFUNCTION(BlueprintCallable, BlueprintPure = false)
 	void RefreshInventoryFragment(TSubclassOf<UInvSys_BaseInventoryFragment> OutClass);
@@ -42,10 +42,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintPure = false, meta = (DeterminesOutputType = OutClass))
 	UInvSys_BaseInventoryFragment* FindInventoryFragment(TSubclassOf<UInvSys_BaseInventoryFragment> OutClass);
-
-	/**
-	 * Getter Or Setter
-	 **/
 
 	template<class FragmentType>
 	FragmentType* FindInventoryFragment()
@@ -61,8 +57,7 @@ public:
 		return nullptr;
 	}
 
-	UFUNCTION(BlueprintPure)
-	FORCEINLINE FGameplayTag GetInventoryObjectTag() const{ return InventoryObjectTag; }
+	FORCEINLINE FGameplayTag GetInventoryObjectTag() const;
 
 	FORCEINLINE UInvSys_InventoryComponent* GetInventoryComponent() const;
 
@@ -85,7 +80,7 @@ public:
 	virtual bool ReplicateSubobjects(UActorChannel *Channel, FOutBunch *Bunch, FReplicationFlags *RepFlags);
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-	
+
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Object")
 	UInvSys_InventoryComponent* InventoryComponent = nullptr;
@@ -121,6 +116,7 @@ public:
 		if (InvComp)
 		{
 			InventoryObjectType* InvObj = NewObject<InventoryObjectType>(InvComp);
+			InvObj->InventoryObjectTag = InventoryObjectTag;
 			InvObj->ConstructInventoryFragment(Fragments);
 			return InvObj;
 		}

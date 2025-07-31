@@ -85,17 +85,6 @@ public:
 	
 	void SetSlotTag(FGameplayTag Tag);
 
-	void SetStackCount(int32 NewStackCount)
-	{
-		StackCount = NewStackCount;
-
-		UWorld* World = GetWorld();
-		if (World && World->GetNetMode() != NM_DedicatedServer)
-		{
-			OnRep_StackCount();
-		}
-	}
-
 	TSubclassOf<UInvSys_InventoryItemDefinition> GetItemDefinition() const
 	{
 		return ItemDefinition;
@@ -105,13 +94,6 @@ public:
 	T* GetInventoryComponent() const
 	{
 		return (T*)InvComp;
-	}
-
-	template<class T = UInvSys_InventoryComponent>
-	T* GetLastInventoryComponent() const
-	{
-		check(LastInvComp);
-		return (T*)LastInvComp;
 	}
 
 	const FGuid& GetItemUniqueID() const
@@ -124,44 +106,32 @@ public:
 		return SlotTag;
 	}
 
-	int32 GetStackCount() const
-	{
-		return StackCount;
-	}
-
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
 
 public:
 	/**
 	 * 供容器使用，如果物品实例是一个容器，那么这个数组就会保存它拥有的所有物品。
 	 * 主要是为了在拖拽容器这类对象时，保存其内部储存所有物品，方便在结束拖拽时统一操作其内部物品。
 	 */
+	// 这个是否会有问题？比如对象被删除？或是内存泄漏旧对象未卸载？
 	UPROPERTY()
 	TArray<UInvSys_InventoryItemInstance*> MyInstances;
+
+	int32 ReplicationKey = INDEX_NONE;
 	
 protected:
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDefinition = nullptr;
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
-	TObjectPtr<UInvSys_InventoryComponent> InvComp = nullptr;
-
-	UPROPERTY(Replicated, BlueprintReadOnly)
-	TObjectPtr<UInvSys_InventoryComponent> LastInvComp = nullptr;
-	
-	UPROPERTY(Replicated, BlueprintReadOnly)
 	FGuid ItemUniqueID = FGuid();
-
-	UPROPERTY(ReplicatedUsing = OnRep_StackCount, BlueprintReadOnly)
-	int32 StackCount = 0;
-	UFUNCTION()
-	void OnRep_StackCount();
-	int32 LastStackCount = 0;
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	FGameplayTag  SlotTag;
 
-private:
-	// FOnInventoryStackChange OnInventoryStackChange;
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory Item Instance")
+	TObjectPtr<UInvSys_InventoryComponent> InvComp = nullptr;
+	
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory Item Instance")
+	TObjectPtr<AActor> Owner;
 };

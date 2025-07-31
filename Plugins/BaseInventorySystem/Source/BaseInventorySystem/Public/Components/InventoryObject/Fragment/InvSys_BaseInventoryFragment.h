@@ -26,14 +26,10 @@ public:
 	UInvSys_BaseInventoryFragment();
 	
 	// [Client] 由库存组件的 OnRep_InventoryObjectList 调用
-	virtual void InitInventoryFragment(/*UInvSys_BaseInventoryObject* InvObj, */UObject* PreEditFragment);
+	virtual void InitInventoryFragment(UObject* PreEditFragment);
 
 	UFUNCTION(BlueprintCallable)
 	virtual void RefreshInventoryFragment();
-	
-	virtual bool ReplicateSubobjects(UActorChannel *Channel, FOutBunch *Bunch, FReplicationFlags *RepFlags);
-
-	virtual bool IsSupportedForNetworking() const override { return true; }
 
 	FORCEINLINE bool HasAuthority() const;
 
@@ -46,6 +42,10 @@ public:
 	FORCEINLINE FGameplayTag GetInventoryObjectTag() const;
 
 	FORCEINLINE UInvSys_BaseInventoryObject* GetInventoryObject() const;
+
+	virtual bool IsSupportedForNetworking() const override { return true; }
+
+	virtual bool ReplicateSubobjects(UActorChannel *Channel, FOutBunch *Bunch, FReplicationFlags *RepFlags);
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 

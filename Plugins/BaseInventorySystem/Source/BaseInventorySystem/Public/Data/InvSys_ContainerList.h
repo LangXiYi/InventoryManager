@@ -86,6 +86,7 @@ public:
 
 /*
  * 库存列表
+ * 问题：在修改内部成员对象的属性后，在添加一个新的成员对象，会出现问题，新成员会优先发送给客户端，后面才是修改后的属性！！！
  */
 USTRUCT()
 struct BASEINVENTORYSYSTEM_API FInvSys_ContainerList : public FFastArraySerializer
@@ -133,7 +134,6 @@ public:
 		Result->SetItemUniqueID(FGuid::NewGuid());
 		// 这两个属性表明了这个对象的最基础的位置信息
 		Result->SetSlotTag(OwnerObject->GetInventoryObjectTag());
-		Result->SetInventoryComponent(OwnerObject->GetInventoryComponent());
 
 		for (const UInvSys_InventoryItemFragment* Fragment : GetDefault<UInvSys_InventoryItemDefinition>(ItemDef)->GetFragments())
 		{
@@ -167,11 +167,9 @@ public:
 		{
 			// 更新物品的基础信息
 			Instance->SetSlotTag(OwnerObject->GetInventoryObjectTag());
-			Instance->SetInventoryComponent(OwnerObject->GetInventoryComponent());
+			// Instance->SetInventoryComponent(OwnerObject->GetInventoryComponent());
 			//执行可变参数模板，将参数列表中的值赋予目标对象。
-
 			int32 Arr[] = {0, (InitItemInstanceProps(Instance, Args), 0)...};
-
 
 			FInvSys_ContainerEntry& NewEntry = Entries.AddDefaulted_GetRef();
 			NewEntry.Instance = Instance;
@@ -190,6 +188,7 @@ public:
 	void RemoveAll();
 	
 	bool RemoveEntry(UInvSys_InventoryItemInstance* Instance);
+	bool RemoveEntry(UInvSys_InventoryItemInstance* Instance, int32& OutIndex);
 
 	// bool UpdateEntryStackCount(UInvSys_InventoryItemInstance* Instance, int32 NewCount);
 

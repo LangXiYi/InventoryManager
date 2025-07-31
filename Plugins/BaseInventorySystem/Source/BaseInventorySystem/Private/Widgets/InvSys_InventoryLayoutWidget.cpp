@@ -39,11 +39,23 @@ void UInvSys_InventoryLayoutWidget::NativeOnInitialized()
 	}
 }
 
+void UInvSys_InventoryLayoutWidget::AddWidget(UUserWidget* Widget, const FGameplayTag& Tag)
+{
+	// 根据库存对象的标签查询对应的槽位，然后将需要显示的控件添加到目标槽位下。
+	if (UInvSys_TagSlot* TagSlot = FindTagSlot(Tag))
+	{
+		TagSlot->AddChild(Widget);
+	}
+	else
+	{
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("标签为 %s 的控件在布局中未找到"), *Tag.ToString());
+	}
+}
+
 bool UInvSys_InventoryLayoutWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent,
                                                  UDragDropOperation* InOperation)
 {
-	// TODO::如何获取这个组件呢？
-	UInvSys_InventoryControllerComponent* ICC = UInvSys_InventorySystemLibrary::GetInventoryControllerComponent(GetWorld());
+	UInvSys_InventoryControllerComponent* ICC = UInvSys_InventorySystemLibrary::GetPlayerInventoryComponent(GetWorld());
 	check(ICC)
 	if (ICC == nullptr)
 	{

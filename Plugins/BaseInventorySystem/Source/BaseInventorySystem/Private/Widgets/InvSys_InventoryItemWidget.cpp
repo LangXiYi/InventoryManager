@@ -39,7 +39,7 @@ void UInvSys_InventoryItemWidget::NativeOnDragDetected(const FGeometry& InGeomet
 	{
 		// 获取当前玩家的库存组件
 		UInvSys_DraggingItemWidget* DraggingWidget = CreateWidget<UInvSys_DraggingItemWidget>(this, DragDropFragment->DraggingWidgetClass);
-		UInvSys_InventoryControllerComponent* PlayerInvComp = UInvSys_InventorySystemLibrary::GetInventoryControllerComponent(GetWorld());
+		UInvSys_InventoryControllerComponent* PlayerInvComp = UInvSys_InventorySystemLibrary::GetPlayerInventoryComponent(GetWorld());
 		UInvSys_InventoryComponent* FromInvComp = ItemInstance->GetInventoryComponent();
 		if (DraggingWidget ==nullptr || PlayerInvComp == nullptr || FromInvComp == nullptr)
 		{

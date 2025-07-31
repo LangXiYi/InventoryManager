@@ -34,31 +34,27 @@ void UInvSys_BaseInventoryObject::ConstructInventoryFragment(const TArray<UInvSy
 			UInvSys_BaseInventoryFragment* TargetFragment =
 				NewObject<UInvSys_BaseInventoryFragment>(GetInventoryComponent(), Fragment->GetClass());
 
-			// TargetFragment->InventoryObject = this;
-			// TargetFragment->InventoryObjectTag = InventoryObjectTag;
-			InventoryObjectFragments.Emplace(TargetFragment);
+			TargetFragment->InventoryObjectTag = GetInventoryObjectTag();
+			int32 Index = InventoryObjectFragments.Emplace(TargetFragment);
 		}
 	}
 }
 
-void UInvSys_BaseInventoryObject::InitInventoryObject(UObject* PreEditPayLoad)
+void UInvSys_BaseInventoryObject::InitInventoryObject(UInvSys_PreEditInventoryObject* PreEditPayLoad)
 {
-	UInvSys_PreEditInventoryObject* PreEditInventoryObject = Cast<UInvSys_PreEditInventoryObject>(PreEditPayLoad);
-	check(PreEditInventoryObject)
-	if (PreEditInventoryObject)
+	check(PreEditPayLoad)
+	if (PreEditPayLoad)
 	{
-		InventoryObjectTag = PreEditInventoryObject->InventoryObjectTag;
-		// 对数组进行排序，确定内部片段的执行顺序
-		InventoryObjectFragments.Sort();
-		PreEditInventoryObject->Fragments.Sort();
+		InventoryObjectFragments.Sort(); // 对数组进行排序，确定内部片段的执行顺序
+		PreEditPayLoad->Fragments.Sort();
 		// 将预先编辑的片段中的之复制到对象内
-		for (int i = 0; i < PreEditInventoryObject->Fragments.Num(); ++i)
+		InventoryObjectTag = PreEditPayLoad->InventoryObjectTag;
+		for (int i = 0; i < PreEditPayLoad->Fragments.Num(); ++i)
 		{
 			if (InventoryObjectFragments[i] != nullptr)
 			{
 				InventoryObjectFragments[i]->InventoryObject = this;
-				InventoryObjectFragments[i]->InventoryObjectTag = InventoryObjectTag;
-				InventoryObjectFragments[i]->InitInventoryFragment(/*this, */PreEditInventoryObject->Fragments[i]);
+				InventoryObjectFragments[i]->InitInventoryFragment(PreEditPayLoad->Fragments[i]);
 			}
 		}
 	}
@@ -122,9 +118,6 @@ bool UInvSys_BaseInventoryObject::ReplicateSubobjects(UActorChannel* Channel, FO
 		{
 			continue;
 		}
-		// 我们需要 Fragment 的属性复制发生在 库存组件的 OnRep 函数之后，来初始化客户端以及服务器中 Fragment 的 InventoryObject。
-		// 执行顺序为： InventoryComp ---> InventoryFragment
-		// Fragments 第一个被复制到客户端
 		bWroteSomething |= Fragment->ReplicateSubobjects(Channel, Bunch, RepFlags);
 		bWroteSomething |= Channel->ReplicateSubobject(Fragment, *Bunch, *RepFlags);
 	}
@@ -149,6 +142,12 @@ bool UInvSys_BaseInventoryObject::IsUsingRegisteredSubObjectList()
 	}
 	check(InventoryComponent)
 	return InventoryComponent->IsUsingRegisteredSubObjectList();
+}
+
+FGameplayTag UInvSys_BaseInventoryObject::GetInventoryObjectTag() const
+{
+	check(InventoryObjectTag.IsValid())
+	return InventoryObjectTag;
 }
 
 UInvSys_InventoryComponent* UInvSys_BaseInventoryObject::GetInventoryComponent() const

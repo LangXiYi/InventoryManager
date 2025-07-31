@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameFramework/GameplayMessageSubsystem.h"
 #include "Widgets/InvSys_InventoryWidget.h"
 #include "GridInvSys_ContainerGridLayoutWidget.generated.h"
 
@@ -49,6 +50,7 @@ public:
 
 protected:
 	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
 
 public:
 	TArray<UGridInvSys_ContainerGridWidget*> GetContainerGridWidgets() const
@@ -59,7 +61,7 @@ public:
 	void GetAllContainerGridWidgets(TArray<UGridInvSys_ContainerGridWidget*>& OutArray) const;
 
 private:
-
+	void Debug_PrintContainerAllItems();
 	void Private_GetAllContainerGridWidgets(TArray<UGridInvSys_ContainerGridWidget*>& OutArray, UWidget* Parent) const;
 
 protected:
@@ -72,6 +74,8 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Container Grid Layout")
 	TObjectPtr<UGridInvSys_InventoryContainerInfo> ContainerInfo;
 
-	/*UPROPERTY(BlueprintReadOnly, meta = (ExposeOnSpawn))
-	FGameplayTag ContainerTag;*/
+private:
+	FGameplayMessageListenerHandle OnAddItemInstanceHandle;
+	FGameplayMessageListenerHandle OnRemoveItemInstanceHandle;
+	FGameplayMessageListenerHandle OnItemPositionChangedHandle;
 };

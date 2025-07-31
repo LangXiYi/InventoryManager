@@ -40,6 +40,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	bool FindEmptyPosition(UInvSys_InventoryItemInstance* InItemInstance, FGridInvSys_ItemPosition& OutPosition);
 
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
+	void UpdateItemInstancePosition(UInvSys_InventoryItemInstance* ItemInstance, FGridInvSys_ItemPosition NewPosition);
+
 public:
 	/**
 	 * Getter Or Setter

@@ -61,7 +61,6 @@ protected:
 public:
 	int32 GetItemIndex(const FIntPoint Position) const;
 	UGridInvSys_ContainerGridItemWidget* GetGridItemWidget(FIntPoint Position) const;
-	UGridInvSys_ContainerGridDropWidget* GetContainerGridDropItem(FIntPoint Position) const;
 
 	bool FindValidPosition(FIntPoint ItemSize, FIntPoint& OutPosition, const TArray<UWidget*>& Ignores = {}) const;
 
@@ -109,8 +108,6 @@ public:
 	
 	FORCEINLINE int32 GetContainerGridID() const;
 
-	FORCEINLINE FName GetSlotName() const;
-
 	FORCEINLINE FIntPoint GetContainerGridSize() const { return ContainerGridSize; }
 
 	bool IsValidPosition(const FIntPoint Position) const;
@@ -128,13 +125,6 @@ protected:
 		FIntPoint ToPosition, EGridInvSys_ItemDirection ItemDirection) const;
 
 protected:
-	// 废弃！！！
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Container Grid", meta = (BindWidget))
-	TObjectPtr<class UGridPanel> ContainerGridItemPanel;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Container Grid", meta = (BindWidget))
-	TObjectPtr<class UUniformGridPanel> ContainerGridDropPanel;
-
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Container Grid", meta = (BindWidget))
 	TObjectPtr<class UCanvasPanel> ContainerPanel;
 
@@ -143,21 +133,12 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory Container Grid")
 	TSubclassOf<UGridInvSys_ContainerGridItemWidget> GridItemWidgetClass;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory Container Grid")
-	TSubclassOf<UGridInvSys_ContainerGridDropWidget> GridDropWidgetClass;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory Container Grid")
-	TSubclassOf<UGridInvSys_DragItemWidget> DragItemWidgetClass;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory Container Grid")
 	FIntPoint ContainerGridSize = FIntPoint(1, 1);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory Container Grid")
 	int32 ContainerGridID;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory Container Grid")
-	FName SlotName;
 
 private:
 	UPROPERTY()

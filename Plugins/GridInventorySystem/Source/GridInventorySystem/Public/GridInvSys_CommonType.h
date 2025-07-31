@@ -97,7 +97,24 @@ struct FGridInvSys_ItemPosition
 		return EquipSlotTag.ToString() + "_" + FString::FromInt(GridID) +
 			":[" + FString::FromInt(Position.X) + ", " + FString::FromInt(Position.Y) + ":" + StrDirection + "]";
 	}
+
+	bool operator==(const FGridInvSys_ItemPosition& Right) const
+	{
+		return (EquipSlotTag == Right.EquipSlotTag)
+			&& (GridID == Right.GridID)
+			&& (Position == Right.Position)
+			&& (Direction == Right.Direction);
+	}
+
+	bool operator!=(const FGridInvSys_ItemPosition& Right) const
+	{
+		return (EquipSlotTag != Right.EquipSlotTag)
+			|| (GridID != Right.GridID)
+			|| (Position != Right.Position)
+			|| (Direction != Right.Direction);
+	}
 };
+
 
 USTRUCT(BlueprintType)
 struct FGridInvSys_InventoryItem

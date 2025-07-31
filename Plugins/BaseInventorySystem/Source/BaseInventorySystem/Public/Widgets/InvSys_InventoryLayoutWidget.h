@@ -19,6 +19,8 @@ public:
 
 	virtual void NativeOnInitialized() override;
 
+	virtual void AddWidget(UUserWidget* Widget, const FGameplayTag& Tag);
+
 protected:
 	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 	

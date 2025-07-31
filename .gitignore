@@ -76,4 +76,4 @@ Plugins/**/Intermediate/*
 DerivedDataCache/*
 
 # Custom Ignore Files
-/Plugins/InventorySystem
+/Content/ClassicRPGUI_2

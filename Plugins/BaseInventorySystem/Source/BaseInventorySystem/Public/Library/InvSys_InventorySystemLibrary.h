@@ -26,7 +26,7 @@ public:
 	static UInvSys_InventoryControllerComponent* GetPlayerInventoryComponent(const UObject* WorldContextObject);
 
 	template<class T = UInvSys_InventoryControllerComponent>
-	static T* GetInventoryControllerComponent(const UObject* WorldContextObject)
+	static T* GetPlayerInventoryComponent(const UObject* WorldContextObject)
 	{
 		UInvSys_InventoryControllerComponent* ICC = GetPlayerInventoryComponent(WorldContextObject);
 		check(ICC && ICC->IsA<T>());

@@ -104,12 +104,6 @@ UGridInvSys_ContainerGridItemWidget* UGridInvSys_ContainerGridWidget::GetGridIte
 	return Index >= 0 ? Cast<UGridInvSys_ContainerGridItemWidget>(ContainerPanel->GetChildAt(Index)) : nullptr;
 }
 
-UGridInvSys_ContainerGridDropWidget* UGridInvSys_ContainerGridWidget::GetContainerGridDropItem(FIntPoint Position) const
-{
-	const int32 Index = GetItemIndex(Position);
-	return Index >= 0 ? Cast<UGridInvSys_ContainerGridDropWidget>(ContainerGridDropPanel->GetChildAt(Index)) : nullptr;
-}
-
 bool UGridInvSys_ContainerGridWidget::FindValidPosition(FIntPoint ItemSize, FIntPoint& OutPosition, const TArray<UWidget*>& Ignores) const
 {
 	TArray<UGridInvSys_ContainerGridItemWidget*> FreeGridItemWidgets;
@@ -131,11 +125,6 @@ bool UGridInvSys_ContainerGridWidget::FindValidPosition(FIntPoint ItemSize, FInt
 int32 UGridInvSys_ContainerGridWidget::GetContainerGridID() const
 {
 	return ContainerGridID;
-}
-
-FName UGridInvSys_ContainerGridWidget::GetSlotName() const
-{
-	return SlotName;
 }
 
 bool UGridInvSys_ContainerGridWidget::IsValidPosition(const FIntPoint Position) const
@@ -490,7 +479,7 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(
 	UInvSys_InventoryItemInstance* ItemInstance, FGridInvSys_ItemPosition DropPosition)
 {
 	UGridInvSys_GridInventoryControllerComponent* PlayerInvComp =
-		UInvSys_InventorySystemLibrary::GetInventoryControllerComponent<UGridInvSys_GridInventoryControllerComponent>(GetWorld());
+		UInvSys_InventorySystemLibrary::GetPlayerInventoryComponent<UGridInvSys_GridInventoryControllerComponent>(GetWorld());
 	if (PlayerInvComp == nullptr)
 	{
 		return false;
@@ -540,8 +529,8 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(
 	}
 
 	// 不同容器下的物品交换 且  拖拽的物品大小 >= 放置位置的物品的大小
-	UGridInvSys_ContainerGridWidget* FromContainerGridWidget = GridInvComp->FindContainerGridWidget(GridItemInstance);
-	if (FromContainerGridWidget != this)
+	// UGridInvSys_ContainerGridWidget* FromContainerGridWidget = GridInvComp->FindContainerGridWidget(GridItemInstance);
+	if (GridInvComp != this->GetInventoryComponent() || GridItemInstance->GetSlotTag() != this->GetSlotTag())
 	{
 		if (FromTargetItemSize.X >= ToTargetItemSize.X &&
 			FromTargetItemSize.Y >= ToTargetItemSize.Y)
@@ -644,7 +633,6 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(
 			PlayerInvComp->Server_UpdateItemInstancePosition(
 				ItemInstance->GetInventoryComponent(), AllHoveredItemInstances[i], NewItemPositions[i]);
 		}
-		
 		PlayerInvComp->Server_TryDropItemInstance(InventoryComponent.Get(), ItemInstance, DropPosition);
 		return true;
 	}

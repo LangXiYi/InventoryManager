@@ -11,17 +11,23 @@
 
 class UGridInvSys_ContainerGridWidget;
 
-USTRUCT()
+USTRUCT(BlueprintType)
 struct FGridInvSys_ItemPositionChangeMessage{
 	GENERATED_BODY()
 
-	UPROPERTY()
-	UInvSys_InventoryItemInstance* Instance;
+	UPROPERTY(BlueprintReadOnly, Category = "Message")
+	UInvSys_InventoryComponent* InvComp;
 
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly, Category = "Message")
+	FGameplayTag InventoryObjectTag;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Message")
+	UInvSys_InventoryItemInstance* ItemInstance;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Message")
 	FGridInvSys_ItemPosition OldPosition;
 
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly, Category = "Message")
 	FGridInvSys_ItemPosition NewPosition;
 };
 
@@ -38,25 +44,11 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_InventoryItemInstance : public UInvSys
 public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	void InitItemInstanceProps(const FGridInvSys_ItemPosition& NewItemPosition)
-	{
-		SetItemPosition(NewItemPosition);
-	}
+	void InitItemInstanceProps(const FGridInvSys_ItemPosition& NewItemPosition);
 
 	virtual void RemoveFromInventory() override;
 	
-	void SetItemPosition(const FGridInvSys_ItemPosition& NewItemPosition)
-	{
-		LastItemPosition = ItemPosition;
-		ItemPosition = NewItemPosition;
-		SetSlotTag(ItemPosition.EquipSlotTag);
-
-		UWorld* World = GetWorld();
-		if (World && World->GetNetMode() != NM_DedicatedServer)
-		{
-			OnRep_ItemPosition();
-		}
-	}
+	void SetItemPosition(const FGridInvSys_ItemPosition& NewItemPosition);
 
 	FGridInvSys_ItemPosition GetItemPosition() const
 	{
@@ -68,34 +60,21 @@ public:
 		return LastItemPosition;
 	}
 
-	void BroadcastItemPositionChangeMessage(const FGridInvSys_ItemPosition& OldPosition, const FGridInvSys_ItemPosition& NewPosition)
-	{
-		FGridInvSys_ItemPositionChangeMessage ItemPositionChangeMessage;
-		ItemPositionChangeMessage.Instance = this;
-		ItemPositionChangeMessage.OldPosition = OldPosition;
-		ItemPositionChangeMessage.NewPosition = NewPosition;
-
-		OnItemPositionChange.ExecuteIfBound(ItemPositionChangeMessage);
-	}
-	
-	FOnItemPositionChange& OnItemPositionChangeDelegate()
-	{
-		return OnItemPositionChange;
-	}
+	void BroadcastItemPositionChangeMessage(const FGridInvSys_ItemPosition& OldPosition, const FGridInvSys_ItemPosition& NewPosition);
 	
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Grid Item Instance", ReplicatedUsing = OnRep_ItemPosition)
 	FGridInvSys_ItemPosition ItemPosition;
+
 	UFUNCTION()
 	void OnRep_ItemPosition();
+	
 
 	UPROPERTY(BlueprintReadOnly, Category = "Grid Item Instance", Replicated)
 	FGridInvSys_ItemPosition LastItemPosition;
 	
 	UPROPERTY()
 	FGridInvSys_ItemPosition NewTempItemPosition;
-	UPROPERTY()
-	bool bIsFirstRepItemPosition = true;
 
 private:
 	FOnItemPositionChange OnItemPositionChange;

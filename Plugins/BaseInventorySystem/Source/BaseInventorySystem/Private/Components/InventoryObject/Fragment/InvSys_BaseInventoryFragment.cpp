@@ -42,12 +42,7 @@ bool UInvSys_BaseInventoryFragment::ReplicateSubobjects(
 	UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags)
 {
 	UActorChannel::SetCurrentSubObjectOwner(GetInventoryComponent());
-	bool bWroteSomething = false;
-	// if (InventoryObject && IsValid(InventoryObject))
-	// {
-	// 	bWroteSomething = Channel->ReplicateSubobject(InventoryObject, *Bunch, *RepFlags);
-	// }
-	return bWroteSomething;
+	return false;
 }
 
 bool UInvSys_BaseInventoryFragment::HasAuthority() const
