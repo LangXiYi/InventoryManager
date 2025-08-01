@@ -36,7 +36,7 @@ public:
 	 * void Server_TryDropItemInstance(InvComp, ItemInstance, SlotTag, Args...);
 	 */
 	template<class T, class... Arg>
-	bool DropItemInstance(UInvSys_InventoryComponent* InvComp, T* InItemInstance, FGameplayTag SlotTag, const Arg&... Ags)
+	bool DropItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Ags)
 	{
 		if (bIsSuccessDragItem && InvComp)
 		{
@@ -52,8 +52,11 @@ public:
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_DropItemInstanceToWorld(UInvSys_InventoryItemInstance* InItemInstance);
-	
-private:
+
+protected:
+	virtual bool ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags) override;
+
+protected:
 	// 标记玩家是否拖拽起了目标物品
 	bool bIsSuccessDragItem = false;
 

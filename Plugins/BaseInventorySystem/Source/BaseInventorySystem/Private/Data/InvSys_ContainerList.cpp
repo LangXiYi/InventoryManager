@@ -21,17 +21,16 @@ FString FInvSys_ContainerEntry::GetDebugString() const
 
 void FInvSys_ContainerList::RemoveAll()
 {
-	/*for (int i = Entries.Num() - 1; i >= 0; --i) // 倒序删除
+	for (int i = Entries.Num() - 1; i >= 0; --i) // 倒序删除
 	{
 		FInvSys_ContainerEntry& Entry = Entries[i];
-		if (OwnerObject->GetNetMode() != NM_DedicatedServer)
+		/*if (OwnerObject->GetNetMode() != NM_DedicatedServer)
 		{
 			BroadcastRemoveEntryMessage(Entry);
-		}
-		Entries.RemoveAt(i);
-		MarkArrayDirty();
-	}*/
-	Entries.Empty();
+		}*/
+		Entry.Instance->RemoveFromInventory();
+	}
+	Entries.Reset();
 	MarkArrayDirty();
 }
 
@@ -42,6 +41,7 @@ bool FInvSys_ContainerList::RemoveEntry(UInvSys_InventoryItemInstance* Instance)
 		FInvSys_ContainerEntry& Entry = *EntryIt;
 		if (Entry.Instance == Instance)
 		{
+			Entry.Instance->RemoveFromInventory();
 			if (OwnerObject->GetNetMode() != NM_DedicatedServer)
 			{
 				BroadcastRemoveEntryMessage(Entry);
@@ -55,24 +55,15 @@ bool FInvSys_ContainerList::RemoveEntry(UInvSys_InventoryItemInstance* Instance)
 	return false;
 }
 
-bool FInvSys_ContainerList::RemoveEntry(UInvSys_InventoryItemInstance* Instance, int32& OutIndex)
+void FInvSys_ContainerList::RemoveAt(int32 Index)
 {
-	for (auto EntryIt = Entries.CreateIterator(); EntryIt; ++EntryIt)
+	if (Entries.IsValidIndex(Index))
 	{
-		FInvSys_ContainerEntry& Entry = *EntryIt;
-		if (Entry.Instance == Instance)
-		{
-			if (OwnerObject->GetNetMode() != NM_DedicatedServer)
-			{
-				BroadcastRemoveEntryMessage(Entry);
-			}
-			OutIndex = EntryIt.GetIndex();
-			EntryIt.RemoveCurrent(); //这里Remove后，Entry的值会同步改变
-			MarkArrayDirty();
-			return true;
-		}
+		FInvSys_ContainerEntry& Entry = Entries[Index];
+		Entry.Instance->RemoveFromInventory();
+		Entries.RemoveAt(Index);
+		MarkArrayDirty();
 	}
-	return false;
 }
 
 UInvSys_InventoryItemInstance* FInvSys_ContainerList::FindItem(FGuid ItemUniqueID) const
@@ -121,7 +112,6 @@ void FInvSys_ContainerList::PostReplicatedAdd(const TArrayView<int32>& AddedIndi
 
 void FInvSys_ContainerList::PostReplicatedChange(const TArrayView<int32>& ChangedIndices, int32 FinalSize)
 {
-	UE_LOG(LogInventorySystem, Error, TEXT("[%s]PostReplicatedChange"), *OwnerObject->GetOwner()->GetName())
 	for (int32 Index : ChangedIndices)
 	{
 		FInvSys_ContainerEntry& Entry = Entries[Index];

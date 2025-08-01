@@ -16,13 +16,13 @@ struct FGridInvSys_ItemPositionChangeMessage{
 	GENERATED_BODY()
 
 	UPROPERTY(BlueprintReadOnly, Category = "Message")
+	UInvSys_InventoryItemInstance* ItemInstance;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Message")
 	UInvSys_InventoryComponent* InvComp;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Message")
-	FGameplayTag InventoryObjectTag;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Message")
-	UInvSys_InventoryItemInstance* ItemInstance;
+	// UPROPERTY(BlueprintReadOnly, Category = "Message")
+	// UInvSys_InventoryComponent* OldInvComp;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Message")
 	FGridInvSys_ItemPosition OldPosition;
@@ -68,13 +68,12 @@ protected:
 
 	UFUNCTION()
 	void OnRep_ItemPosition();
-	
 
-	UPROPERTY(BlueprintReadOnly, Category = "Grid Item Instance", Replicated)
+	UPROPERTY(BlueprintReadOnly, Transient, Category = "Grid Item Instance"/*, Replicated*/)
 	FGridInvSys_ItemPosition LastItemPosition;
 	
-	UPROPERTY()
-	FGridInvSys_ItemPosition NewTempItemPosition;
+	UPROPERTY(Transient)
+	FGridInvSys_ItemPosition TempItemPosition;
 
 private:
 	FOnItemPositionChange OnItemPositionChange;

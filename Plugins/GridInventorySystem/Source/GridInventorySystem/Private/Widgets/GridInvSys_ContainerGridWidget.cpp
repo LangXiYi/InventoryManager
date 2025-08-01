@@ -268,7 +268,7 @@ bool UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer(
 		{
 			// 计算相对坐标
 			FGridInvSys_ItemPosition TempItemPos = OccupiedItemInstance->GetItemPosition();
-			FGridInvSys_ItemPosition FromItemPosition = GridItemInstance->GetItemPosition();
+			FGridInvSys_ItemPosition FromItemPosition = GridItemInstance->GetLastItemPosition();
 			FIntPoint RelativePosition;
 			RelativePosition.X = TempItemPos.Position.X - ToPosition.X;
 			RelativePosition.Y = TempItemPos.Position.Y - ToPosition.Y;
@@ -541,7 +541,7 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(
 			for (UGridInvSys_InventoryItemInstance* HoveredItemInstance : AllHoveredItemInstances)
 			{
 				FGridInvSys_ItemPosition TempItemPos = HoveredItemInstance->GetItemPosition();
-				FGridInvSys_ItemPosition FromItemPosition = GridItemInstance->GetItemPosition();
+				FGridInvSys_ItemPosition FromItemPosition = GridItemInstance->GetLastItemPosition();
 				// ToPosition TempPos.Pos 计算相对坐标
 				FIntPoint RelativePosition;
 				RelativePosition.X = TempItemPos.Position.X - DropPosition.Position.X;
@@ -573,7 +573,8 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(
 	// 相同容器下物品交换 且 拖拽的物品大小 >= 放置位置的物品的大小
 	if (FromTargetItemSize.X >= ToTargetItemSize.X && FromTargetItemSize.Y >= ToTargetItemSize.Y)
 	{
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("[Try Drop Item] 相同容器下交换，To 的位置已经被其他物品占领，且拖拽的物品大小 >= 放置位置的物品的大小"))
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
+			TEXT("[Try Drop Item] 相同容器下交换，To 的位置已经被其他物品占领，且拖拽的物品大小 >= 放置位置的物品的大小"))
 		TArray<UGridInvSys_InventoryItemInstance*> AllHoveredItemInstances;
 		GetAllHoveredItemInstances(AllHoveredItemInstances, DropPosition.Position, FromTargetItemSize);
 
@@ -582,7 +583,7 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(
 		{
 			// 计算相对坐标
 			FGridInvSys_ItemPosition TempItemPos = HoveredItemInstance->GetItemPosition();
-			FGridInvSys_ItemPosition FromItemPosition = GridItemInstance->GetItemPosition();
+			FGridInvSys_ItemPosition FromItemPosition = GridItemInstance->GetLastItemPosition();
 			FIntPoint RelativePosition;
 			RelativePosition.X = TempItemPos.Position.X - DropPosition.Position.X;
 			RelativePosition.Y = TempItemPos.Position.Y - DropPosition.Position.Y;
@@ -627,13 +628,13 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(
 			// TempItemPos.Direction; // 方向保持不变。
 			NewItemPositions.Add(TempItemPos);
 		}
-
-		for (int i = 0; i < AllHoveredItemInstances.Num(); ++i)
-		{
-			PlayerInvComp->Server_UpdateItemInstancePosition(
-				ItemInstance->GetInventoryComponent(), AllHoveredItemInstances[i], NewItemPositions[i]);
-		}
-		PlayerInvComp->Server_TryDropItemInstance(InventoryComponent.Get(), ItemInstance, DropPosition);
+		PlayerInvComp->Server_TestFunc(InventoryComponent.Get(), AllHoveredItemInstances, NewItemPositions, ItemInstance, DropPosition);
+		// for (int i = 0; i < AllHoveredItemInstances.Num(); ++i)
+		// {
+		// 	PlayerInvComp->Server_UpdateItemInstancePosition(
+		// 		InventoryComponent.Get(), AllHoveredItemInstances[i], NewItemPositions[i]);
+		// }
+		// PlayerInvComp->Server_TryDropItemInstance(InventoryComponent.Get(), ItemInstance, DropPosition);
 		return true;
 	}
 #if 1
@@ -671,40 +672,6 @@ void UGridInvSys_ContainerGridWidget::ShowDragGridEffect(FIntPoint Position, FIn
 	for (UGridInvSys_ContainerGridItemWidget* DropOverItem : LastDropOverItems)
 	{
 		DropOverItem->OnDraggingHovered(bIsRight);
-	}
-}
-
-void UGridInvSys_ContainerGridWidget::UpdateInventoryItem(const FGridInvSys_InventoryItem& InventoryItem)
-{
-	const FIntPoint ToPosition = InventoryItem.ItemPosition.Position; 
-	UGridInvSys_ContainerGridItemWidget* ToGridItemWidget = GetGridItemWidget(ToPosition);
-	if (ToGridItemWidget == nullptr)
-	{
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("添加物品失败：ToGridItemWidget is nullptr."));
-		return;
-	}
-	ToGridItemWidget->UpdateItemInfo(InventoryItem);
-}
-
-void UGridInvSys_ContainerGridWidget::RemoveInventoryItem(const FGridInvSys_InventoryItem& InventoryItem)
-{
-	const FIntPoint ToPosition = InventoryItem.ItemPosition.Position;
-	UGridInvSys_ContainerGridItemWidget* RemoveGridItemWidget = GetGridItemWidget(ToPosition);
-	if (RemoveGridItemWidget == nullptr)
-	{
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("移除物品失败：RemoveGridItemWidget is nullptr."));
-		return;
-	}
-
-	TArray<UGridInvSys_ContainerGridItemWidget*> OutArray;
-	GetContainerGridItems<UGridInvSys_ContainerGridItemWidget>(OutArray,ToPosition, InventoryItem.ItemPosition.ItemSize);
-	for (UGridInvSys_ContainerGridItemWidget* ItemWidget : OutArray)
-	{
-		// 判断要删除的物品唯一ID是否与需要删除的物品一致，避免误删。
-		if (ItemWidget->GetItemUniqueID() == InventoryItem.BaseItemData.UniqueID)
-		{
-			ItemWidget->RemoveItemInfo();
-		}
 	}
 }
 

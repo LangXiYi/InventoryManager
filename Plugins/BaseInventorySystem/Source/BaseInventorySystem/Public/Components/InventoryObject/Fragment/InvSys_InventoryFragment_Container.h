@@ -35,7 +35,7 @@ public:
 	T* AddItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, const Arg&... Args)
 	{
 		check(ItemDef)
-		T* ItemInstance = ContainerList.AddEntry<T>(ItemDef, StackCount, Args...);
+		T* ItemInstance = ContainerList.AddDefinition<T>(ItemDef, StackCount, Args...);
 		if (ItemInstance)
 		{
 			MarkItemInstanceDirty(ItemInstance);
@@ -45,11 +45,11 @@ public:
 
 	// 作为对象属性，ContainerList 的复制优先 其内部其他对象的 复制！！！
 	/** 从其他容器添加物品，容器与容器间的交换，不会 RemoveReplicateObject，因为它们都在同一个Actor下 */
-	template<class T = UInvSys_InventoryItemInstance, class... Arg>
-	bool AddItemInstance(T* ItemInstance, const Arg&... Args)
+	template<class T, class... Arg>
+	bool AddItemInstance(UInvSys_InventoryItemInstance* ItemInstance, const Arg&... Args)
 	{
 		check(ItemInstance)
-		bool bIsSuccess = ContainerList.AddEntry(ItemInstance, Args...);
+		bool bIsSuccess = ContainerList.AddInstance<T>(ItemInstance, Args...);
 		if (bIsSuccess)
 		{
 			MarkItemInstanceDirty(ItemInstance);
@@ -93,8 +93,10 @@ public:
 	int32 ContainerReplicationKey = INDEX_NONE;
 
 protected:
-	UPROPERTY(Replicated)
+	UPROPERTY(ReplicatedUsing=OnRep_ContainerList)
 	FInvSys_ContainerList ContainerList;
+	UFUNCTION()
+	void OnRep_ContainerList();
 
 	TMap<int32, int32> ContainerEntryRepKeyMap;
 

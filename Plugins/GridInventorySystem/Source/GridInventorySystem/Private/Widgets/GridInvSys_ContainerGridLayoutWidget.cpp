@@ -6,7 +6,6 @@
 #include "BaseInventorySystem.h"
 #include "GridInventorySystem.h"
 #include "Components/PanelWidget.h"
-#include "Data/GridInvSys_InventoryContainerInfo.h"
 #include "Data/GridInvSys_InventoryItemInstance.h"
 #include "Data/InvSys_InventoryItemInstance.h"
 #include "Library/InvSys_InventorySystemLibrary.h"
@@ -17,6 +16,7 @@ void UGridInvSys_ContainerGridLayoutWidget::RefreshWidget()
 {
 	Super::RefreshWidget();
 
+	// 初始化容器布局内的所有容器
 	if (ContainerGridWidgets.IsEmpty())
 	{
 		ContainerGridWidgets.Empty();
@@ -89,19 +89,25 @@ void UGridInvSys_ContainerGridLayoutWidget::NativeConstruct()
 
 	auto WarpItemPositionChangedFunc = [this](FGameplayTag Tag, const FGridInvSys_ItemPositionChangeMessage& Message)
 	{
-		if (Message.InventoryObjectTag == GetSlotTag() && Message.InvComp == GetInventoryComponent())
+		if (Message.InvComp == GetInventoryComponent())
 		{
-			RemoveItemInstanceFrom(Message.ItemInstance, Message.OldPosition);
-			AddItemInstanceTo(Message.ItemInstance, Message.NewPosition);
+			if (Message.OldPosition.IsValid() && Message.OldPosition.EquipSlotTag == GetSlotTag())
+			{
+				RemoveItemInstanceFrom(Message.ItemInstance, Message.OldPosition);
+			}
+			if (Message.NewPosition.IsValid() && Message.NewPosition.EquipSlotTag == GetSlotTag())
+			{
+				AddItemInstanceTo(Message.ItemInstance, Message.NewPosition);
+			}
 		}
 	};
 
 	UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(GetWorld());
-	OnAddItemInstanceHandle =MessageSubsystem.RegisterListener<FInvSys_InventoryItemChangedMessage>(
-		Inventory_Message_AddItem, MoveTemp(WarpAddItemFunc));
-
-	OnRemoveItemInstanceHandle =MessageSubsystem.RegisterListener<FInvSys_InventoryItemChangedMessage>(
-		Inventory_Message_RemoveItem, MoveTemp(WarpRemoveItemFunc));
+	// OnAddItemInstanceHandle =MessageSubsystem.RegisterListener<FInvSys_InventoryItemChangedMessage>(
+	// 	Inventory_Message_AddItem, MoveTemp(WarpAddItemFunc));
+	//
+	// OnRemoveItemInstanceHandle =MessageSubsystem.RegisterListener<FInvSys_InventoryItemChangedMessage>(
+	// 	Inventory_Message_RemoveItem, MoveTemp(WarpRemoveItemFunc));
 
 	OnItemPositionChangedHandle =MessageSubsystem.RegisterListener<FGridInvSys_ItemPositionChangeMessage>(
 		Inventory_Message_ItemPositionChanged, MoveTemp(WarpItemPositionChangedFunc));
@@ -232,6 +238,11 @@ void UGridInvSys_ContainerGridLayoutWidget::AddItemInstanceTo(
 		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("物品添加失败，物品实例为空"))
 		return;
 	}
+	if (InPosition.IsValid() == false)
+	{
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("物品添加失败，传入的位置信息不对"))
+		return;
+	}
 	if (InItemInstance->GetInventoryComponent() != InventoryComponent)
 	{
 		// 添加的物品必须是在同一组件下的。
@@ -316,6 +327,12 @@ void UGridInvSys_ContainerGridLayoutWidget::RemoveItemInstanceFrom(UInvSys_Inven
 {
 	if (InItemInstance == nullptr)
 	{
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("物品移除失败，传入的物品实例为空"))
+		return;
+	}
+	if (InPosition.IsValid() == false)
+	{
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("物品移除失败，传入的位置信息不对"))
 		return;
 	}
 

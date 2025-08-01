@@ -119,7 +119,7 @@ public:
 	TObjectPtr<UInvSys_BaseInventoryFragment> OwnerObject;
 public:
 	template<class T, class... Arg>
-	T* AddEntry(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, const Arg&... Args)
+	T* AddDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, const Arg&... Args)
 	{
 		if (ItemDef == nullptr || OwnerObject == nullptr)
 		{
@@ -146,7 +146,7 @@ public:
 		NewEntry.Instance = Result;
 		NewEntry.StackCount = StackCount;
 		//执行可变参数模板，将参数列表中的值赋予目标对象。
-		int32 Arr[] = {0, (InitItemInstanceProps(Result, Args), 0)...}; 
+		int32 Arr[] = {0, (InitItemInstanceProps<T>(Result, Args), 0)...}; 
 		
 		MarkItemDirty(NewEntry);
 		
@@ -161,7 +161,7 @@ public:
 	 * 添加其他物品实例
 	 */
 	template<class T, class... Arg>
-	bool AddEntry(T* Instance, const Arg&... Args)
+	bool AddInstance(UInvSys_InventoryItemInstance* Instance, const Arg&... Args)
 	{
 		if (Instance)
 		{
@@ -169,7 +169,7 @@ public:
 			Instance->SetSlotTag(OwnerObject->GetInventoryObjectTag());
 			// Instance->SetInventoryComponent(OwnerObject->GetInventoryComponent());
 			//执行可变参数模板，将参数列表中的值赋予目标对象。
-			int32 Arr[] = {0, (InitItemInstanceProps(Instance, Args), 0)...};
+			int32 Arr[] = {0, (InitItemInstanceProps<T>(Instance, Args), 0)...};
 
 			FInvSys_ContainerEntry& NewEntry = Entries.AddDefaulted_GetRef();
 			NewEntry.Instance = Instance;
@@ -188,7 +188,8 @@ public:
 	void RemoveAll();
 	
 	bool RemoveEntry(UInvSys_InventoryItemInstance* Instance);
-	bool RemoveEntry(UInvSys_InventoryItemInstance* Instance, int32& OutIndex);
+
+	void RemoveAt(int32 Index);
 
 	// bool UpdateEntryStackCount(UInvSys_InventoryItemInstance* Instance, int32 NewCount);
 
@@ -254,11 +255,11 @@ protected:
 
 private:
 	template<class C, class V>
-	void InitItemInstanceProps(C* ItemInstance, const V& Value)
+	void InitItemInstanceProps(UInvSys_InventoryItemInstance* ItemInstance, const V& Value)
 	{
-		if (ItemInstance != nullptr)
+		if (ItemInstance != nullptr && ItemInstance->IsA<C>())
 		{
-			ItemInstance->InitItemInstanceProps(Value);	// ItemInstance 需要创建对应的函数处理该值
+			((C*)ItemInstance)->InitItemInstanceProps(Value);	// ItemInstance 需要创建对应的函数处理该值
 		}
 	}
 

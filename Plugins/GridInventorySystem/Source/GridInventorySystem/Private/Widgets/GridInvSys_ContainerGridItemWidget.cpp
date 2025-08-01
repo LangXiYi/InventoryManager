@@ -30,16 +30,6 @@ void UGridInvSys_ContainerGridItemWidget::OnConstructGridItem(UGridInvSys_Contai
 	InventoryComponent = InContainerGrid->GetInventoryComponent();
 }
 
-void UGridInvSys_ContainerGridItemWidget::UpdateItemInfo(const FGridInvSys_InventoryItem& NewInventoryItem)
-{
-	checkNoEntry()
-}
-
-void UGridInvSys_ContainerGridItemWidget::RemoveItemInfo()
-{
-	checkNoEntry()
-}
-
 void UGridInvSys_ContainerGridItemWidget::AddItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)
 {
 	/*UCanvasPanelSlot* GridSlot = Cast<UCanvasPanelSlot>(Slot);
@@ -97,11 +87,6 @@ UGridInvSys_ContainerGridWidget* UGridInvSys_ContainerGridItemWidget::GetContain
 	return ContainerGridWidget;
 }
 
-UInvSys_InventoryItemInfo* UGridInvSys_ContainerGridItemWidget::GetItemInfo() const
-{
-	return nullptr;
-}
-
 FIntPoint UGridInvSys_ContainerGridItemWidget::GetPosition() const
 {
 	return Position;
@@ -121,7 +106,8 @@ bool UGridInvSys_ContainerGridItemWidget::IsOccupied()
 {
 	if (ItemInstance.IsValid())
 	{
-		UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(ItemInstance);
+		return true;
+		/*UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(ItemInstance);
 		if (GridItemInstance)
 		{
 			// 物品有效
@@ -135,12 +121,13 @@ bool UGridInvSys_ContainerGridItemWidget::IsOccupied()
 			}
 			else
 			{
-				checkNoEntry()
+				// 在 ContainerGridLayout 收到监听的 ItemPositionChanged 执行之前，该函数可能会被触发
+				//checkNoEntry()
 				// bug 在 1x2 大小的物品替换 两个 1x1 大小的物品时会报错
 				UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("检查槽位是否被占据时发现物品实例与当前槽位的位置不符，故自动将物品移除显示。"))
 				RemoveItemInstance();
 			}
-		}
+		}*/
 	}
 	return false;
 }

@@ -138,6 +138,9 @@ bool UGridInvSys_InventoryComponent::FindEmptyPosition(UInvSys_InventoryItemInst
 void UGridInvSys_InventoryComponent::UpdateItemInstancePosition(UInvSys_InventoryItemInstance* ItemInstance,
 	FGridInvSys_ItemPosition NewPosition)
 {
+	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("更新 [%s] 位置信息 --> {%s}"),
+	*ItemInstance->GetItemDisplayName().ToString(),
+	*NewPosition.ToString())
 	if (ItemInstance && ItemInstance->IsA<UGridInvSys_InventoryItemInstance>())
 	{
 		UGridInvSys_InventoryItemInstance* GridItem = Cast<UGridInvSys_InventoryItemInstance>(ItemInstance);
@@ -145,8 +148,7 @@ void UGridInvSys_InventoryComponent::UpdateItemInstancePosition(UInvSys_Inventor
 		auto ContainerFragment = FindInventoryObjectFragment<UGridInvSys_InventoryFragment_Container>(NewPosition.EquipSlotTag);
 		if (ContainerFragment)
 		{
-			bool bIsSuccess = ContainerFragment->UpdateItemInstancePosition(GridItem, NewPosition);
-			UE_CLOG(bIsSuccess == false, LogInventorySystem, Error, TEXT("更新物品实例位置失败！！！"))
+			ContainerFragment->UpdateItemInstancePosition(GridItem, NewPosition);
 		}
 	}
 }

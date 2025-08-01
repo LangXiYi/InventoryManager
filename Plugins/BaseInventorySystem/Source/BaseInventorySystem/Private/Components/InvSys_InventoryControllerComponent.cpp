@@ -6,12 +6,35 @@
 #include "BaseInventorySystem.h"
 #include "Components/InvSys_InventoryComponent.h"
 #include "Data/InvSys_ItemFragment_EquipItem.h"
+#include "Engine/ActorChannel.h"
 
 
 UInvSys_InventoryControllerComponent::UInvSys_InventoryControllerComponent(const FObjectInitializer& ObjectInitializer)
 	:Super(ObjectInitializer)
 {
 	PrimaryComponentTick.bCanEverTick = false;
+}
+
+bool UInvSys_InventoryControllerComponent::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch,
+	FReplicationFlags* RepFlags)
+{
+	// 持续同步被拽起的物品
+	bool bWroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
+	if (DraggingItemInstance != nullptr)
+	{
+		// UActorChannel::SetCurrentSubObjectOwner(DraggingItemInstance->GetInventoryComponent());
+		if (DraggingItemInstance->MyInstances.Num() > 0)
+		{
+			for (UInvSys_InventoryItemInstance* ItemInstance : DraggingItemInstance->MyInstances)
+			{
+				bWroteSomething |= Channel->ReplicateSubobject(ItemInstance, *Bunch, * RepFlags);
+			}
+		}
+		bWroteSomething |= Channel->ReplicateSubobject(DraggingItemInstance, *Bunch, * RepFlags);
+
+		UE_CLOG(bWroteSomething, LogInventorySystem, Error, TEXT("正在复制拖拽的物品实例"))
+	}
+	return bWroteSomething;
 }
 
 void UInvSys_InventoryControllerComponent::Server_EquipItemDefinition_Implementation(

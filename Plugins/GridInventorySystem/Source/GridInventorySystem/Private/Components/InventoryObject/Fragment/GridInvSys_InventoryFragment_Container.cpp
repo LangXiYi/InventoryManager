@@ -42,8 +42,8 @@ bool UGridInvSys_InventoryFragment_Container::UpdateItemInstancePosition(
 		if (HasEnoughFreeSpace(NewPosition.Position, NewPosition.GridID, Size))
 		{
 			GridItemInstance->SetItemPosition(NewPosition);
+			// todo::Update occupied state
 			MarkItemInstanceDirty(GridItemInstance);
-			Owner_Private->ForceNetUpdate();
 			return true;
 		}
 	}
@@ -93,7 +93,7 @@ void UGridInvSys_InventoryFragment_Container::UpdateContainerGridItemState(
 	auto ItemSizeFragment = GridItemInstance->FindFragmentByClass<UGridInvSys_ItemFragment_GridItemSize>();
 	if (GridItemInstance && ItemSizeFragment)
 	{
-		FGridInvSys_ItemPosition ItemPosition = GridItemInstance->GetItemPosition();
+		FGridInvSys_ItemPosition ItemPosition = IsOccupy ? GridItemInstance->GetItemPosition() : GridItemInstance->GetLastItemPosition();
 		FIntPoint ItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSize(GridItemInstance);
 		if (OccupiedGrid.IsValidIndex(ItemPosition.GridID) && ContainerGridSize.IsValidIndex(ItemPosition.GridID))
 		{
@@ -114,7 +114,7 @@ void UGridInvSys_InventoryFragment_Container::UpdateContainerGridItemState(
 		}
 	}
 	// 打印当前网格占据图
-	// PrintDebugOccupiedGrid();
+	PrintDebugOccupiedGrid();
 }
 
 bool UGridInvSys_InventoryFragment_Container::FindEmptyPosition(FIntPoint ItemSize,

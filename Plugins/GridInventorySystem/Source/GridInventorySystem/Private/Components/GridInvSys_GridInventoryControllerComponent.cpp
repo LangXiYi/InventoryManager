@@ -28,6 +28,20 @@ void UGridInvSys_GridInventoryControllerComponent::TryDropItemInstance(UInvSys_I
 		*OldPosition.ToString(), *InPos.ToString())
 }
 
+void UGridInvSys_GridInventoryControllerComponent::Server_TestFunc_Implementation(UInvSys_InventoryComponent* InvComp,
+	const TArray<UGridInvSys_InventoryItemInstance*>& Array, const TArray<FGridInvSys_ItemPosition>& NewItemPositions,
+	UInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& DropPosition)
+{
+	UGridInvSys_InventoryComponent* GridInvComp = Cast<UGridInvSys_InventoryComponent>(InvComp);
+
+	int32 Num = Array.Num();
+	for (int i = 0; i < Num; ++i)
+	{
+		GridInvComp->UpdateItemInstancePosition(Array[i], NewItemPositions[i]);
+	}
+	DropItemInstance<UGridInvSys_InventoryItemInstance>(InvComp, ItemInstance, DropPosition.EquipSlotTag, DropPosition);
+}
+
 void UGridInvSys_GridInventoryControllerComponent::Server_AddItemInstancesToContainerPos_Implementation(
 	UInvSys_InventoryComponent* InvComp, const TArray<UInvSys_InventoryItemInstance*>& InItemInstances,
 	const TArray<FGridInvSys_ItemPosition>& InPosArray)
@@ -112,8 +126,8 @@ void UGridInvSys_GridInventoryControllerComponent::Server_SwapItemInstance_Imple
 			FGameplayTag TempSlotTag = ToGridItem->GetSlotTag();
 			FGridInvSys_ItemPosition TempItemPosition = ToGridItem->GetItemPosition();
 
-			FromInvComp->AddItemInstance(ToGridItem, FromGridItem->GetSlotTag(), FromGridItem->GetItemPosition());
-			ToInvComp->AddItemInstance(FromGridItem, TempSlotTag, TempItemPosition);
+			FromInvComp->AddItemInstance<UGridInvSys_InventoryItemInstance>(ToGridItem, FromGridItem->GetSlotTag(), FromGridItem->GetItemPosition());
+			ToInvComp->AddItemInstance<UGridInvSys_InventoryItemInstance>(FromGridItem, TempSlotTag, TempItemPosition);
 		}
 	}
 }

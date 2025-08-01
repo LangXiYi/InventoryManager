@@ -43,28 +43,6 @@ enum class EGridInvSys_InventoryItemType : uint8
 };
 
 USTRUCT(BlueprintType)
-struct FGridInvSys_InventoryItemPosition
-{
-	GENERATED_BODY()
-
-	// 槽位名称
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
-	FName SlotName = NAME_None;
-	// 网格ID
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
-	FName GridID = NAME_None;
-	// 单元格位置
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
-	FIntPoint Position = FIntPoint(0, 0);
-	// 物品方向会影响贴图方向以及占据的网格大小。
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
-	EGridInvSys_ItemDirection Direction = EGridInvSys_ItemDirection::Horizontal;
-	// 物品在网格占据的大小，受方向影响，如1，2的物品在旋转后应该为2，1，但物品的默认大小为1，2
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
-	FIntPoint ItemSize = FIntPoint(1, 1);
-};
-
-USTRUCT(BlueprintType)
 struct FGridInvSys_ItemPosition
 {
 	GENERATED_BODY()
@@ -73,7 +51,7 @@ struct FGridInvSys_ItemPosition
 	FGameplayTag EquipSlotTag = FGameplayTag();
 	// 网格ID
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
-	int32 GridID = -1;
+	int32 GridID = INDEX_NONE;
 	// 单元格位置
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
 	FIntPoint Position = FIntPoint(0, 0);
@@ -81,7 +59,12 @@ struct FGridInvSys_ItemPosition
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
 	EGridInvSys_ItemDirection Direction = EGridInvSys_ItemDirection::Horizontal;
 
-	FString ToString() const
+	FORCEINLINE bool IsValid() const
+	{
+		return EquipSlotTag.IsValid() && GridID != INDEX_NONE;
+	}
+
+	FORCEINLINE FString ToString() const
 	{
 		FString StrDirection = "None";
 		switch (Direction)
@@ -98,7 +81,7 @@ struct FGridInvSys_ItemPosition
 			":[" + FString::FromInt(Position.X) + ", " + FString::FromInt(Position.Y) + ":" + StrDirection + "]";
 	}
 
-	bool operator==(const FGridInvSys_ItemPosition& Right) const
+	FORCEINLINE bool operator==(const FGridInvSys_ItemPosition& Right) const
 	{
 		return (EquipSlotTag == Right.EquipSlotTag)
 			&& (GridID == Right.GridID)
@@ -106,33 +89,11 @@ struct FGridInvSys_ItemPosition
 			&& (Direction == Right.Direction);
 	}
 
-	bool operator!=(const FGridInvSys_ItemPosition& Right) const
+	FORCEINLINE bool operator!=(const FGridInvSys_ItemPosition& Right) const
 	{
 		return (EquipSlotTag != Right.EquipSlotTag)
 			|| (GridID != Right.GridID)
 			|| (Position != Right.Position)
 			|| (Direction != Right.Direction);
-	}
-};
-
-
-USTRUCT(BlueprintType)
-struct FGridInvSys_InventoryItem
-{
-	GENERATED_BODY()
-
-	// 物品类型
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
-	EGridInvSys_InventoryItemType ItemType = EGridInvSys_InventoryItemType::None;
-	// 物品基础数据
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
-	FInvSys_InventoryItem BaseItemData;
-	// 物品在网格中的位置
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InventoryItem")
-	FGridInvSys_InventoryItemPosition ItemPosition;
-
-	bool operator==(const FGridInvSys_InventoryItem& Item) const
-	{
-		return BaseItemData == Item.BaseItemData;
 	}
 };

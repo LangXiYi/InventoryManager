@@ -26,9 +26,6 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_ContainerGridWidget : public UInvSys_I
 public:
 	void ConstructGridItems(int32 InGridID);
 
-	void UpdateInventoryItem(const FGridInvSys_InventoryItem& InventoryItem);
-
-	void RemoveInventoryItem(const FGridInvSys_InventoryItem& InventoryItem);
 	void RemoveAllInventoryItem();
 
 	bool HasEnoughFreeSpace(FIntPoint IntPoint, FIntPoint ItemSize, const TArray<UWidget*>& Ignores = {}) const;

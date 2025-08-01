@@ -47,4 +47,9 @@ public:
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_UpdateItemInstancePosition(UInvSys_InventoryComponent* InvComp,
 		UInvSys_InventoryItemInstance* ItemInstance, FGridInvSys_ItemPosition NewPosition);
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_TestFunc(UInvSys_InventoryComponent* InvComp,
+		const TArray<class UGridInvSys_InventoryItemInstance*>& Array, const TArray<FGridInvSys_ItemPosition>& NewItemPositions,
+		UInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& DropPosition);
 };

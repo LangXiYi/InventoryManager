@@ -75,7 +75,6 @@ void UInvSys_InventoryFragment_Container::RefreshInventoryFragment()
 void UInvSys_InventoryFragment_Container::RemoveAllItemInstance()
 {
 	ContainerList.RemoveAll();
-	ContainerEntryRepKeyMap.Reset();
 	MarkContainerDirty();
 }
 
@@ -84,12 +83,10 @@ bool UInvSys_InventoryFragment_Container::RemoveItemInstance(UInvSys_InventoryIt
 	bool bIsSuccess = false;
 	if (InItemInstance)
 	{
-		int32 Index = INDEX_NONE;
-		bIsSuccess = ContainerList.RemoveEntry(InItemInstance, Index);
-		if (bIsSuccess && ContainerEntryRepKeyMap.Contains(Index + 1))
+		bIsSuccess = ContainerList.RemoveEntry(InItemInstance);
+		if (bIsSuccess)
 		{
 			MarkItemInstanceDirty(InItemInstance);
-			ContainerEntryRepKeyMap.Remove(Index + 1); // 数组内部成员从下标 1 开始计数
 		}
 	}
 	return bIsSuccess;
@@ -120,6 +117,7 @@ void UInvSys_InventoryFragment_Container::MarkItemInstanceDirty(UInvSys_Inventor
 
 void UInvSys_InventoryFragment_Container::MarkContainerDirty()
 {
+	ContainerEntryRepKeyMap.Reset();
 	ContainerReplicationKey++;
 }
 
@@ -150,22 +148,28 @@ bool UInvSys_InventoryFragment_Container::ReplicateSubobjects(UActorChannel* Cha
 	bool bWroteSomething =  Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
 	// 优化执行流程，只在 ContainerList 被标记为脏时，才会触发循环执行复制！
 	// 是否会影响 RepNotify？ 答案：会影响
+	/*
+	 * 注意：
+	 * 1、服务器执行ReplicateSubobject的顺序只在初始化时有效
+	 * 2、若移除子对象时未销毁这个子对象，那么在下次加入该对象时，客户端的复制顺序会按照初始化对象时的顺序执行
+	 * 如何确保客户端顺序与服务器顺序一致？
+	 * 等待深入研究来解决该问题！！！
+	 */
 	if (KeyNeedsToReplicate(0, ContainerReplicationKey)) // 容器内成员从下标 1 开始标记，所以数组本身可以直接使用 0 
 	{
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("ReplicateSubobjects ==========="))
 		for (const FInvSys_ContainerEntry& Entry : ContainerList.Entries)
 		{
 			if (KeyNeedsToReplicate(Entry.ReplicationID, Entry.Instance->ReplicationKey))
 			{
-				UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("\t RepObject = %s"), *Entry.Instance->GetItemDisplayName().ToString())
 				if (Entry.Instance && IsValid(Entry.Instance))
 				{
 					// 同步所有需要同步的数据
 					bWroteSomething |= Channel->ReplicateSubobject(Entry.Instance, *Bunch, *RepFlags);
+					UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG && bWroteSomething, LogInventorySystem, Warning,
+						TEXT("RepObject = %s"), *Entry.Instance->GetItemDisplayName().ToString())
 				}
 			}
 		}
-		// Owner_Private->ForceNetUpdate();
 	}
 	return bWroteSomething;
 }
@@ -192,4 +196,13 @@ void UInvSys_InventoryFragment_Container::Debug_PrintContainerAllItems()
 	}
 	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
 		TEXT("= END =========================================================================="))
+}
+
+void UInvSys_InventoryFragment_Container::OnRep_ContainerList()
+{
+	UE_LOG(LogInventorySystem, Log, TEXT("--- OnRep_ContainerList ---"))
+	for (const FInvSys_ContainerEntry& Entry : ContainerList.Entries)
+	{
+		UE_LOG(LogInventorySystem, Log, TEXT("Container Entry = %s"), *Entry.Instance->GetItemDisplayName().ToString())
+	}
 }

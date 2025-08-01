@@ -3,6 +3,7 @@
 
 #include "Data/InvSys_InventoryItemInstance.h"
 
+#include "BaseInventorySystem.h"
 #include "Components/InvSys_InventoryComponent.h"
 #include "Data/InvSys_InventoryItemDefinition.h"
 #include "Net/UnrealNetwork.h"
@@ -16,6 +17,10 @@ UInvSys_InventoryItemInstance::UInvSys_InventoryItemInstance(const FObjectInitia
 		{
 			InvComp = Cast<UInvSys_InventoryComponent>(MyOuter);
 			Owner = InvComp->GetOwner();
+		}
+		else
+		{
+			UE_LOG(LogInventorySystem, Error, TEXT("库存物品实例的 Outer 必须是 InventoryComponent 及其子类！！！"))
 		}
 	}
 }
@@ -41,6 +46,7 @@ void UInvSys_InventoryItemInstance::SetItemUniqueID(FGuid Guid)
 
 void UInvSys_InventoryItemInstance::SetSlotTag(FGameplayTag Tag)
 {
+	UE_LOG(LogInventorySystem, Log, TEXT("Update Item Instance Tag --> %s"), *Tag.ToString())
 	SlotTag = Tag;
 }
 

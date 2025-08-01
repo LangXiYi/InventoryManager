@@ -56,7 +56,7 @@ public:
 	 * @param InStackCount 当前物品的堆叠数量 
 	 * @param Args 可变参数列表，传入的参数会同一赋值给创建的物品实例
 	 */
-	template<class T = UInvSys_InventoryItemInstance, class... Arg>
+	template<class T, class... Arg>
 	T* AddItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
 		FGameplayTag InSlotTag,	int32 InStackCount, const Arg&... Args)
 	{
@@ -69,7 +69,7 @@ public:
 		return nullptr;
 	}
 	template<class T, class... Arg>
-	bool AddItemInstance(T* InItemInstance, FGameplayTag SlotTag, const Arg&... Args)
+	bool AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args)
 	{
 		UInvSys_InventoryFragment_Container* ContainerFragment =
 			FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(SlotTag);
@@ -82,10 +82,10 @@ public:
 		 * 判断物品实例之前所在的库存组件与当前组件是否一致
 		 * 不一致时，说明物品实例的 Outer 不是当前组件的 Owner 所以需要重新复制一份并更新 Outer
 		 */
-		T* TargetItemInstance = InItemInstance;
+		T* TargetItemInstance = Cast<T>(InItemInstance);
 		if (this != InItemInstance->GetInventoryComponent())
 		{
-			TargetItemInstance = DuplicateObject<T>(InItemInstance, this);
+			TargetItemInstance = DuplicateObject<T>(TargetItemInstance, this);
 			InItemInstance->ConditionalBeginDestroy();//标记目标待删除
 		}
 		return ContainerFragment->AddItemInstance<T>(TargetItemInstance, Args...);

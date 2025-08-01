@@ -146,7 +146,7 @@ bool UInvSys_InventoryComponent::RestoreItemInstance(UInvSys_InventoryItemInstan
 		else if (ContainerFragment && true) // todo:: Has enough space to save
 		{
 			// todo:: set Item instance position
-			ContainerFragment->AddItemInstance(InItemInstance);
+			ContainerFragment->AddItemInstance<UInvSys_InventoryItemInstance>(InItemInstance);
 		}
 		else
 		{
@@ -272,7 +272,7 @@ bool UInvSys_InventoryComponent::EquipItemInstance(UInvSys_InventoryItemInstance
 
 				for (UInvSys_InventoryItemInstance* TempItem : TargetItemInstance->MyInstances)
 				{
-					ContainerFragment->AddItemInstance(TempItem);
+					ContainerFragment->AddItemInstance<UInvSys_InventoryItemInstance>(TempItem);
 				}
 				TargetItemInstance->MyInstances.Empty();
 			}

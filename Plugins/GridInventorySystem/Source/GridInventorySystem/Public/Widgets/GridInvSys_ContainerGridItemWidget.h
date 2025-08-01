@@ -26,17 +26,11 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_ContainerGridItemWidget : public UInvS
 public:
 	void OnConstructGridItem(UGridInvSys_ContainerGridWidget* InContainerGrid, FIntPoint InPosition);
 	
-	virtual void UpdateItemInfo(const FGridInvSys_InventoryItem&);
-
-	virtual void RemoveItemInfo();
-
 	void AddItemInstance(UInvSys_InventoryItemInstance* NewItemInstance);
 
 	void RemoveItemInstance();
 
 	FORCEINLINE UGridInvSys_ContainerGridWidget* GetContainerGridWidget() const;
-
-	FORCEINLINE UInvSys_InventoryItemInfo* GetItemInfo() const;
 
 	template<class T>
 	T* GetItemInfo() const
