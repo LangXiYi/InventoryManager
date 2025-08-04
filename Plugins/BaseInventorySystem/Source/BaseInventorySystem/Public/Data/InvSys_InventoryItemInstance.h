@@ -8,22 +8,43 @@
 #include "UObject/Object.h"
 #include "InvSys_InventoryItemInstance.generated.h"
 
+struct FInvSys_ContainerEntry;
 class UInvSys_BaseInventoryObject;
 class UInvSys_InventoryComponent;
 class UInvSys_InventoryItemFragment;
 class UGridInvSys_InventoryItemDefinition;
 
+USTRUCT()
+struct FInvSys_ItemInstancePropertyHandle
+{
+	GENERATED_BODY()
 
+	TFunction<void()> OnRepCallback;
+};
 
-// DECLARE_DELEGATE_OneParam(FOnInventoryStackChange, FInvSys_InventoryStackChangeMessage);
-
-/**
- * 
- */
 UCLASS(BlueprintType)
 class BASEINVENTORYSYSTEM_API UInvSys_InventoryItemInstance : public UObject
 {
 	GENERATED_BODY()
+
+	friend struct FInvSys_ContainerList;
+
+/*
+ * 对于所有的属性，如果需要使用 RepNotify 那么就需要在 OnRep 函数中加入该宏，并且将实际处理的逻辑转移到对应的 Execute 函数中
+ */
+#define ON_REP_PROPERTY(PropertyName)\
+{\
+	if (Owner && Owner->HasAuthority()) { Execute_##PropertyName(Old##PropertyName); }\
+	else\
+	{\
+		auto Func = [this, Old##PropertyName]()\
+		{\
+			this->Execute_##PropertyName(Old##PropertyName);\
+		};\
+		bIsReadyReplicatedProperties = true;\
+		RegisterPropertyListener(Func);\
+	}\
+}
 
 public:
 	UInvSys_InventoryItemInstance(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
@@ -33,30 +54,20 @@ public:
 	 * 那么你就必须在你的子类中定义一个与该属性类型一致的 InitItemInstanceProps 函数。*/
 	void InitItemInstanceProps(const int32& Data) {}
 
+	/**
+	 * 对于所有需要在 OnRep 函数中执行的逻辑都推荐转移至该函数！
+	 * 这是为了避免执行客户端执行顺序与服务器执行顺序不一致所做出的妥协
+	 */
+	virtual void ReplicatedProperties();
+
+	FORCEINLINE bool GetIsReadyReplicatedProperties() const{ return bIsReadyReplicatedProperties; }
+
 	virtual void RemoveFromInventory();
 
 	//~UObject interface
 	virtual bool IsSupportedForNetworking() const override { return true; }
 	//~End of UObject interface
 
-	// FORCEINLINE FOnInventoryStackChange& OnInventoryStackChangeDelegate()
-	// {
-	// 	return OnInventoryStackChange;
-	// }
-
-	FORCEINLINE void BroadcastStackChangeMessage(int32 OldCount, int32 NewCount) // 广播堆叠数量变化事件
-	{
-		// FInvSys_InventoryStackChangeMessage StackChangeMessage;
-		// StackChangeMessage.ItemInstance = this;
-		// StackChangeMessage.StackCount = NewCount;
-		// StackChangeMessage.Delta = NewCount - OldCount;
-		//
-		// if (OnInventoryStackChange.ExecuteIfBound(StackChangeMessage))
-		// {
-		// 	//广播物品堆叠数量变化
-		// }
-	}
-	
 	/**
 	 * Getter or Setter
 	 */
@@ -103,10 +114,39 @@ public:
 
 	FGameplayTag GetSlotTag() const
 	{
+		check(SlotTag.IsValid())
 		return SlotTag;
 	}
+	
+	FGameplayTag GetLastSlotTag() const
+	{
+		check(LastSlotTag.IsValid())
+		return LastSlotTag;
+	}
+
+	int32 GetContainerIndex() const
+	{
+		return Index;
+	}
+
+	FInvSys_ContainerEntry& GetContainerEntryRef() const
+	{
+		return *Entry_Private;
+	}
+
+	bool HasAuthority() const;
+
+	ENetMode GetNetMode() const;
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+protected:
+	virtual FInvSys_ItemInstancePropertyHandle RegisterPropertyListener(const TFunction<void()>& ExecuteFunc)
+	{
+		FInvSys_ItemInstancePropertyHandle& PropertyHandle = RegisterPropertyArrays.AddDefaulted_GetRef();
+		PropertyHandle.OnRepCallback = ExecuteFunc;
+		return PropertyHandle;
+	}
 
 public:
 	/**
@@ -117,8 +157,6 @@ public:
 	UPROPERTY()
 	TArray<UInvSys_InventoryItemInstance*> MyInstances;
 
-	int32 ReplicationKey = INDEX_NONE;
-	
 protected:
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDefinition = nullptr;
@@ -126,12 +164,26 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	FGuid ItemUniqueID = FGuid();
 
-	UPROPERTY(Replicated, BlueprintReadOnly)
+	UPROPERTY(ReplicatedUsing = OnRep_SlotTag, BlueprintReadOnly)
 	FGameplayTag  SlotTag;
+	UFUNCTION()
+	void OnRep_SlotTag(const FGameplayTag& OldSlotTag);
+	void Execute_SlotTag(const FGameplayTag& OldSlotTag);
+	UPROPERTY(BlueprintReadOnly)
+	FGameplayTag  LastSlotTag;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Item Instance")
 	TObjectPtr<UInvSys_InventoryComponent> InvComp = nullptr;
 	
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Item Instance")
 	TObjectPtr<AActor> Owner;
+
+	TArray<FInvSys_ItemInstancePropertyHandle> RegisterPropertyArrays;
+
+	bool bIsReadyReplicatedProperties = false;
+
+private:
+	// 物品实例在容器中的索引
+	int32 Index = INDEX_NONE;
+	FInvSys_ContainerEntry* Entry_Private = nullptr;
 };

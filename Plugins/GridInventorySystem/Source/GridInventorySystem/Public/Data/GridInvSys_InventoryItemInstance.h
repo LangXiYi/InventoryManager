@@ -65,16 +65,13 @@ public:
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Grid Item Instance", ReplicatedUsing = OnRep_ItemPosition)
 	FGridInvSys_ItemPosition ItemPosition;
-
 	UFUNCTION()
-	void OnRep_ItemPosition();
+	void OnRep_ItemPosition(const FGridInvSys_ItemPosition& OldItemPosition);
+	void Execute_ItemPosition(const FGridInvSys_ItemPosition& OldItemPosition);
 
 	UPROPERTY(BlueprintReadOnly, Transient, Category = "Grid Item Instance"/*, Replicated*/)
 	FGridInvSys_ItemPosition LastItemPosition;
 	
-	UPROPERTY(Transient)
-	FGridInvSys_ItemPosition TempItemPosition;
-
 private:
 	FOnItemPositionChange OnItemPositionChange;
 };

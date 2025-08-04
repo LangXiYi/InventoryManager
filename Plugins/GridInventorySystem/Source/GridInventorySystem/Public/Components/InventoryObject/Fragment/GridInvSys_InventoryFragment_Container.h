@@ -34,7 +34,7 @@ public:
 
 	bool HasEnoughFreeSpace(FIntPoint ToPosition, int32 ToGridID, FIntPoint ItemSize);
 
-	void UpdateContainerGridItemState(UGridInvSys_InventoryItemInstance* GridItemInstance, bool IsOccupy);
+	void UpdateContainerGridItemState(UGridInvSys_InventoryItemInstance* GridItemInstance, const FGridInvSys_ItemPosition& ItemPosition, bool IsOccupy);
 
 	bool FindEmptyPosition(FIntPoint ItemSize, FGridInvSys_ItemPosition& OutPosition);
 

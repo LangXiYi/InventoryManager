@@ -86,7 +86,7 @@ bool UInvSys_InventoryFragment_Container::RemoveItemInstance(UInvSys_InventoryIt
 		bIsSuccess = ContainerList.RemoveEntry(InItemInstance);
 		if (bIsSuccess)
 		{
-			MarkItemInstanceDirty(InItemInstance);
+			MarkContainerDirty();
 		}
 	}
 	return bIsSuccess;
@@ -111,14 +111,19 @@ TArray<UInvSys_InventoryItemInstance*> UInvSys_InventoryFragment_Container::GetA
 
 void UInvSys_InventoryFragment_Container::MarkItemInstanceDirty(UInvSys_InventoryItemInstance* ItemInstance)
 {
-	ItemInstance->ReplicationKey++;
-	MarkContainerDirty();
+	FInvSys_ContainerEntry& ContainerEntry = ItemInstance->GetContainerEntryRef();
+	check(ContainerEntry.IsValid())
+	if (ContainerEntry.IsValid())
+	{
+		ContainerList.MarkItemDirty(ContainerEntry);
+		MarkContainerDirty();
+	}
 }
 
 void UInvSys_InventoryFragment_Container::MarkContainerDirty()
 {
 	ContainerEntryRepKeyMap.Reset();
-	ContainerReplicationKey++;
+	ContainerList.MarkArrayDirty();
 }
 
 bool UInvSys_InventoryFragment_Container::KeyNeedsToReplicate(int32 ObjID, int32 RepKey)
@@ -155,18 +160,16 @@ bool UInvSys_InventoryFragment_Container::ReplicateSubobjects(UActorChannel* Cha
 	 * 如何确保客户端顺序与服务器顺序一致？
 	 * 等待深入研究来解决该问题！！！
 	 */
-	if (KeyNeedsToReplicate(0, ContainerReplicationKey)) // 容器内成员从下标 1 开始标记，所以数组本身可以直接使用 0 
+	if (KeyNeedsToReplicate(0, ContainerList.ArrayReplicationKey)) // 容器内成员从下标 1 开始标记，所以数组本身可以直接使用 0 
 	{
 		for (const FInvSys_ContainerEntry& Entry : ContainerList.Entries)
 		{
-			if (KeyNeedsToReplicate(Entry.ReplicationID, Entry.Instance->ReplicationKey))
+			if (KeyNeedsToReplicate(Entry.ReplicationID, Entry.ReplicationKey))
 			{
 				if (Entry.Instance && IsValid(Entry.Instance))
 				{
 					// 同步所有需要同步的数据
 					bWroteSomething |= Channel->ReplicateSubobject(Entry.Instance, *Bunch, *RepFlags);
-					UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG && bWroteSomething, LogInventorySystem, Warning,
-						TEXT("RepObject = %s"), *Entry.Instance->GetItemDisplayName().ToString())
 				}
 			}
 		}
@@ -200,9 +203,16 @@ void UInvSys_InventoryFragment_Container::Debug_PrintContainerAllItems()
 
 void UInvSys_InventoryFragment_Container::OnRep_ContainerList()
 {
-	UE_LOG(LogInventorySystem, Log, TEXT("--- OnRep_ContainerList ---"))
+	/*
+	 * 调用了 MarkArrayDirty 后，必定会触发容器本身的复制事件！！
+	 * 子对象的复制不会严格遵循容器内数组的顺序，某些情况下可能会导致程序执行出错。
+	 * 注意: 容器内对象的 OnRep 函数必定在容器本身的 OnRep 函数执行之后。
+	 */
 	for (const FInvSys_ContainerEntry& Entry : ContainerList.Entries)
 	{
-		UE_LOG(LogInventorySystem, Log, TEXT("Container Entry = %s"), *Entry.Instance->GetItemDisplayName().ToString())
+		if (Entry.Instance && Entry.Instance->GetIsReadyReplicatedProperties())
+		{
+			Entry.Instance->ReplicatedProperties();
+		}
 	}
 }

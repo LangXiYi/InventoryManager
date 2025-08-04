@@ -35,7 +35,7 @@ void UInvSys_InventoryLayoutWidget::NativeOnInitialized()
 				TagSlots.Emplace(TagSlot->GetSlotTag(), TagSlot);
 			}
 		});
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Error, TEXT("重构控件时，同步收集所有命名槽！收集数量 = %d"), TagSlots.Num())
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("重构控件时，同步收集所有命名槽！收集数量 = %d"), TagSlots.Num())
 	}
 }
 
@@ -55,17 +55,14 @@ void UInvSys_InventoryLayoutWidget::AddWidget(UUserWidget* Widget, const FGamepl
 bool UInvSys_InventoryLayoutWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent,
                                                  UDragDropOperation* InOperation)
 {
-	UInvSys_InventoryControllerComponent* ICC = UInvSys_InventorySystemLibrary::GetPlayerInventoryComponent(GetWorld());
-	check(ICC)
-	if (ICC == nullptr)
-	{
-		return false;
-	}
+	bool bIsHandled = Super::NativeOnDrop(InGeometry, InDragDropEvent, InOperation);
+	if (bIsHandled) return bIsHandled; // 如果蓝图实现了处理，则不会继续执行 C++ 定义的逻辑
 	UInvSys_InventoryItemInstance* LOCAL_ItemInstance = Cast<UInvSys_InventoryItemInstance>(InOperation->Payload);
 	check(LOCAL_ItemInstance)
 	if (LOCAL_ItemInstance)
 	{
 		UInvSys_InventoryComponent* From_InvComp = LOCAL_ItemInstance->GetInventoryComponent();
+		UInvSys_InventoryControllerComponent* ICC = UInvSys_InventorySystemLibrary::GetPlayerInventoryComponent(GetWorld());
 		if (From_InvComp && ICC)
 		{
 			// 对于在容器布局内放下拖拽的物品，则将该物品返回原位置
@@ -73,5 +70,5 @@ bool UInvSys_InventoryLayoutWidget::NativeOnDrop(const FGeometry& InGeometry, co
 			return true;
 		}
 	}
-	return Super::NativeOnDrop(InGeometry, InDragDropEvent, InOperation);
+	return false;
 }

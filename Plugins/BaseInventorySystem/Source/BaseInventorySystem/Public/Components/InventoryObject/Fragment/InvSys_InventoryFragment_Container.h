@@ -31,7 +31,7 @@ public:
 	 * 主要用于初始化库存，或不同库存组件间的物品交换
 	 * 注意：传入可变参数时，请确保目标类型中正确创建了对于的处理函数。
 	 */
-	template<class T = UInvSys_InventoryItemInstance, class... Arg>
+	template<class T, class... Arg>
 	T* AddItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, const Arg&... Args)
 	{
 		check(ItemDef)
@@ -72,7 +72,7 @@ public:
 	void MarkContainerDirty();
 
 protected:
-	virtual void NativeOnItemStackChange(FInvSys_InventoryStackChangeMessage ChangeInfo) {}
+	virtual void NativeOnItemStackChange(FInvSys_InventoryStackChangeMessage ChangeInfo) {} // DEPRECATED
 	virtual void NativeOnContainerEntryAdded(FInvSys_InventoryItemChangedMessage ChangeInfo) {}
 	virtual void NativeOnContainerEntryRemove(FInvSys_InventoryItemChangedMessage ChangeInfo) {}
 
@@ -89,11 +89,8 @@ protected:
 private:
 	void Debug_PrintContainerAllItems();
 
-public:
-	int32 ContainerReplicationKey = INDEX_NONE;
-
 protected:
-	UPROPERTY(ReplicatedUsing=OnRep_ContainerList)
+	UPROPERTY(ReplicatedUsing = OnRep_ContainerList)
 	FInvSys_ContainerList ContainerList;
 	UFUNCTION()
 	void OnRep_ContainerList();

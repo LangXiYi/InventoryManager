@@ -86,7 +86,7 @@ bool UInvSys_InventoryFragment_Equipment::UnEquipItemInstance()
 
 bool UInvSys_InventoryFragment_Equipment::HasEquipmentItems() const
 {
-	return ItemInstance && IsValid(ItemInstance);
+	return ItemInstance != nullptr;
 }
 
 UInvSys_InventoryItemInstance* UInvSys_InventoryFragment_Equipment::GetEquipItemInstance() const

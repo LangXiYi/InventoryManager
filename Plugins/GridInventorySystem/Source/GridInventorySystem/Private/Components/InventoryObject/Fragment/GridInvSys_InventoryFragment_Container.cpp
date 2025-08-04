@@ -35,19 +35,24 @@ void UGridInvSys_InventoryFragment_Container::InitInventoryFragment(UObject* Pre
 bool UGridInvSys_InventoryFragment_Container::UpdateItemInstancePosition(
 	UGridInvSys_InventoryItemInstance* GridItemInstance, const FGridInvSys_ItemPosition& NewPosition)
 {
-	check(GridItemInstance)
+	bool bIsSuccess = false;
 	if (GridItemInstance)
 	{
 		FIntPoint Size = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSizeFrom(GridItemInstance, NewPosition.Direction);
+		UpdateContainerGridItemState(GridItemInstance, GridItemInstance->GetItemPosition(), false); // 清除其在原本位置的占据状态！
 		if (HasEnoughFreeSpace(NewPosition.Position, NewPosition.GridID, Size))
 		{
+			bIsSuccess = true;
 			GridItemInstance->SetItemPosition(NewPosition);
-			// todo::Update occupied state
+			UpdateContainerGridItemState(GridItemInstance, NewPosition, true);
 			MarkItemInstanceDirty(GridItemInstance);
-			return true;
 		}
 	}
-	return false;
+	if (bIsSuccess == false)
+	{
+		UpdateContainerGridItemState(GridItemInstance, GridItemInstance->GetItemPosition(), true);  // 修改位置失败，回退占据状态
+	}
+	return bIsSuccess;
 }
 
 bool UGridInvSys_InventoryFragment_Container::HasEnoughFreeSpace(
@@ -60,19 +65,23 @@ bool UGridInvSys_InventoryFragment_Container::HasEnoughFreeSpace(
 	{
 		for (int Y = 0; Y < ItemSize.Y; ++Y)
 		{
-			if (ToPosition.X + X >= MaxGridWidth || ToPosition.Y + Y >= MaxGridHeight)
+			if (ToPosition.X + X > MaxGridWidth || ToPosition.Y + Y > MaxGridHeight)
 			{
+				UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Error,
+					TEXT("[ToPosition.X + X](%d) > [MaxGridWidth](%d) || [ToPosition.Y + Y](%d) > [MaxGridHeight](%d)"),
+					ToPosition.X + X, MaxGridWidth, ToPosition.Y + Y, MaxGridHeight)
 				return false;
 			}
 			int32 Index = ToIndex + X * ContainerGridSize[ToGridID].Y + Y;
 			if (OccupiedGrid[ToGridID].IsValidIndex(Index) == false ||
 				OccupiedGrid[ToGridID][Index] == true)
 			{
-				UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning,
-					TEXT("[%s:%d >>> %s] 无法容纳大小为 %s 的物品"), *GetInventoryObjectTag().ToString(), ToGridID,
-					*ToPosition.ToString(), *ItemSize.ToString())
+				checkf(false, TEXT("无法容纳物品"))
 				if (PRINT_INVENTORY_SYSTEM_LOG)
 				{
+					UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Error,
+						TEXT("[%s_%d:%s] 无法容纳大小为 %s 的物品"), *GetInventoryObjectTag().ToString(), ToGridID,
+						*ToPosition.ToString(), *ItemSize.ToString())
 					// 打印当前网格占据图
 					PrintDebugOccupiedGrid();
 				}
@@ -84,7 +93,7 @@ bool UGridInvSys_InventoryFragment_Container::HasEnoughFreeSpace(
 }
 
 void UGridInvSys_InventoryFragment_Container::UpdateContainerGridItemState(
-	UGridInvSys_InventoryItemInstance* GridItemInstance, bool IsOccupy)
+	UGridInvSys_InventoryItemInstance* GridItemInstance, const FGridInvSys_ItemPosition& ItemPosition, bool IsOccupy)
 {
 	if (GridItemInstance == nullptr)
 	{
@@ -93,8 +102,7 @@ void UGridInvSys_InventoryFragment_Container::UpdateContainerGridItemState(
 	auto ItemSizeFragment = GridItemInstance->FindFragmentByClass<UGridInvSys_ItemFragment_GridItemSize>();
 	if (GridItemInstance && ItemSizeFragment)
 	{
-		FGridInvSys_ItemPosition ItemPosition = IsOccupy ? GridItemInstance->GetItemPosition() : GridItemInstance->GetLastItemPosition();
-		FIntPoint ItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSize(GridItemInstance);
+		FIntPoint ItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSizeFrom(GridItemInstance, ItemPosition.Direction);
 		if (OccupiedGrid.IsValidIndex(ItemPosition.GridID) && ContainerGridSize.IsValidIndex(ItemPosition.GridID))
 		{
 			FIntPoint GridSize = ContainerGridSize[ItemPosition.GridID];
@@ -114,7 +122,7 @@ void UGridInvSys_InventoryFragment_Container::UpdateContainerGridItemState(
 		}
 	}
 	// 打印当前网格占据图
-	PrintDebugOccupiedGrid();
+	// PrintDebugOccupiedGrid();
 }
 
 bool UGridInvSys_InventoryFragment_Container::FindEmptyPosition(FIntPoint ItemSize,
@@ -165,7 +173,7 @@ void UGridInvSys_InventoryFragment_Container::NativeOnContainerEntryAdded(
 	{
 		auto GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(ChangeInfo.ItemInstance);
 		check(GridItemInstance)
-		UpdateContainerGridItemState(GridItemInstance, true);
+		UpdateContainerGridItemState(GridItemInstance, GridItemInstance->GetItemPosition(), true);
 	}
 }
 
@@ -177,7 +185,7 @@ void UGridInvSys_InventoryFragment_Container::NativeOnContainerEntryRemove(
 	{
 		auto GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(ChangeInfo.ItemInstance);
 		check(GridItemInstance)
-		UpdateContainerGridItemState(GridItemInstance, false);
+		UpdateContainerGridItemState(GridItemInstance, GridItemInstance->GetLastItemPosition(), false);
 	}
 }
 
@@ -284,7 +292,7 @@ void UGridInvSys_InventoryFragment_Container::PrintDebugOccupiedGrid()
 	{
 		int32 Width = ContainerGridSize[i].Y;
 		bool bIsFirst = true;
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning,
 			TEXT("[%s:%s] Container Grid ID = %d === { Size = %s }"),
 			HasAuthority() ? TEXT("Server") : TEXT("Client"), *GetOwner()->GetName(), i, *ContainerGridSize[i].ToString());
 		FString PrintStr = "";
@@ -293,7 +301,7 @@ void UGridInvSys_InventoryFragment_Container::PrintDebugOccupiedGrid()
 			bool bIsNewLine = j % Width == 0; //是否为新一行
 			if (bIsNewLine && bIsFirst == false)
 			{
-				UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("%s"), *PrintStr);
+				UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("%s"), *PrintStr);
 				PrintStr = "";
 				PrintStr.Append(OccupiedGrid[i][j] ? TEXT("\tT") : TEXT("\tF"));
 			}
@@ -303,7 +311,7 @@ void UGridInvSys_InventoryFragment_Container::PrintDebugOccupiedGrid()
 				PrintStr.Append(OccupiedGrid[i][j] ? TEXT("\tT") : TEXT("\tF"));
 			}
 		}
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("%s"), *PrintStr);
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("%s"), *PrintStr);
 		PrintStr = "";
 	}
 }

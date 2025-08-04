@@ -71,22 +71,6 @@ void UGridInvSys_ContainerGridLayoutWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	auto WarpAddItemFunc = [this](FGameplayTag Tag, const FInvSys_InventoryItemChangedMessage& Message)
-	{
-		if (Message.InventoryObjectTag == GetSlotTag() && Message.InvComp == GetInventoryComponent())
-		{
-			AddItemInstance(Message.ItemInstance);
-		}
-	};
-
-	auto WarpRemoveItemFunc = [this](FGameplayTag Tag, const FInvSys_InventoryItemChangedMessage& Message)
-	{
-		if (Message.InventoryObjectTag == GetSlotTag() && Message.InvComp == GetInventoryComponent())
-		{
-			RemoveItemInstance(Message.ItemInstance);
-		}
-	};
-
 	auto WarpItemPositionChangedFunc = [this](FGameplayTag Tag, const FGridInvSys_ItemPositionChangeMessage& Message)
 	{
 		if (Message.InvComp == GetInventoryComponent())
@@ -103,12 +87,6 @@ void UGridInvSys_ContainerGridLayoutWidget::NativeConstruct()
 	};
 
 	UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(GetWorld());
-	// OnAddItemInstanceHandle =MessageSubsystem.RegisterListener<FInvSys_InventoryItemChangedMessage>(
-	// 	Inventory_Message_AddItem, MoveTemp(WarpAddItemFunc));
-	//
-	// OnRemoveItemInstanceHandle =MessageSubsystem.RegisterListener<FInvSys_InventoryItemChangedMessage>(
-	// 	Inventory_Message_RemoveItem, MoveTemp(WarpRemoveItemFunc));
-
 	OnItemPositionChangedHandle =MessageSubsystem.RegisterListener<FGridInvSys_ItemPositionChangeMessage>(
 		Inventory_Message_ItemPositionChanged, MoveTemp(WarpItemPositionChangedFunc));
 }
@@ -301,7 +279,7 @@ void UGridInvSys_ContainerGridLayoutWidget::RemoveItemInstance(UInvSys_Inventory
 	if (InItemInstance->IsA<UGridInvSys_InventoryItemInstance>())
 	{
 		UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(InItemInstance);
-		RemoveItemInstanceFrom(GridItemInstance, GridItemInstance->GetLastItemPosition());
+		RemoveItemInstanceFrom(GridItemInstance, GridItemInstance->GetItemPosition());
 	}
 	else
 	{
@@ -337,8 +315,15 @@ void UGridInvSys_ContainerGridLayoutWidget::RemoveItemInstanceFrom(UInvSys_Inven
 	}
 
 	UGridInvSys_ContainerGridItemWidget* GridItemWidget = FindGridItemWidgetByPos(InPosition);
-	if (GridItemWidget && GridItemWidget->GetItemInstance() == InItemInstance)
+	if (GridItemWidget)
 	{
-		GridItemWidget->RemoveItemInstance();
+		if (GridItemWidget->GetItemInstance() == InItemInstance)
+		{
+			GridItemWidget->RemoveItemInstance();
+		}
+	}
+	else
+	{
+		checkf(false, TEXT("指定要移除的物品实例与目标位置下存在的实例不符"))
 	}
 }

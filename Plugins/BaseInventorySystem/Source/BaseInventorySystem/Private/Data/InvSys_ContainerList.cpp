@@ -42,7 +42,7 @@ bool FInvSys_ContainerList::RemoveEntry(UInvSys_InventoryItemInstance* Instance)
 		if (Entry.Instance == Instance)
 		{
 			Entry.Instance->RemoveFromInventory();
-			if (OwnerObject->GetNetMode() != NM_DedicatedServer)
+			if (InventoryFragment->GetNetMode() != NM_DedicatedServer)
 			{
 				BroadcastRemoveEntryMessage(Entry);
 			}
@@ -84,10 +84,29 @@ UInvSys_InventoryItemInstance* FInvSys_ContainerList::FindItem(FGuid ItemUniqueI
 
 void FInvSys_ContainerList::PreReplicatedRemove(const TArrayView<int32>& RemovedIndices, int32 FinalSize)
 {
+	/*
+	 * Remove 比较特殊需要额外处理，因为 Entries 在移除了对象后，外部的 OnRep 无法处理这个被移除的数据
+	 * 只能在 FastArray 的 PreRemove 中处理这部分逻辑，但由于 PreRemove 的执行顺序比 对象本身的属性复制要更早执行，所以需要延迟一帧。
+	 * 注意：RemovedIndices的内容只在当前帧有效，所以不能在下一帧直接使用这个数组的值
+	 * 以下为不延迟的执行顺序 与 延时后的执行顺序
+	 * PreReplicatedRemove <-- 1 --> OnRep_PropertyName
+	 * OnRep_PropertyName  <-- 2 --> OnRepContainerList
+	 * OnRepContainerList  <-- 3 --> PreReplicatedRemove
+	 */
+
 	for (int32 Index : RemovedIndices)
 	{
 		FInvSys_ContainerEntry& Entry = Entries[Index];
 		BroadcastRemoveEntryMessage(Entry);
+
+		UInvSys_InventoryItemInstance* ItemInstance = Entry.Instance;
+		InventoryFragment->GetWorld()->GetTimerManager().SetTimerForNextTick([this, ItemInstance]()
+		{
+			if (ItemInstance && ItemInstance->GetIsReadyReplicatedProperties())
+			{
+				ItemInstance->ReplicatedProperties();
+			}
+		});
 	}
 }
 
@@ -96,27 +115,17 @@ void FInvSys_ContainerList::PostReplicatedAdd(const TArrayView<int32>& AddedIndi
 	for (int32 Index : AddedIndices)
 	{
 		FInvSys_ContainerEntry& Entry = Entries[Index];
-
-		/*
-		 * 由于 FastArray 的属性同步优于其内部对象 ItemInstance 的属性同步，所以需要延迟一段时间
-		 * 在大部分情况下，如修改数组内其他对象的属性后，添加新的对象，若新对象需要检查其他对象的属性，那么这里就会出现问题。
-		 * 此时的其他对象的onRep函数未执行，客户端在执行中可能出现其他问题。
-		 */
-
-		OwnerObject->GetWorld()->GetTimerManager().SetTimerForNextTick([this, Entry]()
-		{
-			BroadcastAddEntryMessage(Entry);
-		});
+		// if (Entry.Instance && Entry.Instance->GetIsReadyReplicatedProperties())
+		// {
+		// 	Entry.Instance->ReplicatedProperties();
+		// }
+		BroadcastAddEntryMessage(Entry);
 	}
 }
 
 void FInvSys_ContainerList::PostReplicatedChange(const TArrayView<int32>& ChangedIndices, int32 FinalSize)
 {
-	for (int32 Index : ChangedIndices)
-	{
-		FInvSys_ContainerEntry& Entry = Entries[Index];
-		BroadcastStackChangeMessage(Entry, Entry.LastObservedCount, Entry.StackCount);
-	}
+	// Changed 函数在其内部属性同步之前执行？
 }
 
 void FInvSys_ContainerList::BroadcastAddEntryMessage(const FInvSys_ContainerEntry& Entry)
@@ -125,11 +134,11 @@ void FInvSys_ContainerList::BroadcastAddEntryMessage(const FInvSys_ContainerEntr
 	// BroadcastStackChangeMessage(Entry, 0, Entry.StackCount);
 
 	FInvSys_InventoryItemChangedMessage ItemChangedMessage;
-	ItemChangedMessage.InvComp = OwnerObject->GetInventoryComponent();
-	ItemChangedMessage.InventoryObjectTag = OwnerObject->GetInventoryObjectTag();
+	ItemChangedMessage.InvComp = InventoryFragment->GetInventoryComponent();
+	ItemChangedMessage.InventoryObjectTag = InventoryFragment->GetInventoryObjectTag();
 	ItemChangedMessage.ItemInstance = Entry.Instance;
 
-	UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(OwnerObject->GetWorld());
+	UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(InventoryFragment->GetWorld());
 	MessageSubsystem.BroadcastMessage(Inventory_Message_AddItem, ItemChangedMessage);
 }
 
@@ -139,11 +148,11 @@ void FInvSys_ContainerList::BroadcastRemoveEntryMessage(const FInvSys_ContainerE
 	// BroadcastStackChangeMessage(Entry, Entry.StackCount, 0);
 
 	FInvSys_InventoryItemChangedMessage ItemChangedMessage;
-	ItemChangedMessage.InvComp = OwnerObject->GetInventoryComponent();
-	ItemChangedMessage.InventoryObjectTag = OwnerObject->GetInventoryObjectTag();
+	ItemChangedMessage.InvComp = InventoryFragment->GetInventoryComponent();
+	ItemChangedMessage.InventoryObjectTag = InventoryFragment->GetInventoryObjectTag();
 	ItemChangedMessage.ItemInstance = Entry.Instance;
 
-	UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(OwnerObject->GetWorld());
+	UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(InventoryFragment->GetWorld());
 	MessageSubsystem.BroadcastMessage(Inventory_Message_RemoveItem, ItemChangedMessage);
 }
 
@@ -151,12 +160,12 @@ void FInvSys_ContainerList::BroadcastStackChangeMessage(const FInvSys_ContainerE
 	int32 NewCount)
 {
 	FInvSys_InventoryStackChangeMessage StackChangeMessage;
-	StackChangeMessage.InvComp = OwnerObject->GetInventoryComponent();
-	StackChangeMessage.InventoryObjectTag = OwnerObject->GetInventoryObjectTag();
+	StackChangeMessage.InvComp = InventoryFragment->GetInventoryComponent();
+	StackChangeMessage.InventoryObjectTag = InventoryFragment->GetInventoryObjectTag();
 	StackChangeMessage.ItemInstance = Entry.Instance;
 	StackChangeMessage.StackCount = NewCount;
 	StackChangeMessage.Delta = NewCount - OldCount;
 
-	UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(OwnerObject->GetWorld());
+	UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(InventoryFragment->GetWorld());
 	MessageSubsystem.BroadcastMessage(Inventory_Message_StackChanged, StackChangeMessage);
 }

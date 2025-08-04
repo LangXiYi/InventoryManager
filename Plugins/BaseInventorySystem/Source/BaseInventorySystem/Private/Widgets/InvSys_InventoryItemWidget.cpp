@@ -11,6 +11,7 @@
 #include "Data/InvSys_ItemFragment_DragDrop.h"
 #include "Data/InvSys_InventoryItemInstance.h"
 #include "Library/InvSys_InventorySystemLibrary.h"
+#include "Widgets/Components/InvSys_DragDropOperation.h"
 
 void UInvSys_InventoryItemWidget::SetItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)
 {
@@ -19,6 +20,9 @@ void UInvSys_InventoryItemWidget::SetItemInstance(UInvSys_InventoryItemInstance*
 
 FReply UInvSys_InventoryItemWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
+	FReply bIsHandled = Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
+	if (bIsHandled.IsEventHandled()) return bIsHandled; // 如果蓝图实现了处理，则不会继续执行 C++ 定义的逻辑
+
 	if (ItemInstance.Get())
 	{
 		FEventReply EventReply = UWidgetBlueprintLibrary::DetectDragIfPressed(InMouseEvent, this, EKeys::LeftMouseButton);
@@ -30,6 +34,9 @@ FReply UInvSys_InventoryItemWidget::NativeOnMouseButtonDown(const FGeometry& InG
 void UInvSys_InventoryItemWidget::NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent,
 	UDragDropOperation*& OutOperation)
 {
+	Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
+	if (OutOperation != nullptr) return; // 如果蓝图实现了处理，则不会继续执行 C++ 定义的逻辑
+
 	if (ItemInstance == nullptr)
 	{
 		return;
@@ -50,7 +57,7 @@ void UInvSys_InventoryItemWidget::NativeOnDragDetected(const FGeometry& InGeomet
 
 		DraggingWidget->ItemInstance = ItemInstance.Get();
 
-		UDragDropOperation* DragDropOperation = NewObject<UDragDropOperation>();
+		UDragDropOperation* DragDropOperation = NewObject<UDragDropOperation>(GetOwningPlayer(), DragDropFragment->DragDropOperationClass);
 		DragDropOperation->Payload = ItemInstance.Get();
 		DragDropOperation->DefaultDragVisual = DraggingWidget;
 		DragDropOperation->Pivot = DragDropFragment->DragPivot;

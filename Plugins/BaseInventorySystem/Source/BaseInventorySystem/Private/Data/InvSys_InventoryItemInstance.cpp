@@ -25,6 +25,18 @@ UInvSys_InventoryItemInstance::UInvSys_InventoryItemInstance(const FObjectInitia
 	}
 }
 
+bool UInvSys_InventoryItemInstance::HasAuthority() const
+{
+	check(Owner)
+	return Owner->HasAuthority();
+}
+
+ENetMode UInvSys_InventoryItemInstance::GetNetMode() const
+{
+	check(Owner)
+	return Owner->GetNetMode();
+}
+
 void UInvSys_InventoryItemInstance::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	UObject::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -32,6 +44,16 @@ void UInvSys_InventoryItemInstance::GetLifetimeReplicatedProps(TArray<FLifetimeP
 	DOREPLIFETIME(UInvSys_InventoryItemInstance, ItemDefinition);
 	DOREPLIFETIME(UInvSys_InventoryItemInstance, ItemUniqueID);
 	DOREPLIFETIME(UInvSys_InventoryItemInstance, SlotTag);
+}
+
+void UInvSys_InventoryItemInstance::OnRep_SlotTag(const FGameplayTag& OldSlotTag)
+{
+	ON_REP_PROPERTY(SlotTag);
+}
+
+void UInvSys_InventoryItemInstance::Execute_SlotTag(const FGameplayTag& OldSlotTag)
+{
+	LastSlotTag = OldSlotTag;
 }
 
 void UInvSys_InventoryItemInstance::SetItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> NewItemDef)
@@ -46,8 +68,12 @@ void UInvSys_InventoryItemInstance::SetItemUniqueID(FGuid Guid)
 
 void UInvSys_InventoryItemInstance::SetSlotTag(FGameplayTag Tag)
 {
-	UE_LOG(LogInventorySystem, Log, TEXT("Update Item Instance Tag --> %s"), *Tag.ToString())
+	LastSlotTag = SlotTag;
 	SlotTag = Tag;
+	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
+	{
+		OnRep_SlotTag(LastSlotTag);
+	}
 }
 
 void UInvSys_InventoryItemInstance::SetInventoryComponent(UInvSys_InventoryComponent* NewInvComp)
@@ -55,10 +81,26 @@ void UInvSys_InventoryItemInstance::SetInventoryComponent(UInvSys_InventoryCompo
 	InvComp = NewInvComp;
 }
 
+void UInvSys_InventoryItemInstance::ReplicatedProperties()
+{
+	if (bIsReadyReplicatedProperties == false)
+	{
+		return;
+	}
+	// 遍历所有需要处理的属性并执行对应的函数！！
+	for (FInvSys_ItemInstancePropertyHandle OnRepProperty : RegisterPropertyArrays)
+	{
+		OnRepProperty.OnRepCallback();
+	}
+	bIsReadyReplicatedProperties = false;
+	RegisterPropertyArrays.Reset();
+}
+
 void UInvSys_InventoryItemInstance::RemoveFromInventory()
 {
 	// SlotTag = FGameplayTag(); //不要移除这些属性
 	// InvComp = nullptr;
+	Entry_Private = nullptr;
 }
 
 const UInvSys_InventoryItemFragment* UInvSys_InventoryItemInstance::FindFragmentByClass(TSubclassOf<UInvSys_InventoryItemFragment> FragmentClass) const

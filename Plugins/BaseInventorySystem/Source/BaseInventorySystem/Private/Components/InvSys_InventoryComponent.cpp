@@ -131,19 +131,19 @@ bool UInvSys_InventoryComponent::RestoreItemInstance(UInvSys_InventoryItemInstan
 {
 	if (InItemInstance)
 	{
-		FGameplayTag EquipSlotTag = InItemInstance->GetSlotTag();
+		FGameplayTag EquipSlotTag = InItemInstance->GetLastSlotTag();
 		UInvSys_InventoryFragment_Equipment* EquipmentFragment =
 			FindInventoryObjectFragment<UInvSys_InventoryFragment_Equipment>(EquipSlotTag);
 
 		UInvSys_InventoryFragment_Container* ContainerFragment =
 			FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(EquipSlotTag);
 
-		if (EquipmentFragment->HasEquipmentItems() == false)
+		if (EquipmentFragment && EquipmentFragment->HasEquipmentItems() == false)
 		{
 			EquipmentFragment->EquipItemInstance(InItemInstance);
 			// todo::如果ItemInstance类型不符合是否会装备失败？装备失败该如何处理?
 		}
-		else if (ContainerFragment && true) // todo:: Has enough space to save
+		else if (ContainerFragment) // todo:: Has enough space to save
 		{
 			// todo:: set Item instance position
 			ContainerFragment->AddItemInstance<UInvSys_InventoryItemInstance>(InItemInstance);

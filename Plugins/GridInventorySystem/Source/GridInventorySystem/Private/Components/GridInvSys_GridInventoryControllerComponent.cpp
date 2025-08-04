@@ -4,7 +4,9 @@
 #include "Components/GridInvSys_GridInventoryControllerComponent.h"
 
 #include "Components/GridInvSys_InventoryComponent.h"
+#include "Components/InventoryObject/Fragment/GridInvSys_InventoryFragment_Container.h"
 #include "Data/GridInvSys_InventoryItemInstance.h"
+#include "Library/GridInvSys_CommonFunctionLibrary.h"
 
 
 UGridInvSys_GridInventoryControllerComponent::UGridInvSys_GridInventoryControllerComponent()
@@ -136,20 +138,22 @@ void UGridInvSys_GridInventoryControllerComponent::Server_TryDropItemInstance_Im
 	UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance,
 	const FGridInvSys_ItemPosition& InPos)
 {
-	// FTimerHandle TempHandler;
-	// GetWorld()->GetTimerManager().SetTimer(TempHandler,[this, InItemInstance, InvComp, InPos]()
-	// {
-		bool bIsSuccess = false;
-		UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(InItemInstance);
-		const FGridInvSys_ItemPosition& OldPosition = GridItemInstance->GetItemPosition();
-		if (GridItemInstance)
+	if (InvComp == nullptr || InItemInstance == nullptr)
+	{
+		checkf(false, TEXT("传入的库存组件或物品实例为空"));
+		return;
+	}
+	bool bIsSuccess = false;
+	auto ContainerFragment = InvComp->FindInventoryObjectFragment<UGridInvSys_InventoryFragment_Container>(InPos.EquipSlotTag);
+	if (InItemInstance)
+	{
+		FIntPoint ItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSizeFrom(InItemInstance, InPos.Direction);
+		bool bHasEnoughFreeSpace = ContainerFragment->HasEnoughFreeSpace(InPos.Position, InPos.GridID, ItemSize);
+		if (bHasEnoughFreeSpace)
 		{
-			bIsSuccess = DropItemInstance<UGridInvSys_InventoryItemInstance>(InvComp, GridItemInstance,
-				InPos.EquipSlotTag, InPos);
+			bIsSuccess = DropItemInstance<UGridInvSys_InventoryItemInstance>(InvComp, InItemInstance, InPos.EquipSlotTag, InPos);
 		}
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("[Server:%s] 更新物品位置信息[%s] {%s}--> {%s}"),
-			bIsSuccess ? TEXT("TRUE") : TEXT("FALSE"),
-			*InItemInstance->GetItemDisplayName().ToString(),
-			*OldPosition.ToString(), *InPos.ToString())
-	// }, 0.2f, false);
+	}
+	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG && bIsSuccess == false, LogInventorySystem, Error, TEXT("放置 %s 失败 ---> %s"),
+		*InItemInstance->GetItemDisplayName().ToString(), *InPos.ToString())
 }

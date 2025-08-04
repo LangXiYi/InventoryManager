@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/DragDropOperation.h"
 #include "Data/InvSys_InventoryItemDefinition.h"
+#include "Widgets/Components/InvSys_DragDropOperation.h"
 #include "InvSys_ItemFragment_DragDrop.generated.h"
 
 class AInvSys_PickableItems;
@@ -19,7 +20,10 @@ class BASEINVENTORYSYSTEM_API UInvSys_ItemFragment_DragDrop : public UInvSys_Inv
 public:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment|Drop")
 	TSubclassOf<AInvSys_PickableItems> DropItemClass;
-	
+
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment|Drop")
+	TSubclassOf<UDragDropOperation> DragDropOperationClass = UInvSys_DragDropOperation::StaticClass();
+
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment|Drop")
 	FVector DropLocationOffset;
 

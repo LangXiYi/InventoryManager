@@ -31,8 +31,6 @@ bool UInvSys_InventoryControllerComponent::ReplicateSubobjects(UActorChannel* Ch
 			}
 		}
 		bWroteSomething |= Channel->ReplicateSubobject(DraggingItemInstance, *Bunch, * RepFlags);
-
-		UE_CLOG(bWroteSomething, LogInventorySystem, Error, TEXT("正在复制拖拽的物品实例"))
 	}
 	return bWroteSomething;
 }

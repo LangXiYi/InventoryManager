@@ -82,6 +82,11 @@ public:
 	{
 		return (T*)Instance;
 	}
+
+	bool IsValid() const
+	{
+		return Instance != nullptr;
+	}
 };
 
 /*
@@ -99,7 +104,7 @@ public:
 	FInvSys_ContainerList()
 	{	}
 
-	FInvSys_ContainerList(UInvSys_BaseInventoryFragment* InOwnerObject) : OwnerObject(InOwnerObject)
+	FInvSys_ContainerList(UInvSys_BaseInventoryFragment* InOwnerObject) : InventoryFragment(InOwnerObject)
 	{	}
 
 	void BroadcastAddEntryMessage(const FInvSys_ContainerEntry& Entry);
@@ -116,24 +121,25 @@ public:
 	// TArray<FInvSys_ContainerEntry> PostRepEntries; // 在RepSubObject中使用
 
 	UPROPERTY(NotReplicated)
-	TObjectPtr<UInvSys_BaseInventoryFragment> OwnerObject;
+	TObjectPtr<UInvSys_BaseInventoryFragment> InventoryFragment;
 public:
 	template<class T, class... Arg>
 	T* AddDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, const Arg&... Args)
 	{
-		if (ItemDef == nullptr || OwnerObject == nullptr)
+		if (ItemDef == nullptr || InventoryFragment == nullptr)
 		{
 			checkNoEntry();
 			return nullptr;
 		}
 		
-		check(OwnerObject->HasAuthority());
+		check(InventoryFragment->HasAuthority());
 		FInvSys_ContainerEntry& NewEntry = Entries.AddDefaulted_GetRef();
-		T* Result = NewObject<T>(OwnerObject->GetInventoryComponent());
+		T* Result = NewObject<T>(InventoryFragment->GetInventoryComponent());
+		Result->Entry_Private = &NewEntry;
 		Result->SetItemDefinition(ItemDef);
 		Result->SetItemUniqueID(FGuid::NewGuid());
 		// 这两个属性表明了这个对象的最基础的位置信息
-		Result->SetSlotTag(OwnerObject->GetInventoryObjectTag());
+		Result->SetSlotTag(InventoryFragment->GetInventoryObjectTag());
 
 		for (const UInvSys_InventoryItemFragment* Fragment : GetDefault<UInvSys_InventoryItemDefinition>(ItemDef)->GetFragments())
 		{
@@ -150,7 +156,7 @@ public:
 		
 		MarkItemDirty(NewEntry);
 		
-		if (OwnerObject && OwnerObject->GetNetMode() != NM_DedicatedServer)
+		if (InventoryFragment && InventoryFragment->GetNetMode() != NM_DedicatedServer)
 		{
 			BroadcastAddEntryMessage(NewEntry);
 		}
@@ -166,17 +172,19 @@ public:
 		if (Instance)
 		{
 			// 更新物品的基础信息
-			Instance->SetSlotTag(OwnerObject->GetInventoryObjectTag());
+			Instance->SetSlotTag(InventoryFragment->GetInventoryObjectTag());
 			// Instance->SetInventoryComponent(OwnerObject->GetInventoryComponent());
 			//执行可变参数模板，将参数列表中的值赋予目标对象。
 			int32 Arr[] = {0, (InitItemInstanceProps<T>(Instance, Args), 0)...};
 
 			FInvSys_ContainerEntry& NewEntry = Entries.AddDefaulted_GetRef();
+			Instance->Entry_Private = &NewEntry;
+
 			NewEntry.Instance = Instance;
 			MarkItemDirty(NewEntry);
 
-			check(OwnerObject)
-			if (OwnerObject && OwnerObject->GetNetMode() != NM_DedicatedServer)
+			check(InventoryFragment)
+			if (InventoryFragment && InventoryFragment->GetNetMode() != NM_DedicatedServer)
 			{
 				BroadcastAddEntryMessage(NewEntry);
 			}
