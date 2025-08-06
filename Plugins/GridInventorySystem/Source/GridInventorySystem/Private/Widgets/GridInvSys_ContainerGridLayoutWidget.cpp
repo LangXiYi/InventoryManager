@@ -12,49 +12,43 @@
 #include "Widgets/GridInvSys_ContainerGridItemWidget.h"
 #include "Widgets/GridInvSys_ContainerGridWidget.h"
 
-void UGridInvSys_ContainerGridLayoutWidget::RefreshWidget()
+void UGridInvSys_ContainerGridLayoutWidget::RefreshInventoryWidget(UInvSys_BaseInventoryObject* NewInventoryObject)
 {
-	Super::RefreshWidget();
+	Super::RefreshInventoryWidget(NewInventoryObject);
 
 	// 初始化容器布局内的所有容器
-	if (ContainerGridWidgets.IsEmpty())
+	ContainerGridWidgets.Empty();
+	GetAllContainerGridWidgets(ContainerGridWidgets);
+	for (int i = 0; i < ContainerGridWidgets.Num(); ++i)
 	{
-		ContainerGridWidgets.Empty();
-		GetAllContainerGridWidgets(ContainerGridWidgets);
-		for (int i = 0; i < ContainerGridWidgets.Num(); ++i)
+		if (UInvSys_BaseInventoryObject* InvObj = GetInventoryObject())
 		{
-			if (UInvSys_BaseInventoryObject* InvObj = GetInventoryObject())
-			{
-				ContainerGridWidgets[i]->SetInventoryObject(InvObj);
-				ContainerGridWidgets[i]->ConstructGridItems(i);
-			}
+			ContainerGridWidgets[i]->ContainerGridID = i;
+			ContainerGridWidgets[i]->RefreshInventoryWidget(InvObj);
 		}
 	}
 
-	if (InventoryObject)
+	auto ContainerFragment = InventoryObject->FindInventoryFragment<UInvSys_InventoryFragment_Container>();
+	if (ContainerFragment)
 	{
-		auto ContainerFragment = InventoryObject->FindInventoryFragment<UInvSys_InventoryFragment_Container>();
-		if (ContainerFragment)
-		{
-			RemoveAllItemInstance();
-			TArray<UInvSys_InventoryItemInstance*> AllItemInstances = ContainerFragment->GetAllItemInstance();
+		RemoveAllItemInstance();
+		TArray<UInvSys_InventoryItemInstance*> AllItemInstances = ContainerFragment->GetAllItemInstance();
 
-			UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
-				TEXT("刷新容器布局控件 --- { 容器标签 = %s, 当前物品数量 = %d }"),
-				*GetInventoryObject()->GetInventoryObjectTag().ToString(), AllItemInstances.Num())
-			
-			for (UInvSys_InventoryItemInstance* TempItemInstance : AllItemInstances)
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
+			TEXT("刷新容器布局控件 --- { 容器标签 = %s, 当前物品数量 = %d }"),
+			*GetInventoryObject()->GetInventoryObjectTag().ToString(), AllItemInstances.Num())
+		
+		for (UInvSys_InventoryItemInstance* TempItemInstance : AllItemInstances)
+		{
+			if (TempItemInstance)
 			{
-				if (TempItemInstance)
-				{
-					AddItemInstance(TempItemInstance);
-				}
+				AddItemInstance(TempItemInstance);
 			}
 		}
-		else
-		{
-			UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("目标库存对象未包含容器片段"))
-		}
+	}
+	else
+	{
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("目标库存对象未包含容器片段"))
 	}
 }
 
@@ -69,26 +63,60 @@ UGridInvSys_ContainerGridWidget* UGridInvSys_ContainerGridLayoutWidget::FindCont
 
 void UGridInvSys_ContainerGridLayoutWidget::NativeConstruct()
 {
-	Super::NativeConstruct();
+	auto WarpItemPreRemoveFunc = [this](FGameplayTag Tag, const FInvSys_InventoryItemChangedMessage& Message)
+	{
+		if (Message.InvComp == GetInventoryComponent() && Message.InventoryObjectTag == GetSlotTag())
+		{
+			UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(Message.ItemInstance);
+			UE_LOG(LogInventorySystem, Warning, TEXT("%s:PreRemove -- Remove --> %s"),
+				GetOwningPlayer()->HasAuthority() ? TEXT("Server"):TEXT("Client"),
+				*GridItemInstance->GetItemPosition().ToString())
+			RemoveItemInstance(Message.ItemInstance);
+		}
+	};
+
+	auto WarpItemPostAddedFunc = [this](FGameplayTag Tag, const FInvSys_InventoryItemChangedMessage& Message)
+	{
+		if (Message.InvComp == GetInventoryComponent() && Message.InventoryObjectTag == GetSlotTag())
+		{
+			UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(Message.ItemInstance);
+			UE_LOG(LogInventorySystem, Warning, TEXT("%s:PostAdd -- Added --> %s"),
+				GetOwningPlayer()->HasAuthority() ? TEXT("Server"):TEXT("Client"),
+				*GridItemInstance->GetItemPosition().ToString())
+			AddItemInstance(Message.ItemInstance);
+		}
+	};
 
 	auto WarpItemPositionChangedFunc = [this](FGameplayTag Tag, const FGridInvSys_ItemPositionChangeMessage& Message)
 	{
-		if (Message.InvComp == GetInventoryComponent())
+		if (Message.ItemInstance->GetInventoryComponent() == GetInventoryComponent())
 		{
 			if (Message.OldPosition.IsValid() && Message.OldPosition.EquipSlotTag == GetSlotTag())
 			{
+				UE_LOG(LogInventorySystem, Warning, TEXT("Changed -- Remove --> %s"), *Message.OldPosition.ToString())
 				RemoveItemInstanceFrom(Message.ItemInstance, Message.OldPosition);
 			}
 			if (Message.NewPosition.IsValid() && Message.NewPosition.EquipSlotTag == GetSlotTag())
 			{
+				UE_LOG(LogInventorySystem, Warning, TEXT("Changed -- Added --> %s"), *Message.NewPosition.ToString())
 				AddItemInstanceTo(Message.ItemInstance, Message.NewPosition);
 			}
 		}
 	};
 
 	UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(GetWorld());
-	OnItemPositionChangedHandle =MessageSubsystem.RegisterListener<FGridInvSys_ItemPositionChangeMessage>(
+
+	OnRemoveItemInstanceHandle = MessageSubsystem.RegisterListener<FInvSys_InventoryItemChangedMessage>(
+		Inventory_Message_RemoveItem, MoveTemp(WarpItemPreRemoveFunc));
+
+	OnAddItemInstanceHandle = MessageSubsystem.RegisterListener<FInvSys_InventoryItemChangedMessage>(
+		Inventory_Message_AddItem, MoveTemp(WarpItemPostAddedFunc));
+	
+	OnItemPositionChangedHandle = MessageSubsystem.RegisterListener<FGridInvSys_ItemPositionChangeMessage>(
 		Inventory_Message_ItemPositionChanged, MoveTemp(WarpItemPositionChangedFunc));
+
+
+	Super::NativeConstruct();
 }
 
 void UGridInvSys_ContainerGridLayoutWidget::NativeDestruct()
@@ -191,7 +219,6 @@ void UGridInvSys_ContainerGridLayoutWidget::Private_GetAllContainerGridWidgets(
 	}
 }
 
-
 void UGridInvSys_ContainerGridLayoutWidget::AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
 {
 	check(InItemInstance)
@@ -239,23 +266,23 @@ void UGridInvSys_ContainerGridLayoutWidget::AddItemInstanceTo(
 	check(GridItemWidget)
 	if (GridItemWidget)
 	{
-		if (GridItemWidget->IsOccupied() == false)
+		// if (GridItemWidget->IsOccupied() == false)
 		{
 			GridItemWidget->AddItemInstance(InItemInstance);
 		}
 		// bug::重复刷新出现问题！！！
-		else if(InItemInstance != GridItemWidget->GetItemInstance())
-		{
-			UInvSys_InventoryControllerComponent* PlayerInvComp = UInvSys_InventorySystemLibrary::GetPlayerInventoryComponent(GetWorld());
-			if (PlayerInvComp)
-			{
-				// bug 在 1x2 大小的物品替换 两个 1x1 大小的物品时会报错
-				//checkNoEntry();
-				// UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Error, TEXT("位置已经被其他物品占领，物品已被丢弃至世界"))
-				// PlayerInvComp->Server_DropItemInstanceToWorld(InItemInstance);
-				return;
-			}
-		}
+		// else if(InItemInstance != GridItemWidget->GetItemInstance())
+		// {
+		// 	UInvSys_InventoryControllerComponent* PlayerInvComp = UInvSys_InventorySystemLibrary::GetPlayerInventoryComponent(GetWorld());
+		// 	if (PlayerInvComp)
+		// 	{
+		// 		// bug 在 1x2 大小的物品替换 两个 1x1 大小的物品时会报错
+		// 		//checkNoEntry();
+		// 		// UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Error, TEXT("位置已经被其他物品占领，物品已被丢弃至世界"))
+		// 		// PlayerInvComp->Server_DropItemInstanceToWorld(InItemInstance);
+		// 		return;
+		// 	}
+		// }
 	}
 }
 
@@ -317,13 +344,13 @@ void UGridInvSys_ContainerGridLayoutWidget::RemoveItemInstanceFrom(UInvSys_Inven
 	UGridInvSys_ContainerGridItemWidget* GridItemWidget = FindGridItemWidgetByPos(InPosition);
 	if (GridItemWidget)
 	{
-		if (GridItemWidget->GetItemInstance() == InItemInstance)
+		// if (GridItemWidget->GetItemInstance() == InItemInstance)
 		{
 			GridItemWidget->RemoveItemInstance();
 		}
 	}
-	else
-	{
-		checkf(false, TEXT("指定要移除的物品实例与目标位置下存在的实例不符"))
-	}
+	// else
+	// {
+	// 	checkf(false, TEXT("指定要移除的物品实例与目标位置下存在的实例不符"))
+	// }
 }

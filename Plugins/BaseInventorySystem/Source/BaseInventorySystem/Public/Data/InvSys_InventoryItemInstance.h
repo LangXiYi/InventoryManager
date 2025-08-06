@@ -8,11 +8,21 @@
 #include "UObject/Object.h"
 #include "InvSys_InventoryItemInstance.generated.h"
 
+class UInvSys_InventoryFragment_Container;
 struct FInvSys_ContainerEntry;
 class UInvSys_BaseInventoryObject;
 class UInvSys_InventoryComponent;
 class UInvSys_InventoryItemFragment;
 class UGridInvSys_InventoryItemDefinition;
+
+UENUM()
+enum class EInvSys_ReplicateState : uint8
+{
+	None = 0,
+	PreRemove,
+	PostAdd,
+	PostChange
+};
 
 USTRUCT()
 struct FInvSys_ItemInstancePropertyHandle
@@ -22,12 +32,28 @@ struct FInvSys_ItemInstancePropertyHandle
 	TFunction<void()> OnRepCallback;
 };
 
+USTRUCT(BlueprintType)
+struct FInvSys_DragItemInstanceMessage
+{
+	GENERATED_BODY()
+
+	//UInvSys_InventoryComponent
+
+	UPROPERTY(BlueprintReadOnly)
+	UInvSys_InventoryItemInstance* ItemInstance = nullptr;
+
+	UPROPERTY(BlueprintReadOnly)
+	bool bIsDraggingItem = false;
+};
+
 UCLASS(BlueprintType)
 class BASEINVENTORYSYSTEM_API UInvSys_InventoryItemInstance : public UObject
 {
 	GENERATED_BODY()
 
 	friend struct FInvSys_ContainerList;
+	friend struct FInvSys_ContainerEntry;
+	friend class UInvSys_InventoryComponent;
 
 /*
  * 对于所有的属性，如果需要使用 RepNotify 那么就需要在 OnRep 函数中加入该宏，并且将实际处理的逻辑转移到对应的 Execute 函数中
@@ -48,7 +74,20 @@ class BASEINVENTORYSYSTEM_API UInvSys_InventoryItemInstance : public UObject
 
 public:
 	UInvSys_InventoryItemInstance(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
-	
+
+	/**
+	 * 在交换物品至其他库存组件后，会优先调用该函数然后再次执行 构造函数，故通过该函数可以得到 上次的库存组件
+	 * 注意：需要使用 DuplicateObject 才能生效！！！
+	 * @param DupParams 
+	 */
+	virtual void PostDuplicate(bool bDuplicateForPIE) override;
+
+	virtual void PostRepNotifies() override;
+
+	virtual void PreReplicatedRemove();
+	virtual void PostReplicatedAdd();
+	virtual void PostReplicatedChange();
+
 	/**
 	 * 如果在 ItemInstance 中定义了一个需要同步的属性，且该属性在 AddItemDefinition 时传入了该类型的属性
 	 * 那么你就必须在你的子类中定义一个与该属性类型一致的 InitItemInstanceProps 函数。*/
@@ -68,6 +107,12 @@ public:
 	virtual bool IsSupportedForNetworking() const override { return true; }
 	//~End of UObject interface
 
+	void MarkItemInstanceDirty();
+
+protected:
+	void BroadcastAddItemInstanceMessage();
+	void BroadcastRemoveItemInstanceMessage();
+	
 	/**
 	 * Getter or Setter
 	 */
@@ -90,11 +135,13 @@ public:
 
 	void SetItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> NewItemDef);
 
-	void SetInventoryComponent(UInvSys_InventoryComponent* NewInvComp);
-
 	void SetItemUniqueID(FGuid Guid);
 	
 	void SetSlotTag(FGameplayTag Tag);
+
+	void SetIsDraggingItem(bool NewDragState);
+
+	bool IsDraggingItemInstance() const;
 
 	TSubclassOf<UInvSys_InventoryItemDefinition> GetItemDefinition() const
 	{
@@ -104,7 +151,13 @@ public:
 	template<class T = UInvSys_InventoryComponent>
 	T* GetInventoryComponent() const
 	{
-		return (T*)InvComp;
+		return (T*)InventoryComponent;
+	}
+
+	template<class T = UInvSys_InventoryComponent>
+	T* GetLastInventoryComponent() const
+	{
+		return (T*)LastInventoryComponent;
 	}
 
 	const FGuid& GetItemUniqueID() const
@@ -112,23 +165,12 @@ public:
 		return ItemUniqueID;
 	}
 
-	FGameplayTag GetSlotTag() const
+	const FGameplayTag& GetSlotTag() const
 	{
 		check(SlotTag.IsValid())
 		return SlotTag;
 	}
 	
-	FGameplayTag GetLastSlotTag() const
-	{
-		check(LastSlotTag.IsValid())
-		return LastSlotTag;
-	}
-
-	int32 GetContainerIndex() const
-	{
-		return Index;
-	}
-
 	FInvSys_ContainerEntry& GetContainerEntryRef() const
 	{
 		return *Entry_Private;
@@ -158,22 +200,24 @@ public:
 	TArray<UInvSys_InventoryItemInstance*> MyInstances;
 
 protected:
-	UPROPERTY(Replicated, BlueprintReadOnly)
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory Item Instance")
 	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDefinition = nullptr;
 
-	UPROPERTY(Replicated, BlueprintReadOnly)
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory Item Instance")
 	FGuid ItemUniqueID = FGuid();
 
-	UPROPERTY(ReplicatedUsing = OnRep_SlotTag, BlueprintReadOnly)
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory Item Instance")
 	FGameplayTag  SlotTag;
+
+	UPROPERTY(ReplicatedUsing = OnRep_IsDragging, BlueprintReadOnly, Category = "Inventory Item Instance")
+	bool bIsDragging = false;
 	UFUNCTION()
-	void OnRep_SlotTag(const FGameplayTag& OldSlotTag);
-	void Execute_SlotTag(const FGameplayTag& OldSlotTag);
-	UPROPERTY(BlueprintReadOnly)
-	FGameplayTag  LastSlotTag;
+	void OnRep_IsDragging();
 
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Item Instance")
-	TObjectPtr<UInvSys_InventoryComponent> InvComp = nullptr;
+	TObjectPtr<UInvSys_InventoryComponent> InventoryComponent = nullptr;
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory Item Instance")
+	TObjectPtr<UInvSys_InventoryComponent> LastInventoryComponent = nullptr;
 	
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Item Instance")
 	TObjectPtr<AActor> Owner;
@@ -183,7 +227,7 @@ protected:
 	bool bIsReadyReplicatedProperties = false;
 
 private:
-	// 物品实例在容器中的索引
-	int32 Index = INDEX_NONE;
+	TWeakObjectPtr<UInvSys_InventoryFragment_Container> Container_Private = nullptr;
 	FInvSys_ContainerEntry* Entry_Private = nullptr;
+	EInvSys_ReplicateState ReplicateState = EInvSys_ReplicateState::None;
 };

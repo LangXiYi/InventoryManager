@@ -9,20 +9,20 @@
 #include "Blueprint/WidgetTree.h"
 #include "Components/InvSys_InventoryComponent.h"
 
-UInvSys_InventoryWidget::UInvSys_InventoryWidget(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
+void UInvSys_InventoryWidget::RefreshInventoryWidget(UInvSys_BaseInventoryObject* NewInventoryObject)
 {
-}
-
-void UInvSys_InventoryWidget::RefreshWidget()
-{
+	check(NewInventoryObject)
+	SetInventoryObject(NewInventoryObject);
+	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG && InventoryObject == nullptr, LogInventorySystem, Error,
+		TEXT("你必须在执行 Construct 函数前调用 SetInventoryObject 初始化属性."))
 	OnRefreshWidget();
 }
 
 void UInvSys_InventoryWidget::NativeConstruct()
 {
+	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG && InventoryObject == nullptr, LogInventorySystem, Error,
+		TEXT("你必须在执行 Construct 函数前调用 SetInventoryObject 初始化属性."))
 	Super::NativeConstruct();
-	// checkf(InventoryObject, TEXT("You must set inventory object for inventory widget."));
 }
 
 void UInvSys_InventoryWidget::SetInventoryComponent(UInvSys_InventoryComponent* NewInvComp)

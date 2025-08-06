@@ -66,8 +66,8 @@ bool UInvSys_InventoryLayoutWidget::NativeOnDrop(const FGeometry& InGeometry, co
 		if (From_InvComp && ICC)
 		{
 			// 对于在容器布局内放下拖拽的物品，则将该物品返回原位置
-			ICC->Server_RestoreItemInstance(From_InvComp, LOCAL_ItemInstance);
-			return true;
+			// ICC->Server_RestoreItemInstance(From_InvComp, LOCAL_ItemInstance);
+			// return true;
 		}
 	}
 	return false;

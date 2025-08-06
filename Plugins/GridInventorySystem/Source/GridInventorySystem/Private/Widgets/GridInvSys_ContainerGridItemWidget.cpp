@@ -27,7 +27,7 @@ void UGridInvSys_ContainerGridItemWidget::OnConstructGridItem(UGridInvSys_Contai
 	OriginGridItemWidget = this;
 	GridItemSize = FIntPoint(1, 1);
 	bIsOccupied = false;
-	InventoryComponent = InContainerGrid->GetInventoryComponent();
+	// InventoryComponent = InContainerGrid->GetInventoryComponent();
 }
 
 void UGridInvSys_ContainerGridItemWidget::AddItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)

@@ -149,11 +149,15 @@ void UGridInvSys_GridInventoryControllerComponent::Server_TryDropItemInstance_Im
 	{
 		FIntPoint ItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSizeFrom(InItemInstance, InPos.Direction);
 		bool bHasEnoughFreeSpace = ContainerFragment->HasEnoughFreeSpace(InPos.Position, InPos.GridID, ItemSize);
+
+		UE_CLOG(bHasEnoughFreeSpace == false, LogInventorySystem, Error, TEXT("位置 %s 无法容纳大小为 %s 的 %s"),
+			*InPos.ToString(), *ItemSize.ToString(), *InItemInstance->GetItemDisplayName().ToString())
+
 		if (bHasEnoughFreeSpace)
 		{
 			bIsSuccess = DropItemInstance<UGridInvSys_InventoryItemInstance>(InvComp, InItemInstance, InPos.EquipSlotTag, InPos);
 		}
 	}
-	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG && bIsSuccess == false, LogInventorySystem, Error, TEXT("放置 %s 失败 ---> %s"),
+	UE_CLOG(bIsSuccess == false, LogInventorySystem, Error, TEXT("放置 %s 失败 ---> %s"),
 		*InItemInstance->GetItemDisplayName().ToString(), *InPos.ToString())
 }

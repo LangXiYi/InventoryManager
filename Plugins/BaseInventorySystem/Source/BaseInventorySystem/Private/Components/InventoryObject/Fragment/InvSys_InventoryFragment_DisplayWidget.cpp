@@ -21,7 +21,11 @@ void UInvSys_InventoryFragment_DisplayWidget::RefreshInventoryFragment()
 {
 	Super::RefreshInventoryFragment();
 	check(DisplayWidget)
-	DisplayWidget->RefreshWidget();
+	// DisplayWidget->RefreshWidget();
+	if (DisplayWidget)
+	{
+		DisplayWidget->RefreshInventoryWidget(InventoryObject);
+	}
 }
 
 UInvSys_InventoryWidget* UInvSys_InventoryFragment_DisplayWidget::CreateDisplayWidget(APlayerController* PC)
@@ -31,7 +35,7 @@ UInvSys_InventoryWidget* UInvSys_InventoryFragment_DisplayWidget::CreateDisplayW
 		if (PC != nullptr && PC->IsLocalController())
 		{
 			DisplayWidget = CreateWidget<UInvSys_InventoryWidget>(PC, DisplayWidgetClass);
-			DisplayWidget->SetInventoryObject(GetInventoryObject());
+			DisplayWidget->RefreshInventoryWidget(InventoryObject);
 		}
 	}
 	check(DisplayWidget);

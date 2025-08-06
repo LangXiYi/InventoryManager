@@ -23,9 +23,9 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_ContainerGridWidget : public UInvSys_I
 {
 	GENERATED_BODY()
 
-public:
-	void ConstructGridItems(int32 InGridID);
+	friend class UGridInvSys_ContainerGridLayoutWidget;
 
+public:
 	void RemoveAllInventoryItem();
 
 	bool HasEnoughFreeSpace(FIntPoint IntPoint, FIntPoint ItemSize, const TArray<UWidget*>& Ignores = {}) const;
@@ -33,9 +33,8 @@ public:
 	void FindContainerGridItems(TArray<UGridInvSys_ContainerGridItemWidget*>& OutArray, FIntPoint Position,
 		FIntPoint ItemSize, const TSet<UGridInvSys_ContainerGridItemWidget*>& Ignores = {});
 
-	void UpdateContainerGridSize();
-
 protected:
+	virtual void NativeOnInitialized() override;
 	virtual void NativeConstruct() override;
 	virtual void NativePreConstruct() override;
 

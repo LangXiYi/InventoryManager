@@ -81,6 +81,7 @@ void UInvSys_InventoryFragment_Container::RemoveAllItemInstance()
 bool UInvSys_InventoryFragment_Container::RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
 {
 	bool bIsSuccess = false;
+	check(InItemInstance)
 	if (InItemInstance)
 	{
 		bIsSuccess = ContainerList.RemoveEntry(InItemInstance);
@@ -89,6 +90,7 @@ bool UInvSys_InventoryFragment_Container::RemoveItemInstance(UInvSys_InventoryIt
 			MarkContainerDirty();
 		}
 	}
+	UE_CLOG(bIsSuccess == false, LogInventorySystem, Warning, TEXT("RemoveItemInstance Falied, 物品实例在容器内不存在."))
 	return bIsSuccess;
 }
 
@@ -166,6 +168,8 @@ bool UInvSys_InventoryFragment_Container::ReplicateSubobjects(UActorChannel* Cha
 		{
 			if (KeyNeedsToReplicate(Entry.ReplicationID, Entry.ReplicationKey))
 			{
+				UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
+					TEXT("对象属性发生变化，正在同步 %s 到客户端。"), *Entry.Instance->GetItemDisplayName().ToString())
 				if (Entry.Instance && IsValid(Entry.Instance))
 				{
 					// 同步所有需要同步的数据

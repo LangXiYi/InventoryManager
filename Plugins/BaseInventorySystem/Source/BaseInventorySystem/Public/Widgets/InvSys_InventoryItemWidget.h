@@ -4,8 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "InvSys_InventoryWidget.h"
+#include "GameFramework/GameplayMessageSubsystem.h"
 #include "InvSys_InventoryItemWidget.generated.h"
 
+struct FInvSys_DragItemInstanceMessage;
 class UInvSys_InventoryItemInstance;
 /**
  * 
@@ -27,8 +29,18 @@ public:
 protected:
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
+	virtual void NativeOnDragCancelled(const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 
+	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
+
+	virtual void NativeOnDragItem(bool bIsDraggingItem);
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnEnableDragItemInstance();
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnDisableDragItemInstance();
 
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Item", meta = (ExposeOnSpawn))
@@ -37,5 +49,8 @@ protected:
 private:
 	bool bIsWaitingServerResponse = false;
 
+	bool bIsEnableDragItem = true;
+
 	FTimerHandle ServerTimeoutHandle;
+	FGameplayMessageListenerHandle DragItemListenerHandle;
 };

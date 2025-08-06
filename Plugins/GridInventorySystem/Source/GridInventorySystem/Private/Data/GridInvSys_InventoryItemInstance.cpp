@@ -4,7 +4,20 @@
 #include "Data/GridInvSys_InventoryItemInstance.h"
 
 #include "GridInventorySystem.h"
+#include "Components/InventoryObject/Fragment/GridInvSys_InventoryFragment_Container.h"
+#include "Data/GridInvSys_ItemFragment_GridItemSize.h"
 #include "Net/UnrealNetwork.h"
+
+void UGridInvSys_InventoryItemInstance::PostReplicatedChange()
+{
+	Super::PostReplicatedChange();
+
+	if (bWaitPostRepNotify_ItemPosition)
+	{
+		bWaitPostRepNotify_ItemPosition = false;
+		BroadcastItemPositionChangeMessage(LastItemPosition, ItemPosition);
+	}
+}
 
 void UGridInvSys_InventoryItemInstance::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -23,7 +36,7 @@ void UGridInvSys_InventoryItemInstance::RemoveFromInventory()
 {
 	Super::RemoveFromInventory();
 
-	SetItemPosition(FGridInvSys_ItemPosition());
+	// SetItemPosition(FGridInvSys_ItemPosition());
 }
 
 void UGridInvSys_InventoryItemInstance::SetItemPosition(const FGridInvSys_ItemPosition& NewItemPosition)
@@ -31,7 +44,7 @@ void UGridInvSys_InventoryItemInstance::SetItemPosition(const FGridInvSys_ItemPo
 	LastItemPosition = ItemPosition;
 	ItemPosition = NewItemPosition;
 
-	SetSlotTag(ItemPosition.EquipSlotTag);
+	// SetSlotTag(ItemPosition.EquipSlotTag);
 
 	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
 	{
@@ -39,12 +52,49 @@ void UGridInvSys_InventoryItemInstance::SetItemPosition(const FGridInvSys_ItemPo
 	}
 }
 
+FIntPoint UGridInvSys_InventoryItemInstance::GetItemSize()
+{
+	return GetItemSize(ItemPosition.Direction);
+}
+
+FIntPoint UGridInvSys_InventoryItemInstance::GetItemSize(EGridInvSys_ItemDirection Direction)
+{
+	FIntPoint NativeItemSize = FIntPoint(0, 0);
+	FIntPoint TargetItemSize = NativeItemSize;
+	// 根据方向计算物体实际大小
+	if (auto ItemSizeFragment = FindFragmentByClass<UGridInvSys_ItemFragment_GridItemSize>())
+	{
+		NativeItemSize = ItemSizeFragment->ItemSize;
+	}
+	else
+	{
+		checkNoEntry();
+		return NativeItemSize;
+	}
+	// 计算旋转后的物品大小
+	switch (Direction)
+	{
+	case EGridInvSys_ItemDirection::Horizontal:
+		TargetItemSize = NativeItemSize;
+		break;
+	case EGridInvSys_ItemDirection::Vertical:
+		TargetItemSize.X = NativeItemSize.Y;
+		TargetItemSize.Y = NativeItemSize.X;
+		break;
+	}
+	return TargetItemSize;
+}
+
+FIntPoint UGridInvSys_InventoryItemInstance::GetItemDefaultSize()
+{
+	return GetItemSize(EGridInvSys_ItemDirection::Horizontal);
+}
+
 void UGridInvSys_InventoryItemInstance::BroadcastItemPositionChangeMessage(const FGridInvSys_ItemPosition& OldPosition,
-	const FGridInvSys_ItemPosition& NewPosition)
+                                                                           const FGridInvSys_ItemPosition& NewPosition)
 {
 	FGridInvSys_ItemPositionChangeMessage ItemPositionChangeMessage;
 	ItemPositionChangeMessage.ItemInstance = this;
-	ItemPositionChangeMessage.InvComp = GetInventoryComponent();
 	ItemPositionChangeMessage.OldPosition = OldPosition;
 	ItemPositionChangeMessage.NewPosition = NewPosition;
 
@@ -54,11 +104,23 @@ void UGridInvSys_InventoryItemInstance::BroadcastItemPositionChangeMessage(const
 
 void UGridInvSys_InventoryItemInstance::OnRep_ItemPosition(const FGridInvSys_ItemPosition& OldItemPosition)
 {
-	ON_REP_PROPERTY(ItemPosition)
+	Execute_ItemPosition(OldItemPosition);
+	// ON_REP_PROPERTY(ItemPosition)
 }
 
 void UGridInvSys_InventoryItemInstance::Execute_ItemPosition(const FGridInvSys_ItemPosition& OldItemPosition)
 {
 	LastItemPosition = OldItemPosition;
-	BroadcastItemPositionChangeMessage(OldItemPosition, ItemPosition);
+	bWaitPostRepNotify_ItemPosition = true;
+	// UE_LOG(LogInventorySystem, Warning, TEXT("%s:OnRep_ItemPosition:%s ---> %s"),
+	// 	HasAuthority() ? TEXT("Server"):TEXT("Client"), *LastItemPosition.ToString(), *ItemPosition.ToString())
+	/**
+	 * 仅在当前位置与上次位置全部有效时广播通知
+	 * 这样可以保证 Changed 事件与 Add、Remove 事件不会重复触发
+	 */
+
+	// if (LastItemPosition.IsValid() && ItemPosition.IsValid())
+	{
+		// BroadcastItemPositionChangeMessage(LastItemPosition, ItemPosition);
+	}
 }

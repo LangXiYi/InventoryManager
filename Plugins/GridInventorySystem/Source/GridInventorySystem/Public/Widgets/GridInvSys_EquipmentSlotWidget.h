@@ -22,7 +22,7 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_EquipmentSlotWidget : public UInvSys_I
 	GENERATED_BODY()
 
 public:
-	virtual void RefreshWidget() override;
+	virtual void RefreshInventoryWidget(UInvSys_BaseInventoryObject* NewInventoryObject) override;
 	
 	virtual void EquipItemInstance(UInvSys_InventoryItemInstance* NewItemInstance);
 	virtual void UnEquipItemInstance();

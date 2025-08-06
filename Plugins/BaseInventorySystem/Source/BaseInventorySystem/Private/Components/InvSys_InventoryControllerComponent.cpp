@@ -15,23 +15,48 @@ UInvSys_InventoryControllerComponent::UInvSys_InventoryControllerComponent(const
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
+void UInvSys_InventoryControllerComponent::Server_DragAndRemoveItemInstance_Implementation(
+	UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance)
+{
+	check(InvComp)
+	check(InItemInstance)
+	bool bIsSuccessDragItem = false;
+	if (InvComp && InItemInstance)
+	{
+		bIsSuccessDragItem = InvComp->DragAndRemoveItemInstance(InItemInstance);
+		DraggingItemInstance = bIsSuccessDragItem ? InItemInstance : nullptr;
+	}
+	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG && bIsSuccessDragItem == false, LogInventorySystem, Warning,
+		TEXT("尝试拽起物品实例失败！！"))
+}
+
+void UInvSys_InventoryControllerComponent::Server_CancelDragItemInstance_Implementation(UInvSys_InventoryItemInstance* InItemInstance)
+{
+	check(InItemInstance)
+	if (InItemInstance)
+	{
+		InItemInstance->SetIsDraggingItem(false);
+	}
+	DraggingItemInstance = nullptr;
+}
+
 bool UInvSys_InventoryControllerComponent::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch,
-	FReplicationFlags* RepFlags)
+                                                               FReplicationFlags* RepFlags)
 {
 	// 持续同步被拽起的物品
 	bool bWroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
-	if (DraggingItemInstance != nullptr)
-	{
-		// UActorChannel::SetCurrentSubObjectOwner(DraggingItemInstance->GetInventoryComponent());
-		if (DraggingItemInstance->MyInstances.Num() > 0)
-		{
-			for (UInvSys_InventoryItemInstance* ItemInstance : DraggingItemInstance->MyInstances)
-			{
-				bWroteSomething |= Channel->ReplicateSubobject(ItemInstance, *Bunch, * RepFlags);
-			}
-		}
-		bWroteSomething |= Channel->ReplicateSubobject(DraggingItemInstance, *Bunch, * RepFlags);
-	}
+	// if (DraggingItemInstance != nullptr)
+	// {
+	// 	// UActorChannel::SetCurrentSubObjectOwner(DraggingItemInstance->GetInventoryComponent());
+	// 	if (DraggingItemInstance->MyInstances.Num() > 0)
+	// 	{
+	// 		for (UInvSys_InventoryItemInstance* ItemInstance : DraggingItemInstance->MyInstances)
+	// 		{
+	// 			bWroteSomething |= Channel->ReplicateSubobject(ItemInstance, *Bunch, * RepFlags);
+	// 		}
+	// 	}
+	// 	bWroteSomething |= Channel->ReplicateSubobject(DraggingItemInstance, *Bunch, * RepFlags);
+	// }
 	return bWroteSomething;
 }
 
@@ -123,14 +148,20 @@ void UInvSys_InventoryControllerComponent::Server_DropItemInstanceToWorld_Implem
 	}
 }
 
-void UInvSys_InventoryControllerComponent::Server_TryDragItemInstance_Implementation(
+void UInvSys_InventoryControllerComponent::Server_DragItemInstance_Implementation(
 	UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance)
 {
-	check(InvComp)
-	check(InItemInstance)
-	bIsSuccessDragItem = InvComp ? InvComp->TryDragItemInstance(InItemInstance) : false;
-	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG && bIsSuccessDragItem == false, LogInventorySystem, Warning,
-		TEXT("尝试拽起物品实例失败！！"))
-	DraggingItemInstance = bIsSuccessDragItem ? InItemInstance : nullptr;
+	if (InvComp == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Failed, Inventory Component is nullptr."), __FUNCTION__)
+		return;
+	}
+	if (InItemInstance == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Failed, ItemInstance is nullptr."), __FUNCTION__)
+		return;
+	}
+	bool bDragItemInstance = InvComp->DragItemInstance(InItemInstance);
+	DraggingItemInstance = bDragItemInstance ? InItemInstance : nullptr;
 }
 

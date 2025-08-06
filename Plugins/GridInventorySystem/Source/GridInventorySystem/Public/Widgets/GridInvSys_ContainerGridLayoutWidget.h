@@ -22,7 +22,7 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_ContainerGridLayoutWidget : public UIn
 	GENERATED_BODY()
 
 public:
-	virtual void RefreshWidget() override;
+	virtual void RefreshInventoryWidget(UInvSys_BaseInventoryObject* NewInventoryObject) override;
 
 	UFUNCTION(BlueprintCallable, Category = "Grid Grid Layout")
 	void AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance);

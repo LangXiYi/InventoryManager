@@ -15,9 +15,9 @@
 #include "Library/InvSys_InventorySystemLibrary.h"
 #include "Widgets/GridInvSys_DragItemWidget.h"
 
-void UGridInvSys_EquipmentSlotWidget::RefreshWidget()
+void UGridInvSys_EquipmentSlotWidget::RefreshInventoryWidget(UInvSys_BaseInventoryObject* NewInventoryObject)
 {
-	Super::RefreshWidget();
+	Super::RefreshInventoryWidget(NewInventoryObject);
 	check(InventoryObject)
 	auto EquipFragment = InventoryObject->FindInventoryFragment<UInvSys_InventoryFragment_Equipment>();
 	if (EquipFragment)
@@ -112,9 +112,9 @@ bool UGridInvSys_EquipmentSlotWidget::NativeOnDrop(const FGeometry& InGeometry, 
 				return true;
 			}
 		}
-		// 还原目标物品
-		UInvSys_InventoryComponent* From_InvComp = PayLoadItemInstance->GetInventoryComponent();
-		ICC->Server_RestoreItemInstance(From_InvComp, PayLoadItemInstance); 
+		// // 还原目标物品
+		// UInvSys_InventoryComponent* From_InvComp = PayLoadItemInstance->GetInventoryComponent();
+		// ICC->Server_RestoreItemInstance(From_InvComp, PayLoadItemInstance); 
 	}
 	return false;
 }

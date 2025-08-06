@@ -41,12 +41,12 @@ bool FInvSys_ContainerList::RemoveEntry(UInvSys_InventoryItemInstance* Instance)
 		FInvSys_ContainerEntry& Entry = *EntryIt;
 		if (Entry.Instance == Instance)
 		{
-			Entry.Instance->RemoveFromInventory();
 			if (InventoryFragment->GetNetMode() != NM_DedicatedServer)
 			{
-				BroadcastRemoveEntryMessage(Entry);
+				// BroadcastRemoveEntryMessage(Entry);
+				Instance->BroadcastRemoveItemInstanceMessage();
 			}
-			
+			Entry.Instance->RemoveFromInventory();
 			EntryIt.RemoveCurrent(); //这里Remove后，Entry的值会同步改变
 			MarkArrayDirty();
 			return true;
@@ -92,80 +92,48 @@ void FInvSys_ContainerList::PreReplicatedRemove(const TArrayView<int32>& Removed
 	 * PreReplicatedRemove <-- 1 --> OnRep_PropertyName
 	 * OnRep_PropertyName  <-- 2 --> OnRepContainerList
 	 * OnRepContainerList  <-- 3 --> PreReplicatedRemove
+	 * 注意2：PreRemove执行在所有复制行为发生之前
 	 */
 
-	for (int32 Index : RemovedIndices)
+	/*for (int32 Index : RemovedIndices)
 	{
 		FInvSys_ContainerEntry& Entry = Entries[Index];
 		BroadcastRemoveEntryMessage(Entry);
 
-		UInvSys_InventoryItemInstance* ItemInstance = Entry.Instance;
-		InventoryFragment->GetWorld()->GetTimerManager().SetTimerForNextTick([this, ItemInstance]()
-		{
-			if (ItemInstance && ItemInstance->GetIsReadyReplicatedProperties())
-			{
-				ItemInstance->ReplicatedProperties();
-			}
-		});
-	}
+		// UInvSys_InventoryItemInstance* ItemInstance = Entry.Instance;
+		// InventoryFragment->GetWorld()->GetTimerManager().SetTimerForNextTick([this, ItemInstance]()
+		// {
+		// 	if (ItemInstance && ItemInstance->GetIsReadyReplicatedProperties())
+		// 	{
+		// 		ItemInstance->ReplicatedProperties();
+		// 	}
+		// });
+	}*/
 }
 
 void FInvSys_ContainerList::PostReplicatedAdd(const TArrayView<int32>& AddedIndices, int32 FinalSize)
 {
-	for (int32 Index : AddedIndices)
+	/*for (int32 Index : AddedIndices)
 	{
+
 		FInvSys_ContainerEntry& Entry = Entries[Index];
-		// if (Entry.Instance && Entry.Instance->GetIsReadyReplicatedProperties())
-		// {
-		// 	Entry.Instance->ReplicatedProperties();
-		// }
-		BroadcastAddEntryMessage(Entry);
-	}
+		if (Entry.StackCount == 1)
+		{
+			UE_LOG(LogInventorySystem, Error, TEXT("PostReplicatedAdd"))
+		}
+		// InventoryFragment->GetWorld()->GetTimerManager().SetTimerForNextTick([this, Entry]()
+		{
+			BroadcastAddEntryMessage(Entry);
+		}//);
+	}*/
 }
 
 void FInvSys_ContainerList::PostReplicatedChange(const TArrayView<int32>& ChangedIndices, int32 FinalSize)
 {
 	// Changed 函数在其内部属性同步之前执行？
-}
-
-void FInvSys_ContainerList::BroadcastAddEntryMessage(const FInvSys_ContainerEntry& Entry)
-{
-	OnContainerEntryAdded.ExecuteIfBound(Entry, false);
-	// BroadcastStackChangeMessage(Entry, 0, Entry.StackCount);
-
-	FInvSys_InventoryItemChangedMessage ItemChangedMessage;
-	ItemChangedMessage.InvComp = InventoryFragment->GetInventoryComponent();
-	ItemChangedMessage.InventoryObjectTag = InventoryFragment->GetInventoryObjectTag();
-	ItemChangedMessage.ItemInstance = Entry.Instance;
-
-	UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(InventoryFragment->GetWorld());
-	MessageSubsystem.BroadcastMessage(Inventory_Message_AddItem, ItemChangedMessage);
-}
-
-void FInvSys_ContainerList::BroadcastRemoveEntryMessage(const FInvSys_ContainerEntry& Entry)
-{
-	OnContainerEntryRemove.ExecuteIfBound(Entry, false);
-	// BroadcastStackChangeMessage(Entry, Entry.StackCount, 0);
-
-	FInvSys_InventoryItemChangedMessage ItemChangedMessage;
-	ItemChangedMessage.InvComp = InventoryFragment->GetInventoryComponent();
-	ItemChangedMessage.InventoryObjectTag = InventoryFragment->GetInventoryObjectTag();
-	ItemChangedMessage.ItemInstance = Entry.Instance;
-
-	UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(InventoryFragment->GetWorld());
-	MessageSubsystem.BroadcastMessage(Inventory_Message_RemoveItem, ItemChangedMessage);
-}
-
-void FInvSys_ContainerList::BroadcastStackChangeMessage(const FInvSys_ContainerEntry& Entry, int32 OldCount,
-	int32 NewCount)
-{
-	FInvSys_InventoryStackChangeMessage StackChangeMessage;
-	StackChangeMessage.InvComp = InventoryFragment->GetInventoryComponent();
-	StackChangeMessage.InventoryObjectTag = InventoryFragment->GetInventoryObjectTag();
-	StackChangeMessage.ItemInstance = Entry.Instance;
-	StackChangeMessage.StackCount = NewCount;
-	StackChangeMessage.Delta = NewCount - OldCount;
-
-	UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(InventoryFragment->GetWorld());
-	MessageSubsystem.BroadcastMessage(Inventory_Message_StackChanged, StackChangeMessage);
+	/*for (int32 Index : ChangedIndices)
+	{
+		FInvSys_ContainerEntry& Entry = Entries[Index];
+		UE_LOG(LogInventorySystem, Warning, TEXT("PostReplicatedChange"))
+	}*/
 }

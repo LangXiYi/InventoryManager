@@ -18,6 +18,8 @@ void UGridInvSys_InventoryFragment_Container::InitInventoryFragment(UObject* Pre
 {
 	Super::InitInventoryFragment(PreEditFragment);
 
+	COPY_INVENTORY_FRAGMENT_PROPERTY(UGridInvSys_InventoryFragment_Container, ContainerLayoutDataType);
+
 	switch (ContainerLayoutDataType)
 	{
 	case EGridInvSys_ContainerLayoutDataType::FromEquipment:
@@ -185,7 +187,7 @@ void UGridInvSys_InventoryFragment_Container::NativeOnContainerEntryRemove(
 	{
 		auto GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(ChangeInfo.ItemInstance);
 		check(GridItemInstance)
-		UpdateContainerGridItemState(GridItemInstance, GridItemInstance->GetLastItemPosition(), false);
+		UpdateContainerGridItemState(GridItemInstance, GridItemInstance->GetItemPosition(), false);
 	}
 }
 

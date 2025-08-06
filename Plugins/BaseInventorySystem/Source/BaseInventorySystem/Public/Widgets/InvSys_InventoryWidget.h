@@ -23,9 +23,7 @@ class BASEINVENTORYSYSTEM_API UInvSys_InventoryWidget : public UUserWidget
 	friend class UInvSys_InventoryFragment_DisplayWidget;
 
 public:
-	UInvSys_InventoryWidget(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
-
-	virtual void RefreshWidget();
+	virtual void RefreshInventoryWidget(UInvSys_BaseInventoryObject* NewInventoryObject);
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnRefreshWidget();

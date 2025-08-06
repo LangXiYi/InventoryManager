@@ -23,47 +23,11 @@
 #include "Interface/GridInvSys_DraggingItemInterface.h"
 #include "Library/GridInvSys_CommonFunctionLibrary.h"
 #include "Library/InvSys_InventorySystemLibrary.h"
-#include "Widgets/GridInvSys_ContainerGridDropWidget.h"
 #include "Widgets/GridInvSys_ContainerGridItemWidget.h"
 #include "Widgets/GridInvSys_ContainerGridLayoutWidget.h"
 #include "Widgets/GridInvSys_DragItemWidget.h"
 #include "Widgets/Notifications/SNotificationList.h"
 
-
-void UGridInvSys_ContainerGridWidget::ConstructGridItems(int32 InGridID)
-{
-	if (GridItemWidgetClass == nullptr)
-	{
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Error, TEXT("GridItemWidgetClass is nullptr."))
-		return;
-	}
-	
-	ContainerGridID = InGridID;
-
-	//  清除 ContainerGrid 中所有子项。
-	if (ContainerPanel->HasAnyChildren() == true)
-	{
-		ContainerPanel->ClearChildren();
-	}
-
-	// 创建所有网格
-	int32 ItemSize = GetDefault<UGridInvSys_InventorySystemConfig>()->ItemDrawSize;
-	for (int i = 0; i < ContainerGridSize.X * ContainerGridSize.Y; ++i)
-	{
-		const int SlotRow = i / ContainerGridSize.Y;
-		const int SlotColumn = i % ContainerGridSize.Y;
-		auto GridItemWidget = CreateWidget<UGridInvSys_ContainerGridItemWidget>(this, GridItemWidgetClass);
-		UCanvasPanelSlot* PanelSlot = ContainerPanel->AddChildToCanvas(GridItemWidget);
-
-		PanelSlot->SetPosition(FVector2d(SlotColumn * ItemSize, SlotRow * ItemSize));
-		PanelSlot->SetSize(FVector2d(ItemSize, ItemSize)); // 方便后续显示拖拽范围。
-
-		GridItemWidget->SetInventoryObject(GetInventoryObject());
-		GridItemWidget->SetInventoryComponent(InventoryComponent.Get());
-		GridItemWidget->SetSlotTag(SlotTag);
-		GridItemWidget->OnConstructGridItem(this, FIntPoint(SlotRow, SlotColumn));
-	}
-}
 
 void UGridInvSys_ContainerGridWidget::FindContainerGridItems(TArray<UGridInvSys_ContainerGridItemWidget*>& OutArray,
                                                              FIntPoint Position, FIntPoint ItemSize, const TSet<UGridInvSys_ContainerGridItemWidget*>& Ignores)
@@ -83,14 +47,38 @@ void UGridInvSys_ContainerGridWidget::FindContainerGridItems(TArray<UGridInvSys_
 	}
 }
 
-void UGridInvSys_ContainerGridWidget::UpdateContainerGridSize()
+void UGridInvSys_ContainerGridWidget::NativeOnInitialized()
 {
-	/*int32 ItemDrawSize = GetDefault<UGridInvSys_InventorySystemConfig>()->ItemDrawSize;
-	if (SizeBox)
+	Super::NativeOnInitialized();
+	if (GridItemWidgetClass == nullptr)
 	{
-		SizeBox->SetWidthOverride(ItemDrawSize * ContainerGridSize.Y);
-		SizeBox->SetHeightOverride(ItemDrawSize * ContainerGridSize.X);
-	}*/
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Error, TEXT("GridItemWidgetClass is nullptr."))
+		return;
+	}
+
+	//  清除 ContainerGrid 中所有子项。
+	if (ContainerPanel->HasAnyChildren() == true)
+	{
+		ContainerPanel->ClearChildren();
+	}
+
+	// 创建所有网格
+	int32 ItemSize = GetDefault<UGridInvSys_InventorySystemConfig>()->ItemDrawSize;
+	for (int i = 0; i < ContainerGridSize.X * ContainerGridSize.Y; ++i)
+	{
+		const int SlotRow = i / ContainerGridSize.Y;
+		const int SlotColumn = i % ContainerGridSize.Y;
+		auto GridItemWidget = CreateWidget<UGridInvSys_ContainerGridItemWidget>(this, GridItemWidgetClass);
+		UCanvasPanelSlot* PanelSlot = ContainerPanel->AddChildToCanvas(GridItemWidget);
+
+		PanelSlot->SetPosition(FVector2d(SlotColumn * ItemSize, SlotRow * ItemSize));
+		PanelSlot->SetSize(FVector2d(ItemSize, ItemSize)); // 方便后续显示拖拽范围。
+
+		// GridItemWidget->SetInventoryObject(GetInventoryObject());
+		// GridItemWidget->SetInventoryComponent(InventoryComponent.Get());
+		// GridItemWidget->SetSlotTag(SlotTag);
+		GridItemWidget->OnConstructGridItem(this, FIntPoint(SlotRow, SlotColumn));
+	}
 }
 
 int32 UGridInvSys_ContainerGridWidget::GetItemIndex(const FIntPoint Position) const
@@ -187,7 +175,7 @@ bool UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer(
 	 * 1、物品在容器范围内
 	 * 2、范围内的所有物品都在物品实例的覆盖范围下
 	 */
-	FIntPoint TargetItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSizeFrom(ItemInstance, ItemDirection);
+	FIntPoint TargetItemSize = GridItemInstance->GetItemSize(ItemDirection);
 	if (!IsInContainer(ToPosition, TargetItemSize))
 	{
 		return false;
@@ -208,7 +196,7 @@ bool UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer(
 		{
 			if (!IsInRange(ToPosition, TargetItemSize, HoveredItemPosition.Position, HoveredItemSize))
 			{
-				UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("From物品不在To的范围内 & To 也不在 From 的范围内"))
+				// UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("From物品不在To的范围内 & To 也不在 From 的范围内"))
 				return false;
 			}
 		}
@@ -223,7 +211,7 @@ bool UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer(
 	{
 		if (HasEnoughFreeSpace(ToPosition, TargetItemSize))
 		{
-			UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("目标位置未被占领且存在足够的范围"))
+			// UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("目标位置未被占领且存在足够的范围"))
 			return true;
 		}
 	}
@@ -232,10 +220,10 @@ bool UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer(
 	 * 目标位置下的物品与传入的物品实例大小一致 & 目标位置与重叠物品的位置一致
 	 */
 
-	FIntPoint ToTargetItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSize(ToGridItemInstance);
+	FIntPoint ToTargetItemSize = ToGridItemInstance->GetItemSize();
 	if (TargetItemSize == ToTargetItemSize && ToGridItemWidget == ToGridItemWidget->GetOriginGridItemWidget())
 	{
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("To 的位置已经被其他物品占领，但 From 与 To 的大小一致 且 To 的位置是物品的左上角"))
+		// UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("To 的位置已经被其他物品占领，但 From 与 To 的大小一致 且 To 的位置是物品的左上角"))
 		return true;
 	}
 
@@ -243,12 +231,12 @@ bool UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer(
 	 * 物品实例不在当前容器内 & 物品实例的大小 >= 占据目标位置的物品的大小
 	 */
 
-	if (GridInvComp != this->GetInventoryComponent() || GridItemInstance->GetLastSlotTag() != this->GetSlotTag())
+	if (GridInvComp != this->GetInventoryComponent() || GridItemInstance->GetSlotTag() != this->GetSlotTag())
 	{
 		if (TargetItemSize.X >= ToTargetItemSize.X &&
 			TargetItemSize.Y >= ToTargetItemSize.Y)
 		{
-			UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("To 的位置已经被其他物品占领，且拖拽的物品大小 >= 放置位置的物品的大小"))
+			// UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("To 的位置已经被其他物品占领，且拖拽的物品大小 >= 放置位置的物品的大小"))
 			return true;
 		}
 	}
@@ -267,7 +255,7 @@ bool UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer(
 		{
 			// 计算相对坐标
 			FGridInvSys_ItemPosition TempItemPos = OccupiedItemInstance->GetItemPosition();
-			FGridInvSys_ItemPosition FromItemPosition = GridItemInstance->GetLastItemPosition();
+			FGridInvSys_ItemPosition FromItemPosition = GridItemInstance->GetItemPosition();
 			FIntPoint RelativePosition;
 			RelativePosition.X = TempItemPos.Position.X - ToPosition.X;
 			RelativePosition.Y = TempItemPos.Position.Y - ToPosition.Y;
@@ -295,7 +283,7 @@ bool UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer(
 				return false;
 			}
 		}
-		UE_LOG(LogInventorySystem, Log, TEXT("可以放置 Item "))
+		// UE_LOG(LogInventorySystem, Log, TEXT("可以放置 Item "))
 		return true;
 	}
 	else
@@ -533,7 +521,7 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(
 	 */
 
 	// 不同容器下的物品交换 且  拖拽的物品大小 >= 放置位置的物品的大小
-	if (GridInvComp != this->GetInventoryComponent() || GridItemInstance->GetLastSlotTag() != this->GetSlotTag())
+	if (GridInvComp != this->GetInventoryComponent() || GridItemInstance->GetSlotTag() != this->GetSlotTag())
 	{
 		if (FromTargetItemSize.X >= ToTargetItemSize.X &&
 			FromTargetItemSize.Y >= ToTargetItemSize.Y)
@@ -544,7 +532,7 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(
 			for (UGridInvSys_InventoryItemInstance* HoveredItemInstance : AllHoveredItemInstances)
 			{
 				FGridInvSys_ItemPosition TempItemPos = HoveredItemInstance->GetItemPosition();
-				FGridInvSys_ItemPosition FromItemPosition = GridItemInstance->GetLastItemPosition();
+				FGridInvSys_ItemPosition FromItemPosition = GridItemInstance->GetItemPosition();
 				// ToPosition TempPos.Pos 计算相对坐标
 				FIntPoint RelativePosition;
 				RelativePosition.X = TempItemPos.Position.X - DropPosition.Position.X;
@@ -586,7 +574,7 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(
 		{
 			// 计算相对坐标
 			FGridInvSys_ItemPosition TempItemPos = HoveredItemInstance->GetItemPosition();
-			FGridInvSys_ItemPosition FromItemPosition = GridItemInstance->GetLastItemPosition();
+			FGridInvSys_ItemPosition FromItemPosition = GridItemInstance->GetItemPosition();
 			FIntPoint RelativePosition;
 			RelativePosition.X = TempItemPos.Position.X - DropPosition.Position.X;
 			RelativePosition.Y = TempItemPos.Position.Y - DropPosition.Position.Y;

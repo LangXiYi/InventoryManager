@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "BaseInventorySystem.h"
 #include "Components/ActorComponent.h"
 #include "GameplayTagContainer.h"
 #include "InventoryObject/InvSys_BaseInventoryObject.h"
@@ -60,42 +61,75 @@ public:
 	T* AddItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
 		FGameplayTag InSlotTag,	int32 InStackCount, const Arg&... Args)
 	{
-		UInvSys_InventoryFragment_Container* ContainerFragment =
-			FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(InSlotTag);
+		auto ContainerFragment = FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(InSlotTag);
 		if (ContainerFragment)
 		{
 			return ContainerFragment->AddItemDefinition<T>(ItemDef, InStackCount, Args...);
 		}
 		return nullptr;
 	}
+
 	template<class T, class... Arg>
 	bool AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args)
 	{
-		UInvSys_InventoryFragment_Container* ContainerFragment =
-			FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(SlotTag);
-		if (InItemInstance == nullptr || ContainerFragment == nullptr)
+		auto ContainerFragment = FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(SlotTag);
+		if (InItemInstance != nullptr && ContainerFragment != nullptr)
 		{
-			checkNoEntry()
-			return false;
+			return ContainerFragment->AddItemInstance<T>(InItemInstance, Args...);
 		}
-		/**
-		 * 判断物品实例之前所在的库存组件与当前组件是否一致
-		 * 不一致时，说明物品实例的 Outer 不是当前组件的 Owner 所以需要重新复制一份并更新 Outer
-		 */
-		T* TargetItemInstance = Cast<T>(InItemInstance);
-		if (this != InItemInstance->GetInventoryComponent())
-		{
-			TargetItemInstance = DuplicateObject<T>(TargetItemInstance, this);
-			InItemInstance->ConditionalBeginDestroy();//标记目标待删除
-		}
-		return ContainerFragment->AddItemInstance<T>(TargetItemInstance, Args...);
+		return false;
 	}
-	
+
 	bool RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
 	bool RestoreItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
 
+	template<class T, class... Arg>
+	bool UpdateItemInstance(UInvSys_InventoryItemInstance* ItemInstance, FGameplayTag SlotTag, const Arg&... Args)
+	{
+		auto ContainerFragment = FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(SlotTag);
+		if (ItemInstance && ContainerFragment)
+		{
+			return ContainerFragment->UpdateItemInstance<T>(ItemInstance, Args...);
+		}
+		return false;
+	}
+
 	// Begin Drag Drop ====================
-	bool TryDragItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
+	bool DragAndRemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
+	/**
+	 * 拖拽物品会将背包内的该物品锁住，必须在放下或取消拖拽后取消该锁定！！
+	 * 可以通过 UInvSys_InventoryItemInstance::SetIsDraggingItem 修改锁定状态。
+	 */
+	bool DragItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
+
+	/**
+	 * 放下物品存在两种不同执行流程：
+	 * 第一种：修改对象属性值；
+	 * 第二种：修改容器成员
+	 *		A、将对象从原有的容器内取出后放置到新容器内。
+	 *		B、加入新容器前需要判断物品所有者是否发生改变，以此决定是否进行深度拷贝并重设所有者。
+	 */
+	template<class T, class... Arg>
+	bool DropItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args)
+	{
+		bool bIsSuccess = false;
+		if (InItemInstance)
+		{
+			InItemInstance->SetIsDraggingItem(false); // 不能在 AddItemInstance 之后执行，避免复制之后修改旧对象的值！
+			UInvSys_InventoryComponent* FromInvComp = InItemInstance->GetInventoryComponent();
+			if (SlotTag == InItemInstance->GetSlotTag() && this == FromInvComp)
+			{
+				bIsSuccess = UpdateItemInstance<T>(InItemInstance, SlotTag, Args...);
+			}
+			else
+			{
+				FromInvComp->RemoveItemInstance(InItemInstance);
+				bIsSuccess = AddItemInstance<T>(InItemInstance, SlotTag, Args...);
+				check(bIsSuccess)
+			}
+		}
+		return bIsSuccess;
+	}
 
 	void DropItemInstanceToWorld(UInvSys_InventoryItemInstance* InItemInstance);
 	// End Drag Drop ====================

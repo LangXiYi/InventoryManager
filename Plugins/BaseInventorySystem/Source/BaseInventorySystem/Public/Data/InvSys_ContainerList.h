@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "BaseInventorySystem.h"
 #include "InvSys_InventoryItemDefinition.h"
 #include "InvSys_InventoryItemInstance.h"
 #include "NativeGameplayTags.h"
@@ -75,6 +76,40 @@ public:
 	int32 LastObservedCount = INDEX_NONE;
 
 public:
+	/**
+	 * Called right before deleting element during replication.
+	 * 
+	 * @param InArraySerializer	Array serializer that owns the item and has triggered the replication call
+	 * 
+	 * NOTE: intentionally not virtual; invoked via templated code, @see FExampleItemEntry
+	 */
+	FORCEINLINE void PreReplicatedRemove(const struct FFastArraySerializer& InArraySerializer)
+	{
+		Instance->ReplicateState = EInvSys_ReplicateState::PreRemove;
+		Instance->PreReplicatedRemove();
+	}
+	/**
+	 * Called after adding and serializing a new element
+	 *
+	 * @param InArraySerializer	Array serializer that owns the item and has triggered the replication call
+	 * 
+	 * NOTE: intentionally not virtual; invoked via templated code, @see FExampleItemEntry
+	 */
+	FORCEINLINE void PostReplicatedAdd(const struct FFastArraySerializer& InArraySerializer)
+	{
+		Instance->ReplicateState = EInvSys_ReplicateState::PostAdd;
+	}
+	/**
+	 * Called after updating an existing element with new data
+	 *
+	 * @param InArraySerializer	Array serializer that owns the item and has triggered the replication call
+	 * NOTE: intentionally not virtual; invoked via templated code, @see FExampleItemEntry
+	 */
+	FORCEINLINE void PostReplicatedChange(const struct FFastArraySerializer& InArraySerializer)
+	{
+		Instance->ReplicateState = EInvSys_ReplicateState::PostChange;
+	}
+
 	FString GetDebugString() const;
 
 	template<class T = UInvSys_InventoryItemInstance>
@@ -101,41 +136,32 @@ struct BASEINVENTORYSYSTEM_API FInvSys_ContainerList : public FFastArraySerializ
 	friend class UInvSys_BaseEquipContainerObject;
 
 public:
-	FInvSys_ContainerList()
-	{	}
+	FInvSys_ContainerList() { }
 
 	FInvSys_ContainerList(UInvSys_BaseInventoryFragment* InOwnerObject) : InventoryFragment(InOwnerObject)
-	{	}
+	{
+		SetDeltaSerializationEnabled(false);
+	}
 
-	void BroadcastAddEntryMessage(const FInvSys_ContainerEntry& Entry);
-	
-	void BroadcastRemoveEntryMessage(const FInvSys_ContainerEntry& Entry);
-
-	void BroadcastStackChangeMessage(const FInvSys_ContainerEntry& Entry, int32 OldCount, int32 NewCount); // 广播堆叠数量变化事件
-	
 public:
 	UPROPERTY()
 	TArray<FInvSys_ContainerEntry> Entries;
 
-	// UPROPERTY()
-	// TArray<FInvSys_ContainerEntry> PostRepEntries; // 在RepSubObject中使用
-
 	UPROPERTY(NotReplicated)
 	TObjectPtr<UInvSys_BaseInventoryFragment> InventoryFragment;
+
 public:
 	template<class T, class... Arg>
 	T* AddDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, const Arg&... Args)
 	{
-		if (ItemDef == nullptr || InventoryFragment == nullptr)
-		{
-			checkNoEntry();
-			return nullptr;
-		}
-		
+		check(ItemDef)
+		check(InventoryFragment)
 		check(InventoryFragment->HasAuthority());
 		FInvSys_ContainerEntry& NewEntry = Entries.AddDefaulted_GetRef();
 		T* Result = NewObject<T>(InventoryFragment->GetInventoryComponent());
+		// Result->SetInventoryComponent(InventoryFragment->GetInventoryComponent());
 		Result->Entry_Private = &NewEntry;
+		// Result->Container_Private = this;
 		Result->SetItemDefinition(ItemDef);
 		Result->SetItemUniqueID(FGuid::NewGuid());
 		// 这两个属性表明了这个对象的最基础的位置信息
@@ -158,8 +184,10 @@ public:
 		
 		if (InventoryFragment && InventoryFragment->GetNetMode() != NM_DedicatedServer)
 		{
-			BroadcastAddEntryMessage(NewEntry);
+			Result->BroadcastAddItemInstanceMessage();
+			// BroadcastAddEntryMessage(NewEntry);
 		}
+		check(Result)
 		return Result;
 	}
 
@@ -169,28 +197,26 @@ public:
 	template<class T, class... Arg>
 	bool AddInstance(UInvSys_InventoryItemInstance* Instance, const Arg&... Args)
 	{
-		if (Instance)
+		check(Instance)
+		// 更新物品的基础信息
+		Instance->SetSlotTag(InventoryFragment->GetInventoryObjectTag());
+		// Instance->SetInventoryComponent(InventoryFragment->GetInventoryComponent());
+		//执行可变参数模板，将参数列表中的值赋予目标对象。
+		int32 Arr[] = {0, (InitItemInstanceProps<T>(Instance, Args), 0)...};
+
+		FInvSys_ContainerEntry& NewEntry = Entries.AddDefaulted_GetRef();
+		Instance->Entry_Private = &NewEntry;
+		// Instance->Container_Private = InventoryFragment;
+
+		NewEntry.Instance = Instance;
+		MarkItemDirty(NewEntry);
+		check(InventoryFragment)
+		if (InventoryFragment && InventoryFragment->GetNetMode() != NM_DedicatedServer)
 		{
-			// 更新物品的基础信息
-			Instance->SetSlotTag(InventoryFragment->GetInventoryObjectTag());
-			// Instance->SetInventoryComponent(OwnerObject->GetInventoryComponent());
-			//执行可变参数模板，将参数列表中的值赋予目标对象。
-			int32 Arr[] = {0, (InitItemInstanceProps<T>(Instance, Args), 0)...};
-
-			FInvSys_ContainerEntry& NewEntry = Entries.AddDefaulted_GetRef();
-			Instance->Entry_Private = &NewEntry;
-
-			NewEntry.Instance = Instance;
-			MarkItemDirty(NewEntry);
-
-			check(InventoryFragment)
-			if (InventoryFragment && InventoryFragment->GetNetMode() != NM_DedicatedServer)
-			{
-				BroadcastAddEntryMessage(NewEntry);
-			}
-			return true;
+			Instance->BroadcastAddItemInstanceMessage();
+			// BroadcastAddEntryMessage(NewEntry);
 		}
-		return false;
+		return true;
 	}
 
 	void RemoveAll();
@@ -219,14 +245,20 @@ public:
 	UInvSys_InventoryItemInstance* FindItem(FGuid ItemUniqueID) const;
 
 public:
-	//~FFastArraySerializer contract // 仅非Server的客户端接收该数据
+	/**
+	 * PreRemove 发生在对象的属性复制之前
+	 */
 	void PreReplicatedRemove(const TArrayView<int32>& RemovedIndices, int32 FinalSize);
-
+	/**
+	 * PostAdd 发生在对象的属性复制之前
+	 */
 	void PostReplicatedAdd(const TArrayView<int32>& AddedIndices, int32 FinalSize);
-	
+	/**
+	 * PostChange 发生在对象的属性复制之前
+	 */
 	void PostReplicatedChange(const TArrayView<int32>& ChangedIndices, int32 FinalSize);
-	//~End of FFastArraySerializer contract
-	
+	// void PostReplicatedReceive(const FPostReplicatedReceiveParameters& Parameters);
+
 	bool NetDeltaSerialize(FNetDeltaSerializeInfo& DeltaParms)
 	{
 		return FFastArraySerializer::FastArrayDeltaSerialize<FInvSys_ContainerEntry, FInvSys_ContainerList>(Entries, DeltaParms, *this);

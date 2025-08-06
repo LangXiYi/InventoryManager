@@ -34,6 +34,8 @@ FReply UInvSys_InventoryItemWidget::NativeOnMouseButtonDown(const FGeometry& InG
 void UInvSys_InventoryItemWidget::NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent,
 	UDragDropOperation*& OutOperation)
 {
+	if (bIsEnableDragItem == false) return;
+
 	Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
 	if (OutOperation != nullptr) return; // 如果蓝图实现了处理，则不会继续执行 C++ 定义的逻辑
 
@@ -64,17 +66,64 @@ void UInvSys_InventoryItemWidget::NativeOnDragDetected(const FGeometry& InGeomet
 		DragDropOperation->Offset = DragDropFragment->DragOffset;
 		OutOperation = DragDropOperation;
 		
-		PlayerInvComp->Server_TryDragItemInstance(FromInvComp, ItemInstance.Get()); //通知服务器: 玩家正在拖拽物品
-		GetWorld()->GetTimerManager().SetTimer(ServerTimeoutHandle, [&]()
-		{
-			bIsWaitingServerResponse = false;
-			// TODO::发送网络环境较差通知？
-		}, 5.f, false);
+		PlayerInvComp->Server_DragItemInstance(FromInvComp, ItemInstance.Get()); //通知服务器: 玩家正在拖拽物品
+		// GetWorld()->GetTimerManager().SetTimer(ServerTimeoutHandle, [&]()
+		// {
+		// 	bIsWaitingServerResponse = false;
+		// 	// TODO::发送网络环境较差通知？
+		// }, 5.f, false);
 	}
+}
+
+void UInvSys_InventoryItemWidget::NativeOnDragCancelled(const FDragDropEvent& InDragDropEvent,
+	UDragDropOperation* InOperation)
+{
+	Super::NativeOnDragCancelled(InDragDropEvent, InOperation);
+	UInvSys_InventoryControllerComponent* PlayerInvComp = UInvSys_InventorySystemLibrary::GetPlayerInventoryComponent(GetWorld());
+	if (PlayerInvComp)
+	{
+		UE_LOG(LogInventorySystem, Warning, TEXT("Cancel Drag"))
+		bIsWaitingServerResponse = false;
+		PlayerInvComp->Server_CancelDragItemInstance(ItemInstance.Get());
+	}
+}
+
+void UInvSys_InventoryItemWidget::NativeConstruct()
+{
+	Super::NativeConstruct();
+
+	auto OnDraggingItemFunc = [this](FGameplayTag Tag, const FInvSys_DragItemInstanceMessage& Message)
+	{
+		if (ItemInstance.IsValid() && Message.ItemInstance == ItemInstance)
+		{
+			NativeOnDragItem(Message.bIsDraggingItem);
+		}
+	};
+
+	// 监听 Dragging 事件
+	UGameplayMessageSubsystem& GameplayMessageSubsystem = UGameplayMessageSubsystem::Get(GetWorld());
+	DragItemListenerHandle = GameplayMessageSubsystem.RegisterListener<FInvSys_DragItemInstanceMessage>(Inventory_Message_DragItem, MoveTemp(OnDraggingItemFunc));
 }
 
 void UInvSys_InventoryItemWidget::NativeDestruct()
 {
-	GetWorld()->GetTimerManager().ClearTimer(ServerTimeoutHandle);
 	Super::NativeDestruct();
+
+	GetWorld()->GetTimerManager().ClearTimer(ServerTimeoutHandle);
+	DragItemListenerHandle.Unregister();
+}
+
+void UInvSys_InventoryItemWidget::NativeOnDragItem(bool bIsDraggingItem)
+{
+	// 如果物品已经被抓取了，就无法再次触发抓取事件
+	if (bIsDraggingItem)
+	{
+		bIsEnableDragItem = false;
+		OnDisableDragItemInstance();
+	}
+	else
+	{
+		bIsEnableDragItem = true;
+		OnEnableDragItemInstance();
+	}
 }

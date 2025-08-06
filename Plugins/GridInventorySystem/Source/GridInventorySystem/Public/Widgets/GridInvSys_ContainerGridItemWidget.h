@@ -19,7 +19,7 @@ class UInvSys_InventoryItemInfo;
  * 
  */
 UCLASS()
-class GRIDINVENTORYSYSTEM_API UGridInvSys_ContainerGridItemWidget : public UInvSys_InventoryWidget
+class GRIDINVENTORYSYSTEM_API UGridInvSys_ContainerGridItemWidget : public UUserWidget
 {
 	GENERATED_BODY()
 

@@ -6,6 +6,11 @@
 #include "NativeGameplayTags.h"
 #include "Modules/ModuleManager.h"
 
+#if WITH_EDITOR
+	// A debugging aid set when we switch out different play worlds during Play In Editor / PIE
+	extern ENGINE_API FString GPlayInEditorContextString;
+#endif
+
 DECLARE_LOG_CATEGORY_EXTERN(LogInventorySystem, Log, All);
 
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(Inventory_Message_AddItem)
@@ -14,6 +19,8 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(Inventory_Message_StackChanged)
 
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(Inventory_Message_EquipItem);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(Inventory_Message_UnEquipItem);
+
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(Inventory_Message_DragItem);
 
 #define PRINT_INVENTORY_SYSTEM_LOG UE::InventorySystem::ShouldLogMessages == 1
 

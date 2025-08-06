@@ -117,11 +117,11 @@ UInvSys_InventoryLayoutWidget* UInvSys_InventoryComponent::CreateDisplayWidget(A
 				LayoutWidget->AddWidget(DisplayWidget, InvObj->GetInventoryObjectTag());
 			}
 			// 延迟下一帧执行刷新函数，确保控件创建流程执行完毕。
-			GetWorld()->GetTimerManager().SetTimerForNextTick([InvObj]()
-			{
-				// 创建控件完成后刷新一次显示效果
-				InvObj->RefreshInventoryFragment(UInvSys_InventoryFragment_DisplayWidget::StaticClass());
-			});
+			// GetWorld()->GetTimerManager().SetTimerForNextTick([InvObj]()
+			// {
+			// 	// 创建控件完成后刷新一次显示效果
+			// 	InvObj->RefreshInventoryFragment(UInvSys_InventoryFragment_DisplayWidget::StaticClass());
+			// });
 		}
 	}
 	return LayoutWidget;
@@ -131,7 +131,7 @@ bool UInvSys_InventoryComponent::RestoreItemInstance(UInvSys_InventoryItemInstan
 {
 	if (InItemInstance)
 	{
-		FGameplayTag EquipSlotTag = InItemInstance->GetLastSlotTag();
+		FGameplayTag EquipSlotTag = InItemInstance->GetSlotTag();
 		UInvSys_InventoryFragment_Equipment* EquipmentFragment =
 			FindInventoryObjectFragment<UInvSys_InventoryFragment_Equipment>(EquipSlotTag);
 
@@ -157,7 +157,7 @@ bool UInvSys_InventoryComponent::RestoreItemInstance(UInvSys_InventoryItemInstan
 	return false;
 }
 
-bool UInvSys_InventoryComponent::TryDragItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
+bool UInvSys_InventoryComponent::DragAndRemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
 {
 	if (InItemInstance == nullptr) return false;
 
@@ -182,6 +182,25 @@ bool UInvSys_InventoryComponent::TryDragItemInstance(UInvSys_InventoryItemInstan
 	if (ContainerFragment)
 	{
 		return RemoveItemInstance(InItemInstance);
+	}
+	return false;
+}
+
+bool UInvSys_InventoryComponent::DragItemInstance(UInvSys_InventoryItemInstance* ItemInstance)
+{
+	if (ItemInstance != nullptr && IsValid(ItemInstance))
+	{
+		/**
+		 * 在网络环境较差的情况下，玩家A短时间内对物品进行连续操作，如果操作目标是将物品转移至其他容器，
+		 * 由于物品实例会重新拷贝，所以玩家A仅第一次操作有效，后续步骤都是在对旧对象进行操作
+		 * Drop函数只会对拷贝后的新对象解锁，所以其他拖拽操作都会被阻挡
+		 */
+		if (ItemInstance->IsDraggingItemInstance() == false)
+		{
+			ItemInstance->SetIsDraggingItem(true);
+			return true;
+		}
+		UE_LOG(LogInventorySystem, Warning, TEXT("物品实例已经被其他玩家拖拽，无法继续拖拽该物品。"));
 	}
 	return false;
 }
@@ -319,8 +338,8 @@ bool UInvSys_InventoryComponent::RemoveItemInstance(UInvSys_InventoryItemInstanc
 	{
 		UInvSys_InventoryFragment_Container* ContainerFragment =
 			FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(InItemInstance->GetSlotTag());
-		
-		if (ContainerFragment && ContainerFragment->ContainsItem(InItemInstance))
+		check(ContainerFragment)
+		if (ContainerFragment)
 		{
 			return ContainerFragment->RemoveItemInstance(InItemInstance);
 		}

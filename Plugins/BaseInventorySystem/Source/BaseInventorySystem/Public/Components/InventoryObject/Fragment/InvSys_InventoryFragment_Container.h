@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Components/ActorComponent.h"
 #include "Data/InvSys_ContainerList.h"
 #include "Data/InvSys_InventoryItemDefinition.h"
 #include "GameFramework/GameplayMessageSubsystem.h"
@@ -48,13 +49,38 @@ public:
 	template<class T, class... Arg>
 	bool AddItemInstance(UInvSys_InventoryItemInstance* ItemInstance, const Arg&... Args)
 	{
-		check(ItemInstance)
-		bool bIsSuccess = ContainerList.AddInstance<T>(ItemInstance, Args...);
-		if (bIsSuccess)
+		bool bIsSuccess = false;
+		/**
+		 * 判断物品实例之前所在的库存组件与当前组件是否一致
+		 * 不一致时，说明物品实例的 Outer 不是当前组件的 Owner 所以需要重新复制一份并更新 Outer
+		 */
+		T* TargetItemInstance = Cast<T>(ItemInstance);
+		check(TargetItemInstance)
+		check(InventoryComponent)
+		if (InventoryComponent != ItemInstance->GetInventoryComponent())
 		{
-			MarkItemInstanceDirty(ItemInstance);
+			TargetItemInstance = DuplicateObject<T>(TargetItemInstance, InventoryComponent);
+			ItemInstance->ConditionalBeginDestroy();//标记目标待删除
+		}
+		if (TargetItemInstance)
+		{
+			bIsSuccess = ContainerList.AddInstance<T>(TargetItemInstance, Args...);
+			if (bIsSuccess)
+			{
+				MarkItemInstanceDirty(TargetItemInstance);
+			}
 		}
 		return bIsSuccess;
+	}
+
+	template<class T, class... Arg>
+	bool UpdateItemInstance(UInvSys_InventoryItemInstance* ItemInstance, const Arg&... Args)
+	{
+		if (ItemInstance == nullptr) return false;
+		//执行可变参数模板，将参数列表中的值赋予目标对象。
+		int32 Arr[] = {0, (InitItemInstanceProps<T>(ItemInstance, Args), 0)...};
+		MarkItemInstanceDirty(ItemInstance);
+		return true;
 	}
 
 	virtual void RemoveAllItemInstance();
@@ -89,12 +115,22 @@ protected:
 private:
 	void Debug_PrintContainerAllItems();
 
+	template<class C, class V>
+	void InitItemInstanceProps(UInvSys_InventoryItemInstance* ItemInstance, const V& Value)
+	{
+		if (ItemInstance != nullptr && ItemInstance->IsA<C>())
+		{
+			((C*)ItemInstance)->InitItemInstanceProps(Value);	// ItemInstance 需要创建对应的函数处理该值
+		}
+	}
+
 protected:
 	UPROPERTY(ReplicatedUsing = OnRep_ContainerList)
 	FInvSys_ContainerList ContainerList;
 	UFUNCTION()
 	void OnRep_ContainerList();
 
+protected:
 	TMap<int32, int32> ContainerEntryRepKeyMap;
 
 private:

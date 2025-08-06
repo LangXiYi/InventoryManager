@@ -19,12 +19,6 @@ struct FGridInvSys_ItemPositionChangeMessage{
 	UInvSys_InventoryItemInstance* ItemInstance;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Message")
-	UInvSys_InventoryComponent* InvComp;
-
-	// UPROPERTY(BlueprintReadOnly, Category = "Message")
-	// UInvSys_InventoryComponent* OldInvComp;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Message")
 	FGridInvSys_ItemPosition OldPosition;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Message")
@@ -42,6 +36,8 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_InventoryItemInstance : public UInvSys
 	GENERATED_BODY()
 
 public:
+	virtual void PostReplicatedChange() override;
+	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	void InitItemInstanceProps(const FGridInvSys_ItemPosition& NewItemPosition);
@@ -60,6 +56,10 @@ public:
 		return LastItemPosition;
 	}
 
+	FIntPoint GetItemSize();
+	FIntPoint GetItemSize(EGridInvSys_ItemDirection Direction);
+	FIntPoint GetItemDefaultSize();
+
 	void BroadcastItemPositionChangeMessage(const FGridInvSys_ItemPosition& OldPosition, const FGridInvSys_ItemPosition& NewPosition);
 	
 protected:
@@ -69,9 +69,12 @@ protected:
 	void OnRep_ItemPosition(const FGridInvSys_ItemPosition& OldItemPosition);
 	void Execute_ItemPosition(const FGridInvSys_ItemPosition& OldItemPosition);
 
-	UPROPERTY(BlueprintReadOnly, Transient, Category = "Grid Item Instance"/*, Replicated*/)
+	UPROPERTY(BlueprintReadOnly, Category = "Grid Item Instance"/*, Replicated*/)
 	FGridInvSys_ItemPosition LastItemPosition;
+
 	
 private:
 	FOnItemPositionChange OnItemPositionChange;
+
+	bool bWaitPostRepNotify_ItemPosition = false;
 };
