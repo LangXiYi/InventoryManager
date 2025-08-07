@@ -127,7 +127,7 @@ private:
 	}
 
 protected:
-	UPROPERTY(ReplicatedUsing = OnRep_ContainerList)
+	UPROPERTY(Replicated)
 	FInvSys_ContainerList ContainerList;
 	// UFUNCTION()
 	// void OnRep_ContainerList();

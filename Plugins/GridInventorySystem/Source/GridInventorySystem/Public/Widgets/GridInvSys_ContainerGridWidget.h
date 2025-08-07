@@ -15,6 +15,18 @@ class UGridInvSys_ContainerGridLayoutWidget;
 class UGridInvSys_DragItemWidget;
 class UGridInvSys_ContainerGridDropWidget;
 class UGridInvSys_ContainerGridItemWidget;
+
+UENUM()
+enum class EGridInvSys_DropType : uint8
+{
+	None = 0, // false 无法放置
+	FreeSpace,
+	SizeEqual,
+	SizeGreaterThan_ComponentNotEqual,
+	SizeGreaterThan_ComponentEqual,
+	SizeLessThan
+};
+
 /**
  * 
  */
@@ -62,10 +74,8 @@ public:
 
 	/**
 	 * 根据鼠标所在的屏幕位置为中点，计算目标左上角的网格坐标
-	 * @param LocalPosition 屏幕位置，注意需要转换为本地位置，即相对该控件的位置
-	 * @param ItemSize 物品占据的网格大小
 	 */
-	FIntPoint CalculateGridOriginPoint(const FVector2D LocalPosition, const FIntPoint ItemSize) const;
+	FIntPoint CalculateGridOriginPoint(const FVector2D LocalPosition, const FIntPoint ItemSize, FVector2D OffsetRate = FVector2D(0, 0)) const;
 
 	TArray<UGridInvSys_ContainerGridItemWidget*> GetAllContainerGridItems() const;
 
@@ -115,9 +125,19 @@ public:
 	bool IsInContainer(FIntPoint TargetPos, FIntPoint TargetSize) const;
 
 protected:
+	void TryDropItemInstance_FreeSpace(UInvSys_InventoryItemInstance* ItemInstance, FGridInvSys_ItemPosition DropPosition);
+
+	void TryDropItemInstance_SizeEqual(UInvSys_InventoryItemInstance* ItemInstance, FGridInvSys_ItemPosition DropPosition);
+
+	void TryDropItemInstance_SizeGreaterThan_ComponentNotEqual(UInvSys_InventoryItemInstance* ItemInstance, FGridInvSys_ItemPosition DropPosition);
+
+	void TryDropItemInstance_SizeGreaterThan_ComponentEqual(UInvSys_InventoryItemInstance* ItemInstance, FGridInvSys_ItemPosition DropPosition);
+
+	void TryDropItemInstance_SizeLessThan(UInvSys_InventoryItemInstance* ItemInstance, FGridInvSys_ItemPosition DropPosition);
+
 	// 判断目标位置能否放置物品，注意：使用此方法时From必须是来自其他容器
 	// todo::优化传参
-	bool IsCanDropItemFromContainer(UInvSys_InventoryItemInstance* ItemInstance,
+	EGridInvSys_DropType IsCanDropItemFromContainer(UInvSys_InventoryItemInstance* ItemInstance,
 		FIntPoint ToPosition, EGridInvSys_ItemDirection ItemDirection) const;
 
 protected:
