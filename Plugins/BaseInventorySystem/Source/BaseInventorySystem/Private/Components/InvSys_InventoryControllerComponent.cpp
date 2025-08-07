@@ -30,12 +30,12 @@ void UInvSys_InventoryControllerComponent::Server_DragAndRemoveItemInstance_Impl
 		TEXT("尝试拽起物品实例失败！！"))
 }
 
-void UInvSys_InventoryControllerComponent::Server_CancelDragItemInstance_Implementation(UInvSys_InventoryItemInstance* InItemInstance)
+void UInvSys_InventoryControllerComponent::Server_CancelDragItemInstance_Implementation(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance)
 {
-	check(InItemInstance)
-	if (InItemInstance)
+	check(InItemInstance && InvComp)
+	if (InItemInstance && InvComp)
 	{
-		InItemInstance->SetIsDraggingItem(false);
+		InvComp->CancelDragItemInstance(InItemInstance);
 	}
 	DraggingItemInstance = nullptr;
 }
@@ -45,7 +45,7 @@ bool UInvSys_InventoryControllerComponent::ReplicateSubobjects(UActorChannel* Ch
 {
 	// 持续同步被拽起的物品
 	bool bWroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
-	// if (DraggingItemInstance != nullptr)
+	// if (DraggingItemInstance.IsValid())
 	// {
 	// 	// UActorChannel::SetCurrentSubObjectOwner(DraggingItemInstance->GetInventoryComponent());
 	// 	if (DraggingItemInstance->MyInstances.Num() > 0)
@@ -55,7 +55,7 @@ bool UInvSys_InventoryControllerComponent::ReplicateSubobjects(UActorChannel* Ch
 	// 			bWroteSomething |= Channel->ReplicateSubobject(ItemInstance, *Bunch, * RepFlags);
 	// 		}
 	// 	}
-	// 	bWroteSomething |= Channel->ReplicateSubobject(DraggingItemInstance, *Bunch, * RepFlags);
+	// 	bWroteSomething |= Channel->ReplicateSubobject(DraggingItemInstance.Get(), *Bunch, * RepFlags);
 	// }
 	return bWroteSomething;
 }

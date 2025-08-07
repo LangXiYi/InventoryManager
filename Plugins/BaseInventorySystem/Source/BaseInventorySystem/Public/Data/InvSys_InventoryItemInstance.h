@@ -46,6 +46,84 @@ struct FInvSys_DragItemInstanceMessage
 	bool bIsDraggingItem = false;
 };
 
+/**
+ * 针对 FastArray 存储的对象内的成员属性进行包裹
+ * todo::简化判断逻辑，使得只需要在类中对需要的属性包裹该模板，即可实现对 OnRep 的监听，并在 PostReplication 中正确执行
+ * TInvSys_FastArrayItemProperty<CustomType> Property_A;
+ * ...
+ * Property_A->RegisterListenItemPropertyChanged([this](){
+ *		Execute_CustomFunc();
+ * });
+ * ...
+ */
+DECLARE_DELEGATE(FOnListenItemPropertyChanged);
+template<class PropertyType>
+struct TInvSys_FastArrayItemProperty
+{
+public:
+	TInvSys_FastArrayItemProperty(PropertyType* Value)
+	:bIsReadyToNotify(false)
+	{
+		Property = Value;
+	}
+	TInvSys_FastArrayItemProperty()
+	:Property(nullptr), bIsReadyToNotify(false)
+	{
+	}
+
+	PropertyType* Get()
+	{
+		ensureMsgf(Property, TEXT("Tried to access null pointer!"));
+		return Property;
+	}
+
+	PropertyType& GetRef()
+	{
+		return *Property;
+	}
+
+	bool IsValid() const
+	{
+		return Property != nullptr && IsValid(Property);
+	}
+
+	bool IsReady() const
+	{
+		return bIsReadyToNotify;
+	}
+
+	TInvSys_FastArrayItemProperty<PropertyType>& operator=(TInvSys_FastArrayItemProperty<PropertyType>& NewValue)
+	{
+		ensureMsgf(NewValue, TEXT("Tried to assign a null pointer to a TInvSys_FastArrayItemProperty!"));
+		Property = NewValue.Property;
+		return *this;
+	}
+
+	FORCEINLINE PropertyType& operator*() const { return *Get(); }
+	FORCEINLINE PropertyType* operator->() const { return Get(); }
+
+protected:
+	PropertyType* Property;
+
+	bool bIsReadyToNotify;
+};
+
+template <typename T>
+FORCEINLINE FArchive& operator<<(FArchive& Ar, TInvSys_FastArrayItemProperty<T>& InProperty)
+{
+	return Ar << InProperty.Property;
+}
+
+template <typename T>
+FORCEINLINE void operator<<(FStructuredArchiveSlot Slot, TInvSys_FastArrayItemProperty<T>& InProperty)
+{
+	Slot << InProperty.Property;
+}
+
+/**
+ * 库存内容项
+ * 注意：修改类成员属性后需要调用 MarkItemInstanceDirty 标记修改！！！
+ */
 UCLASS(BlueprintType)
 class BASEINVENTORYSYSTEM_API UInvSys_InventoryItemInstance : public UObject
 {
@@ -55,43 +133,50 @@ class BASEINVENTORYSYSTEM_API UInvSys_InventoryItemInstance : public UObject
 	friend struct FInvSys_ContainerEntry;
 	friend class UInvSys_InventoryComponent;
 
-/*
- * 对于所有的属性，如果需要使用 RepNotify 那么就需要在 OnRep 函数中加入该宏，并且将实际处理的逻辑转移到对应的 Execute 函数中
- */
+	/*
+	 * 对于所有的属性，如果需要使用 RepNotify 那么就需要在 OnRep 函数中加入该宏，并且将实际处理的逻辑转移到对应的 Execute 函数中
+	 */
 #define ON_REP_PROPERTY(PropertyName)\
 {\
-	if (Owner && Owner->HasAuthority()) { Execute_##PropertyName(Old##PropertyName); }\
-	else\
-	{\
-		auto Func = [this, Old##PropertyName]()\
-		{\
-			this->Execute_##PropertyName(Old##PropertyName);\
-		};\
-		bIsReadyReplicatedProperties = true;\
-		RegisterPropertyListener(Func);\
-	}\
+if (Owner && Owner->HasAuthority()) { Execute_##PropertyName(Old##PropertyName); }\
+else\
+{\
+auto Func = [this, Old##PropertyName]()\
+{\
+this->Execute_##PropertyName(Old##PropertyName);\
+};\
+bIsReadyReplicatedProperties = true;\
+RegisterPropertyListener(Func);\
+}\
 }
 
 public:
 	UInvSys_InventoryItemInstance(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 	/**
-	 * 在交换物品至其他库存组件后，会优先调用该函数然后再次执行 构造函数，故通过该函数可以得到 上次的库存组件
-	 * 注意：需要使用 DuplicateObject 才能生效！！！
-	 * @param DupParams 
+	 * 在执行 DuplicateObject 后获取的 InventoryComponent 是拷贝前的值，故需要在拷贝完成后更新为最新值 
+	 * 注意：客户端不会执行该函数，只会重新一遍执行构造函数。
 	 */
 	virtual void PostDuplicate(bool bDuplicateForPIE) override;
 
+	/**
+	 * 由于 FastArray 定义的操作函数都是在对象属性复制之前执行
+	 * 通过标记以及该函数可以将 FastArray 的操作函数转移至本对象，并将操作时机转移到属性复制完成之后
+	 */
 	virtual void PostRepNotifies() override;
 
+	// Custom FastArrayItem API Begin -----
 	virtual void PreReplicatedRemove();
 	virtual void PostReplicatedAdd();
 	virtual void PostReplicatedChange();
+	// Custom FastArrayItem API End -----
 
 	/**
-	 * 如果在 ItemInstance 中定义了一个需要同步的属性，且该属性在 AddItemDefinition 时传入了该类型的属性
-	 * 那么你就必须在你的子类中定义一个与该属性类型一致的 InitItemInstanceProps 函数。*/
-	void InitItemInstanceProps(const int32& Data) {}
+	 * 如果在 AddItemDefinition/ItemInstance 时传入了特定类型的属性
+	 * 那么你就必须在你的类中定义一个与该属性类型一致的 InitItemInstanceProps 函数。
+	 * 注意：多个相同类型的该函数，只会调用第一个函数
+	 */
+	// void InitItemInstanceProps(const int32& Data) {}
 
 	/**
 	 * 对于所有需要在 OnRep 函数中执行的逻辑都推荐转移至该函数！
@@ -99,15 +184,7 @@ public:
 	 */
 	virtual void ReplicatedProperties();
 
-	FORCEINLINE bool GetIsReadyReplicatedProperties() const{ return bIsReadyReplicatedProperties; }
-
 	virtual void RemoveFromInventory();
-
-	//~UObject interface
-	virtual bool IsSupportedForNetworking() const override { return true; }
-	//~End of UObject interface
-
-	void MarkItemInstanceDirty();
 
 protected:
 	void BroadcastAddItemInstanceMessage();
@@ -176,9 +253,18 @@ public:
 		return *Entry_Private;
 	}
 
+	EInvSys_ReplicateState GetReplicateState() const
+	{
+		return ReplicateState;
+	}
+
 	bool HasAuthority() const;
 
 	ENetMode GetNetMode() const;
+
+	FORCEINLINE bool GetIsReadyReplicatedProperties() const{ return bIsReadyReplicatedProperties; }
+
+	virtual bool IsSupportedForNetworking() const override { return true; }
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -227,7 +313,6 @@ protected:
 	bool bIsReadyReplicatedProperties = false;
 
 private:
-	TWeakObjectPtr<UInvSys_InventoryFragment_Container> Container_Private = nullptr;
-	FInvSys_ContainerEntry* Entry_Private = nullptr;
-	EInvSys_ReplicateState ReplicateState = EInvSys_ReplicateState::None;
+	FInvSys_ContainerEntry* Entry_Private = nullptr; // 其在FastArray中的值
+	EInvSys_ReplicateState ReplicateState = EInvSys_ReplicateState::None; // 操作标记，供客户端使用
 };

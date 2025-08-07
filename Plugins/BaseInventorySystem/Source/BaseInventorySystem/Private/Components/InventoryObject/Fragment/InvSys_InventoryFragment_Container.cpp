@@ -72,6 +72,20 @@ void UInvSys_InventoryFragment_Container::RefreshInventoryFragment()
 	}
 }
 
+bool UInvSys_InventoryFragment_Container::UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance,
+	bool NewState)
+{
+	if (ContainsItem(ItemInstance))
+	{
+		ItemInstance->SetIsDraggingItem(NewState);
+		MarkItemInstanceDirty(ItemInstance);		
+		return true;
+	}
+	UE_LOG(LogInventorySystem, Warning, TEXT("传入的物品实例 [%s] 在当前容器 [%s] 内不存在"),
+		*ItemInstance->GetItemDisplayName().ToString(), *InventoryObjectTag.ToString())
+	return false;
+}
+
 void UInvSys_InventoryFragment_Container::RemoveAllItemInstance()
 {
 	ContainerList.RemoveAll();
@@ -113,6 +127,7 @@ TArray<UInvSys_InventoryItemInstance*> UInvSys_InventoryFragment_Container::GetA
 
 void UInvSys_InventoryFragment_Container::MarkItemInstanceDirty(UInvSys_InventoryItemInstance* ItemInstance)
 {
+	// UE_LOG(LogInventorySystem, Warning, TEXT("Mark Item Instance Dirty......"))
 	FInvSys_ContainerEntry& ContainerEntry = ItemInstance->GetContainerEntryRef();
 	check(ContainerEntry.IsValid())
 	if (ContainerEntry.IsValid())
@@ -124,7 +139,12 @@ void UInvSys_InventoryFragment_Container::MarkItemInstanceDirty(UInvSys_Inventor
 
 void UInvSys_InventoryFragment_Container::MarkContainerDirty()
 {
-	ContainerEntryRepKeyMap.Reset();
+	// ContainerEntryRepKeyMap 始终存储了一个 ArrayReplicationKey
+	if (ContainerList.Entries.Num() != ContainerEntryRepKeyMap.Num() - 1)
+	{
+		// UE_LOG(LogInventorySystem, Error, TEXT("Reset Container Entry Replication Key Map."))
+		ContainerEntryRepKeyMap.Reset();
+	}
 	ContainerList.MarkArrayDirty();
 }
 
@@ -169,7 +189,8 @@ bool UInvSys_InventoryFragment_Container::ReplicateSubobjects(UActorChannel* Cha
 			if (KeyNeedsToReplicate(Entry.ReplicationID, Entry.ReplicationKey))
 			{
 				UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
-					TEXT("对象属性发生变化，正在同步 %s 到客户端。"), *Entry.Instance->GetItemDisplayName().ToString())
+					TEXT("[%s:%s] %s 的属性发生变化，正在同步至客户端。"), *GetOwner()->GetName(), *InventoryObjectTag.ToString(),
+					*Entry.Instance->GetItemDisplayName().ToString())
 				if (Entry.Instance && IsValid(Entry.Instance))
 				{
 					// 同步所有需要同步的数据
@@ -205,18 +226,18 @@ void UInvSys_InventoryFragment_Container::Debug_PrintContainerAllItems()
 		TEXT("= END =========================================================================="))
 }
 
-void UInvSys_InventoryFragment_Container::OnRep_ContainerList()
-{
-	/*
-	 * 调用了 MarkArrayDirty 后，必定会触发容器本身的复制事件！！
-	 * 子对象的复制不会严格遵循容器内数组的顺序，某些情况下可能会导致程序执行出错。
-	 * 注意: 容器内对象的 OnRep 函数必定在容器本身的 OnRep 函数执行之后。
-	 */
-	for (const FInvSys_ContainerEntry& Entry : ContainerList.Entries)
-	{
-		if (Entry.Instance && Entry.Instance->GetIsReadyReplicatedProperties())
-		{
-			Entry.Instance->ReplicatedProperties();
-		}
-	}
-}
+// void UInvSys_InventoryFragment_Container::OnRep_ContainerList()
+// {
+// 	/*
+// 	 * 调用了 MarkArrayDirty 后，必定会触发容器本身的复制事件！！
+// 	 * 子对象的复制不会严格遵循容器内数组的顺序，某些情况下可能会导致程序执行出错。
+// 	 * 注意: 容器内对象的 OnRep 函数必定在容器本身的 OnRep 函数执行之后。
+// 	 */
+// 	for (const FInvSys_ContainerEntry& Entry : ContainerList.Entries)
+// 	{
+// 		if (Entry.Instance && Entry.Instance->GetIsReadyReplicatedProperties())
+// 		{
+// 			Entry.Instance->ReplicatedProperties();
+// 		}
+// 	}
+// }

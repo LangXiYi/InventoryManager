@@ -19,6 +19,9 @@ struct FGridInvSys_ItemPositionChangeMessage{
 	UInvSys_InventoryItemInstance* ItemInstance;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Message")
+	UInvSys_InventoryComponent* InventoryComponent;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Message")
 	FGridInvSys_ItemPosition OldPosition;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Message")
@@ -71,7 +74,6 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Grid Item Instance"/*, Replicated*/)
 	FGridInvSys_ItemPosition LastItemPosition;
-
 	
 private:
 	FOnItemPositionChange OnItemPositionChange;

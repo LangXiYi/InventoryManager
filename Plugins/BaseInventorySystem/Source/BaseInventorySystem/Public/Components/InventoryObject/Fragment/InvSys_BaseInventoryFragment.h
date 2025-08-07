@@ -25,7 +25,7 @@ class BASEINVENTORYSYSTEM_API UInvSys_BaseInventoryFragment : public UObject
 public:
 	UInvSys_BaseInventoryFragment();
 	
-	// [Client] 由库存组件的 OnRep_InventoryObjectList 调用
+	// [Client & Server]
 	virtual void InitInventoryFragment(UObject* PreEditFragment);
 
 	UFUNCTION(BlueprintCallable)

@@ -27,7 +27,7 @@ public:
 	virtual void InitInventoryFragment(UObject* PreEditFragment) override;
 
 	virtual void RefreshInventoryFragment() override;
-	
+
 	/**
 	 * 主要用于初始化库存，或不同库存组件间的物品交换
 	 * 注意：传入可变参数时，请确保目标类型中正确创建了对于的处理函数。
@@ -83,6 +83,8 @@ public:
 		return true;
 	}
 
+	bool UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance, bool NewState);
+
 	virtual void RemoveAllItemInstance();
 
 	virtual bool RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
@@ -127,10 +129,9 @@ private:
 protected:
 	UPROPERTY(ReplicatedUsing = OnRep_ContainerList)
 	FInvSys_ContainerList ContainerList;
-	UFUNCTION()
-	void OnRep_ContainerList();
+	// UFUNCTION()
+	// void OnRep_ContainerList();
 
-protected:
 	TMap<int32, int32> ContainerEntryRepKeyMap;
 
 private:

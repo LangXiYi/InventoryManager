@@ -53,7 +53,7 @@ private:
 
 	void UpdateContainerData(UGridInvSys_ContainerGridLayoutWidget* ContainerLayout);
 
-	void PrintDebugOccupiedGrid();
+	void PrintDebugOccupiedGrid(const FString& PrintReason = "");
 
 protected:
 	// 设置容器数据的方式，若库存对象设置了装备片段则该值通常设置为 FromEquip，反之设置为 FromWidget（需要控件片段） 或 Custom
@@ -74,4 +74,6 @@ private:
 
 	FGameplayMessageListenerHandle OnEquipItemInstanceHandle;
 	FGameplayMessageListenerHandle OnUnEquipItemInstanceHandle;
+
+	FGameplayMessageListenerHandle ItemPositionChangeHandle;
 };

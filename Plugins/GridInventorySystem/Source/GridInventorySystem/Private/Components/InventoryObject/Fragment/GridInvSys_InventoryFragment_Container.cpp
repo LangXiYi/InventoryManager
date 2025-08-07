@@ -10,6 +10,7 @@
 #include "Widgets/GridInvSys_ContainerGridLayoutWidget.h"
 #include "Widgets/GridInvSys_ContainerGridWidget.h"
 #include "BaseInventorySystem.h"
+#include "GridInventorySystem.h"
 #include "Components/InventoryObject/Fragment/InvSys_InventoryFragment_DisplayWidget.h"
 #include "Components/InventoryObject/Fragment/InvSys_InventoryFragment_Equipment.h"
 #include "Data/InvSys_ItemFragment_ContainerLayout.h"
@@ -32,6 +33,32 @@ void UGridInvSys_InventoryFragment_Container::InitInventoryFragment(UObject* Pre
 		UpdateContainerData_FromCustom();
 		break;
 	}
+
+	auto WarpItemPositionFunc = [this](const FGameplayTag& Tag, const FGridInvSys_ItemPositionChangeMessage& Message)
+	{
+		if (Message.InventoryComponent == GetInventoryComponent() &&
+			Message.ItemInstance && Message.ItemInstance->IsA<UGridInvSys_InventoryItemInstance>())
+		{
+			if (Message.OldPosition.IsValid() && Message.OldPosition.EquipSlotTag == GetInventoryObjectTag())
+			{
+				UpdateContainerGridItemState((UGridInvSys_InventoryItemInstance*)Message.ItemInstance, Message.OldPosition, false);
+			}
+			if (Message.NewPosition.IsValid() && Message.NewPosition.EquipSlotTag == GetInventoryObjectTag())
+			{
+				UpdateContainerGridItemState((UGridInvSys_InventoryItemInstance*)Message.ItemInstance, Message.NewPosition, true);
+			}
+#if WITH_EDITOR
+			if (Message.NewPosition.EquipSlotTag == GetInventoryObjectTag() ||
+				Message.OldPosition.EquipSlotTag == GetInventoryObjectTag())
+			{
+				PrintDebugOccupiedGrid("Listen Item Position Changed");
+			}
+#endif
+		}
+	};
+
+	UGameplayMessageSubsystem& GameplayMessageSubsystem = UGameplayMessageSubsystem::Get(GetWorld());
+	ItemPositionChangeHandle = GameplayMessageSubsystem.RegisterListener<FGridInvSys_ItemPositionChangeMessage>(Inventory_Message_ItemPositionChanged, WarpItemPositionFunc);
 }
 
 bool UGridInvSys_InventoryFragment_Container::UpdateItemInstancePosition(
@@ -78,14 +105,14 @@ bool UGridInvSys_InventoryFragment_Container::HasEnoughFreeSpace(
 			if (OccupiedGrid[ToGridID].IsValidIndex(Index) == false ||
 				OccupiedGrid[ToGridID][Index] == true)
 			{
-				checkf(false, TEXT("无法容纳物品"))
+				// checkf(false, TEXT("无法容纳物品"))
 				if (PRINT_INVENTORY_SYSTEM_LOG)
 				{
 					UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Error,
 						TEXT("[%s_%d:%s] 无法容纳大小为 %s 的物品"), *GetInventoryObjectTag().ToString(), ToGridID,
 						*ToPosition.ToString(), *ItemSize.ToString())
 					// 打印当前网格占据图
-					PrintDebugOccupiedGrid();
+					PrintDebugOccupiedGrid("无法容纳物品");
 				}
 				return false;
 			}
@@ -288,22 +315,25 @@ void UGridInvSys_InventoryFragment_Container::UpdateContainerData(UGridInvSys_Co
 	}
 }
 
-void UGridInvSys_InventoryFragment_Container::PrintDebugOccupiedGrid()
+void UGridInvSys_InventoryFragment_Container::PrintDebugOccupiedGrid(const FString& PrintReason)
 {
 	for (int i = 0; i < OccupiedGrid.Num(); ++i)
 	{
 		int32 Width = ContainerGridSize[i].Y;
 		bool bIsFirst = true;
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning,
-			TEXT("[%s:%s] Container Grid ID = %d === { Size = %s }"),
-			HasAuthority() ? TEXT("Server") : TEXT("Client"), *GetOwner()->GetName(), i, *ContainerGridSize[i].ToString());
+#if WITH_EDITOR
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
+			TEXT("[%s:%s]::%s_%d === { Size = %s }"), *GPlayInEditorContextString,
+			*GetOwner()->GetName(), *GetInventoryObjectTag().ToString(), i, *ContainerGridSize[i].ToString());
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("PRINT_REASON::%s"), *PrintReason);
+#endif
 		FString PrintStr = "";
 		for (int j = 0; j < OccupiedGrid[i].Num(); ++j)
 		{
 			bool bIsNewLine = j % Width == 0; //是否为新一行
 			if (bIsNewLine && bIsFirst == false)
 			{
-				UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("%s"), *PrintStr);
+				UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("%s"), *PrintStr);
 				PrintStr = "";
 				PrintStr.Append(OccupiedGrid[i][j] ? TEXT("\tT") : TEXT("\tF"));
 			}
@@ -313,7 +343,7 @@ void UGridInvSys_InventoryFragment_Container::PrintDebugOccupiedGrid()
 				PrintStr.Append(OccupiedGrid[i][j] ? TEXT("\tT") : TEXT("\tF"));
 			}
 		}
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("%s"), *PrintStr);
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("%s"), *PrintStr);
 		PrintStr = "";
 	}
 }

@@ -60,7 +60,7 @@ void UInvSys_InventoryItemInstance::PostRepNotifies()
 void UInvSys_InventoryItemInstance::PreReplicatedRemove()
 {
 	ReplicateState = EInvSys_ReplicateState::None;
-	UE_LOG(LogInventorySystem, Error, TEXT("PostRepNotifies -- Remove"))
+	// UE_LOG(LogInventorySystem, Error, TEXT("PostRepNotifies -- Remove"))
 
 	BroadcastRemoveItemInstanceMessage();
 }
@@ -68,7 +68,7 @@ void UInvSys_InventoryItemInstance::PreReplicatedRemove()
 void UInvSys_InventoryItemInstance::PostReplicatedAdd()
 {
 	ReplicateState = EInvSys_ReplicateState::None;
-	UE_LOG(LogInventorySystem, Error, TEXT("PostRepNotifies -- Add"))
+	// UE_LOG(LogInventorySystem, Error, TEXT("PostRepNotifies -- Add"))
 
 	BroadcastAddItemInstanceMessage();
 }
@@ -76,7 +76,7 @@ void UInvSys_InventoryItemInstance::PostReplicatedAdd()
 void UInvSys_InventoryItemInstance::PostReplicatedChange()
 {
 	ReplicateState = EInvSys_ReplicateState::None;
-	UE_LOG(LogInventorySystem, Error, TEXT("PostRepNotifies -- Change"))
+	// UE_LOG(LogInventorySystem, Error, TEXT("PostRepNotifies -- Change"))
 }
 
 bool UInvSys_InventoryItemInstance::HasAuthority() const
@@ -164,13 +164,7 @@ void UInvSys_InventoryItemInstance::RemoveFromInventory()
 	// SlotTag = FGameplayTag(); //不要移除这些属性
 	// InvComp = nullptr;
 	Entry_Private = nullptr;
-	Container_Private = nullptr;
 	// SetSlotTag(FGameplayTag());
-}
-
-void UInvSys_InventoryItemInstance::MarkItemInstanceDirty()
-{
-	// todo::调用容器的 MarkItemDirty 复制属性！！！！
 }
 
 void UInvSys_InventoryItemInstance::BroadcastAddItemInstanceMessage()
@@ -179,14 +173,6 @@ void UInvSys_InventoryItemInstance::BroadcastAddItemInstanceMessage()
 	ItemChangedMessage.InvComp = GetInventoryComponent();
 	ItemChangedMessage.InventoryObjectTag = GetSlotTag();
 	ItemChangedMessage.ItemInstance = this;
-
-	if (GetInventoryComponent())
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("Broadcast Add { Owner = %s, Tag = %s, this = %s}"),
-			*GetInventoryComponent()->GetOwner()->GetName(), *GetSlotTag().ToString(), *this->GetName())
-	}
-
-
 
 	UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(GetWorld());
 	MessageSubsystem.BroadcastMessage(Inventory_Message_AddItem, ItemChangedMessage);

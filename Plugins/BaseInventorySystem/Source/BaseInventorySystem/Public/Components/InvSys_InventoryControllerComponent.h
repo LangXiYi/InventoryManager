@@ -78,7 +78,7 @@ public:
 	void Server_DragItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance);
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_CancelDragItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
+	void Server_CancelDragItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance);
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_DragAndRemoveItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance);

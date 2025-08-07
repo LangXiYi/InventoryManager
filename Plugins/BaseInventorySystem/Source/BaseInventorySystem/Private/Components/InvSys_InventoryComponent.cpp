@@ -157,6 +157,18 @@ bool UInvSys_InventoryComponent::RestoreItemInstance(UInvSys_InventoryItemInstan
 	return false;
 }
 
+bool UInvSys_InventoryComponent::UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance,
+	const FGameplayTag& InventoryTag, bool NewState)
+{
+	auto ContainerFragment = FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(InventoryTag);
+	check(ContainerFragment)
+	if (ContainerFragment)
+	{
+		return ContainerFragment->UpdateItemInstanceDragState(ItemInstance, NewState);
+	}
+	return false;
+}
+
 bool UInvSys_InventoryComponent::DragAndRemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
 {
 	if (InItemInstance == nullptr) return false;
@@ -188,21 +200,40 @@ bool UInvSys_InventoryComponent::DragAndRemoveItemInstance(UInvSys_InventoryItem
 
 bool UInvSys_InventoryComponent::DragItemInstance(UInvSys_InventoryItemInstance* ItemInstance)
 {
+	bool bIsSuccess = false;
+	check(ItemInstance)
 	if (ItemInstance != nullptr && IsValid(ItemInstance))
 	{
 		/**
-		 * 在网络环境较差的情况下，玩家A短时间内对物品进行连续操作，如果操作目标是将物品转移至其他容器，
-		 * 由于物品实例会重新拷贝，所以玩家A仅第一次操作有效，后续步骤都是在对旧对象进行操作
-		 * Drop函数只会对拷贝后的新对象解锁，所以其他拖拽操作都会被阻挡
+		 * 在网络环境较差的情况下，玩家A短时间内对物品进行连续操作，
+		 * A:如果操作目的是将物品转移至其他容器，
+		 *		由于物品实例会重新拷贝，所以玩家A仅第一次操作有效，后续步骤都是在对旧对象进行操作
+		 *		Drop函数只会对拷贝后的新对象解锁，所以其他拖拽操作都会被阻挡
+		 * B:如果操作目的是将物品的位置发生改变，并未改变物品的库存组件
+		 *		不会发生拷贝，但在第一次操作改变位置后，后续的操作同样会被服务器执行，将最终结果发送给客户端
 		 */
 		if (ItemInstance->IsDraggingItemInstance() == false)
 		{
-			ItemInstance->SetIsDraggingItem(true);
-			return true;
+			bIsSuccess = UpdateItemInstanceDragState(ItemInstance, ItemInstance->GetSlotTag(), true);
 		}
-		UE_LOG(LogInventorySystem, Warning, TEXT("物品实例已经被其他玩家拖拽，无法继续拖拽该物品。"));
 	}
-	return false;
+#if WITH_EDITOR
+	UE_CLOG(bIsSuccess == false, LogInventorySystem, Warning, TEXT("[%s]拖拽物品失败:物品实例已经被其他玩家拖拽"),
+		*GPlayInEditorContextString);
+#endif
+	return bIsSuccess;
+}
+
+void UInvSys_InventoryComponent::CancelDragItemInstance(UInvSys_InventoryItemInstance* ItemInstance)
+{
+	check(ItemInstance)
+	if (ItemInstance != nullptr && IsValid(ItemInstance))
+	{
+		if (ItemInstance->IsDraggingItemInstance() == false)
+		{
+			UpdateItemInstanceDragState(ItemInstance, ItemInstance->GetSlotTag(), false);
+		}
+	}
 }
 
 void UInvSys_InventoryComponent::DropItemInstanceToWorld(UInvSys_InventoryItemInstance* InItemInstance)

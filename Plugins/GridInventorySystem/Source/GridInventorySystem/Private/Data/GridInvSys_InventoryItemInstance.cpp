@@ -43,9 +43,7 @@ void UGridInvSys_InventoryItemInstance::SetItemPosition(const FGridInvSys_ItemPo
 {
 	LastItemPosition = ItemPosition;
 	ItemPosition = NewItemPosition;
-
-	// SetSlotTag(ItemPosition.EquipSlotTag);
-
+	BroadcastItemPositionChangeMessage(LastItemPosition, ItemPosition);
 	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
 	{
 		OnRep_ItemPosition(LastItemPosition);
@@ -95,6 +93,7 @@ void UGridInvSys_InventoryItemInstance::BroadcastItemPositionChangeMessage(const
 {
 	FGridInvSys_ItemPositionChangeMessage ItemPositionChangeMessage;
 	ItemPositionChangeMessage.ItemInstance = this;
+	ItemPositionChangeMessage.InventoryComponent = InventoryComponent;
 	ItemPositionChangeMessage.OldPosition = OldPosition;
 	ItemPositionChangeMessage.NewPosition = NewPosition;
 
@@ -104,14 +103,16 @@ void UGridInvSys_InventoryItemInstance::BroadcastItemPositionChangeMessage(const
 
 void UGridInvSys_InventoryItemInstance::OnRep_ItemPosition(const FGridInvSys_ItemPosition& OldItemPosition)
 {
-	Execute_ItemPosition(OldItemPosition);
+	LastItemPosition = OldItemPosition;
+	if (GetReplicateState() == EInvSys_ReplicateState::PostChange)
+	{
+		bWaitPostRepNotify_ItemPosition = true;
+	}
 	// ON_REP_PROPERTY(ItemPosition)
 }
 
 void UGridInvSys_InventoryItemInstance::Execute_ItemPosition(const FGridInvSys_ItemPosition& OldItemPosition)
 {
-	LastItemPosition = OldItemPosition;
-	bWaitPostRepNotify_ItemPosition = true;
 	// UE_LOG(LogInventorySystem, Warning, TEXT("%s:OnRep_ItemPosition:%s ---> %s"),
 	// 	HasAuthority() ? TEXT("Server"):TEXT("Client"), *LastItemPosition.ToString(), *ItemPosition.ToString())
 	/**

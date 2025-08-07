@@ -84,7 +84,7 @@ void UInvSys_InventoryItemWidget::NativeOnDragCancelled(const FDragDropEvent& In
 	{
 		UE_LOG(LogInventorySystem, Warning, TEXT("Cancel Drag"))
 		bIsWaitingServerResponse = false;
-		PlayerInvComp->Server_CancelDragItemInstance(ItemInstance.Get());
+		PlayerInvComp->Server_CancelDragItemInstance(ItemInstance->GetInventoryComponent(), ItemInstance.Get());
 	}
 }
 

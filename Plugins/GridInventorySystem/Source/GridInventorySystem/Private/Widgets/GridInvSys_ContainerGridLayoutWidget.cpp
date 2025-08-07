@@ -89,7 +89,7 @@ void UGridInvSys_ContainerGridLayoutWidget::NativeConstruct()
 
 	auto WarpItemPositionChangedFunc = [this](FGameplayTag Tag, const FGridInvSys_ItemPositionChangeMessage& Message)
 	{
-		if (Message.ItemInstance->GetInventoryComponent() == GetInventoryComponent())
+		if (Message.InventoryComponent == GetInventoryComponent())
 		{
 			if (Message.OldPosition.IsValid() && Message.OldPosition.EquipSlotTag == GetSlotTag())
 			{

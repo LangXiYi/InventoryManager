@@ -94,6 +94,8 @@ public:
 		return false;
 	}
 
+	bool UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance, const FGameplayTag& InventoryTag, bool NewState);
+
 	// Begin Drag Drop ====================
 	bool DragAndRemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
 	/**
@@ -101,6 +103,8 @@ public:
 	 * 可以通过 UInvSys_InventoryItemInstance::SetIsDraggingItem 修改锁定状态。
 	 */
 	bool DragItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
+
+	void CancelDragItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
 
 	/**
 	 * 放下物品存在两种不同执行流程：
@@ -115,7 +119,7 @@ public:
 		bool bIsSuccess = false;
 		if (InItemInstance)
 		{
-			InItemInstance->SetIsDraggingItem(false); // 不能在 AddItemInstance 之后执行，避免复制之后修改旧对象的值！
+			UpdateItemInstanceDragState(InItemInstance, SlotTag, false); // 不能在 AddItemInstance 之后执行，避免复制之后修改旧对象的值！
 			UInvSys_InventoryComponent* FromInvComp = InItemInstance->GetInventoryComponent();
 			if (SlotTag == InItemInstance->GetSlotTag() && this == FromInvComp)
 			{
