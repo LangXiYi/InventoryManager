@@ -16,10 +16,10 @@ struct FGridInvSys_ItemPositionChangeMessage{
 	GENERATED_BODY()
 
 	UPROPERTY(BlueprintReadOnly, Category = "Message")
-	UInvSys_InventoryItemInstance* ItemInstance;
+	UInvSys_InventoryItemInstance* ItemInstance = nullptr;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Message")
-	UInvSys_InventoryComponent* InventoryComponent;
+	UInvSys_InventoryComponent* InventoryComponent = nullptr;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Message")
 	FGridInvSys_ItemPosition OldPosition;
@@ -27,8 +27,6 @@ struct FGridInvSys_ItemPositionChangeMessage{
 	UPROPERTY(BlueprintReadOnly, Category = "Message")
 	FGridInvSys_ItemPosition NewPosition;
 };
-
-DECLARE_DELEGATE_OneParam(FOnItemPositionChange, const FGridInvSys_ItemPositionChangeMessage&);
 
 /**
  * 
@@ -76,7 +74,5 @@ protected:
 	FGridInvSys_ItemPosition LastItemPosition;
 	
 private:
-	FOnItemPositionChange OnItemPositionChange;
-
 	bool bWaitPostRepNotify_ItemPosition = false;
 };

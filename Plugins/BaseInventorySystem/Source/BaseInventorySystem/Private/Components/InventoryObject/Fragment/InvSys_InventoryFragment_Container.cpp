@@ -128,12 +128,15 @@ TArray<UInvSys_InventoryItemInstance*> UInvSys_InventoryFragment_Container::GetA
 void UInvSys_InventoryFragment_Container::MarkItemInstanceDirty(UInvSys_InventoryItemInstance* ItemInstance)
 {
 	// UE_LOG(LogInventorySystem, Warning, TEXT("Mark Item Instance Dirty......"))
-	FInvSys_ContainerEntry& ContainerEntry = ItemInstance->GetContainerEntryRef();
-	check(ContainerEntry.IsValid())
-	if (ContainerEntry.IsValid())
+	if (ItemInstance)
 	{
-		ContainerList.MarkItemDirty(ContainerEntry);
-		MarkContainerDirty();
+		FInvSys_ContainerEntry& ContainerEntry = ItemInstance->GetContainerEntryRef();
+		check(ContainerEntry.IsValid())
+		if (ContainerEntry.IsValid())
+		{
+			ContainerList.MarkItemDirty(ContainerEntry);
+			MarkContainerDirty();
+		}
 	}
 }
 
@@ -188,9 +191,9 @@ bool UInvSys_InventoryFragment_Container::ReplicateSubobjects(UActorChannel* Cha
 		{
 			if (KeyNeedsToReplicate(Entry.ReplicationID, Entry.ReplicationKey))
 			{
-				UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
-					TEXT("[%s:%s] %s 的属性发生变化，正在同步至客户端。"), *GetOwner()->GetName(), *InventoryObjectTag.ToString(),
-					*Entry.Instance->GetItemDisplayName().ToString())
+				// UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
+				// 	TEXT("[%s:%s] %s 的属性发生变化，正在同步至客户端。"), *GetOwner()->GetName(), *InventoryObjectTag.ToString(),
+				// 	*Entry.Instance->GetItemDisplayName().ToString())
 				if (Entry.Instance && IsValid(Entry.Instance))
 				{
 					// 同步所有需要同步的数据

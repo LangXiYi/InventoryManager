@@ -47,7 +47,7 @@ void UGridInvSys_InventoryFragment_Container::InitInventoryFragment(UObject* Pre
 			{
 				UpdateContainerGridItemState((UGridInvSys_InventoryItemInstance*)Message.ItemInstance, Message.NewPosition, true);
 			}
-#if WITH_EDITOR
+#if WITH_EDITOR && 0
 			if (Message.NewPosition.EquipSlotTag == GetInventoryObjectTag() ||
 				Message.OldPosition.EquipSlotTag == GetInventoryObjectTag())
 			{
@@ -105,15 +105,10 @@ bool UGridInvSys_InventoryFragment_Container::HasEnoughFreeSpace(
 			if (OccupiedGrid[ToGridID].IsValidIndex(Index) == false ||
 				OccupiedGrid[ToGridID][Index] == true)
 			{
-				// checkf(false, TEXT("无法容纳物品"))
-				if (PRINT_INVENTORY_SYSTEM_LOG)
-				{
-					UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Error,
-						TEXT("[%s_%d:%s] 无法容纳大小为 %s 的物品"), *GetInventoryObjectTag().ToString(), ToGridID,
-						*ToPosition.ToString(), *ItemSize.ToString())
-					// 打印当前网格占据图
-					PrintDebugOccupiedGrid("无法容纳物品");
-				}
+#if WITH_EDITOR || !BUILD_SHIPPING
+				PrintDebugOccupiedGrid(GetInventoryObjectTag().ToString() + "_" + FString::FromInt(ToGridID) + "--{"
+					+ ToPosition.ToString() + "}:::无法容纳大小为 [" + ItemSize.ToString() +"] 的物品");
+#endif
 				return false;
 			}
 		}

@@ -64,21 +64,21 @@ public:
 	 * void Server_TryDropItemInstance(InvComp, ItemInstance, SlotTag...);
 	 */
 	template<class T, class... Arg>
-	bool DropAndAddItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args)
+	T* DropAndAddItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args)
 	{
 		if (DraggingItemInstance.IsValid() && DraggingItemInstance == InItemInstance && InvComp)
 		{
 			DraggingItemInstance = nullptr;
 			return InvComp->AddItemInstance<T>(InItemInstance, SlotTag, Args...);
 		}
-		return false;
+		return nullptr;
 	}
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_DragItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance);
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_CancelDragItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance);
+	void Server_CancelDragItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_DragAndRemoveItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance);

@@ -30,18 +30,84 @@ void UGridInvSys_GridInventoryControllerComponent::TryDropItemInstance(UInvSys_I
 		*OldPosition.ToString(), *InPos.ToString())
 }
 
-void UGridInvSys_GridInventoryControllerComponent::Server_TestFunc_Implementation(UInvSys_InventoryComponent* InvComp,
-	const TArray<UGridInvSys_InventoryItemInstance*>& Array, const TArray<FGridInvSys_ItemPosition>& NewItemPositions,
-	UInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& DropPosition)
+void UGridInvSys_GridInventoryControllerComponent::Server_CancelOccupied_Implementation(
+	UInvSys_InventoryItemInstance* ItemInstance)
 {
-	UGridInvSys_InventoryComponent* GridInvComp = Cast<UGridInvSys_InventoryComponent>(InvComp);
-
-	int32 Num = Array.Num();
-	for (int i = 0; i < Num; ++i)
+	check(ItemInstance)
+	if (ItemInstance && ItemInstance->IsA<UGridInvSys_InventoryItemInstance>())
 	{
-		GridInvComp->UpdateItemInstancePosition(Array[i], NewItemPositions[i]);
+		UGridInvSys_InventoryComponent* InvComp = ItemInstance->GetInventoryComponent<UGridInvSys_InventoryComponent>();
+		check(InvComp)
+		if (InvComp)
+		{
+			InvComp->CancelOccupied((UGridInvSys_InventoryItemInstance*)ItemInstance);
+		}
 	}
-	DropItemInstance<UGridInvSys_InventoryItemInstance>(InvComp, ItemInstance, DropPosition.EquipSlotTag, DropPosition);
+}
+
+void UGridInvSys_GridInventoryControllerComponent::Server_RemoveItemInstance_Implementation(UInvSys_InventoryItemInstance* ItemInstance)
+{
+	check(ItemInstance)
+	if (ItemInstance)
+	{
+		UInvSys_InventoryComponent* InvComp = ItemInstance->GetInventoryComponent();
+		check(InvComp)
+		if (InvComp)
+		{
+			InvComp->RemoveItemInstance(ItemInstance);
+		}
+	}
+}
+
+void UGridInvSys_GridInventoryControllerComponent::Server_SwapItemInstances_Implementation(
+	UInvSys_InventoryComponent* ToInvComp, UGridInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& ToPosition,
+	const TArray<UGridInvSys_InventoryItemInstance*>& TargetItemInstances,
+	const TArray<FGridInvSys_ItemPosition>& TargetPositions)
+{
+	check(TargetItemInstances.Num() == TargetPositions.Num())
+	bool bIsSuccess = true;
+	UGridInvSys_InventoryComponent* LastInvComp = ItemInstance->GetInventoryComponent<UGridInvSys_InventoryComponent>();
+	check(LastInvComp)
+	if (LastInvComp)
+	{
+		UE_LOG(LogInventorySystem, Warning, TEXT("Server Remove Item %s"), *ItemInstance->GetItemPosition().ToString())
+		if (LastInvComp->RemoveItemInstance(ItemInstance))
+		{
+			for (int i = 0; i < TargetItemInstances.Num(); ++i)
+			{
+				if (TargetPositions.IsValidIndex(i) == false)
+				{
+					continue;
+				}
+				UInvSys_InventoryComponent* TempInvComp = TargetItemInstances[i]->GetInventoryComponent();
+				if (LastInvComp->CheckItemPosition(TargetItemInstances[i], TargetPositions[i]))
+				{
+					// todo::是否需要添加额外的权限验证？
+					bool bIsRemoved = TempInvComp->RemoveItemInstance(TargetItemInstances[i]);
+					if (bIsRemoved)
+					{
+						LastInvComp->AddItemInstance<UGridInvSys_InventoryItemInstance>(TargetItemInstances[i],
+							TargetPositions[i].EquipSlotTag, TargetPositions[i]);
+					}
+					else
+					{
+						UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, 无法移除 %s。"), __FUNCTION__, *TargetItemInstances[i]->GetItemDisplayName().ToString())
+					}
+				}
+			}
+		}
+		else
+		{
+			bIsSuccess = false;
+			UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, 无法移除 %s。"), __FUNCTION__, *ItemInstance->GetItemDisplayName().ToString())
+		}
+	}
+
+	check(ToInvComp)
+	if (ToInvComp && bIsSuccess)
+	{
+		ToInvComp->AddItemInstance<UGridInvSys_InventoryItemInstance>(ItemInstance, ToPosition.EquipSlotTag, ToPosition);	
+	}
 }
 
 void UGridInvSys_GridInventoryControllerComponent::Server_AddItemInstancesToContainerPos_Implementation(
@@ -99,37 +165,29 @@ void UGridInvSys_GridInventoryControllerComponent::Server_UpdateItemInstancePosi
 }
 
 void UGridInvSys_GridInventoryControllerComponent::Server_SwapItemInstance_Implementation(
-	UInvSys_InventoryItemInstance* FromItemInstance, UInvSys_InventoryItemInstance* ToItemInstance)
+	UGridInvSys_InventoryItemInstance* FromItemInstance, UGridInvSys_InventoryItemInstance* ToItemInstance)
 {
-	UGridInvSys_InventoryItemInstance* FromGridItem = Cast<UGridInvSys_InventoryItemInstance>(FromItemInstance);
-	UGridInvSys_InventoryItemInstance* ToGridItem = Cast<UGridInvSys_InventoryItemInstance>(ToItemInstance);
-	check(FromGridItem)
-	check(ToGridItem)
-	if (FromGridItem && ToGridItem)
+	check(FromItemInstance)
+	check(ToItemInstance)
+	// 两物品实例大小相同
+	if (FromItemInstance != ToItemInstance && FromItemInstance->GetItemSize() == ToItemInstance->GetItemSize())
 	{
-		UInvSys_InventoryComponent* FromInvComp = FromGridItem->GetInventoryComponent<UInvSys_InventoryComponent>();
-		UInvSys_InventoryComponent* ToInvComp = ToGridItem->GetInventoryComponent<UInvSys_InventoryComponent>();
-		if (FromInvComp != nullptr && ToInvComp != nullptr)
+		UInvSys_InventoryComponent* FromInvComp = FromItemInstance->GetInventoryComponent();
+		UInvSys_InventoryComponent* ToInvComp = ToItemInstance->GetInventoryComponent();
+		if (FromInvComp && ToInvComp)
 		{
-			UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("交换两物品的位置 {%s:%s} <----> {%s%s}"),
-				*FromItemInstance->GetItemDisplayName().ToString(), *FromGridItem->GetItemPosition().ToString(),
-				*ToGridItem->GetItemDisplayName().ToString(), *ToGridItem->GetItemPosition().ToString())
-
-			// 先将两个物品从库存中移除
-			FromInvComp->RemoveItemInstance(FromGridItem);
-			ToInvComp->RemoveItemInstance(ToGridItem);
-			FromInvComp->GetOwner()->ForceNetUpdate();
-			if (FromInvComp != ToInvComp)
-			{
-				ToInvComp->GetOwner()->ForceNetUpdate();
-			}
-
 			// 这里需要提前缓存ToItem的位置信息，避免在第一次添加执行完成后修改FromItem到To位置时的数据被污染。
-			FGameplayTag TempSlotTag = ToGridItem->GetSlotTag();
-			FGridInvSys_ItemPosition TempItemPosition = ToGridItem->GetItemPosition();
+			FGameplayTag FromItemTag = FromItemInstance->GetSlotTag();
+			FGridInvSys_ItemPosition FromItemPosition = FromItemInstance->GetItemPosition();
+			
+			FGameplayTag ToItemTag = ToItemInstance->GetSlotTag();
+			FGridInvSys_ItemPosition ToItemPosition = ToItemInstance->GetItemPosition();
 
-			FromInvComp->AddItemInstance<UGridInvSys_InventoryItemInstance>(ToGridItem, FromGridItem->GetSlotTag(), FromGridItem->GetItemPosition());
-			ToInvComp->AddItemInstance<UGridInvSys_InventoryItemInstance>(FromGridItem, TempSlotTag, TempItemPosition);
+			FromInvComp->RemoveItemInstance(FromItemInstance);
+			ToInvComp->RemoveItemInstance(ToItemInstance);
+
+			FromInvComp->AddItemInstance<UGridInvSys_InventoryItemInstance>(ToItemInstance, FromItemTag, FromItemPosition);
+			ToInvComp->AddItemInstance<UGridInvSys_InventoryItemInstance>(FromItemInstance, ToItemTag, ToItemPosition);
 		}
 	}
 }

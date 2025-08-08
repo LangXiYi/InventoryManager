@@ -365,6 +365,7 @@ bool UInvSys_InventoryComponent::UnEquipItemInstance(UInvSys_InventoryItemInstan
 
 bool UInvSys_InventoryComponent::RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
 {
+	check(InItemInstance)
 	if (InItemInstance)
 	{
 		UInvSys_InventoryFragment_Container* ContainerFragment =

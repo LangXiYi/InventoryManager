@@ -85,8 +85,8 @@ public:
 	 */
 	FORCEINLINE void PreReplicatedRemove(const struct FFastArraySerializer& InArraySerializer)
 	{
-		Instance->ReplicateState = EInvSys_ReplicateState::PreRemove;
-		Instance->PreReplicatedRemove();
+		// Instance->ReplicateState = EInvSys_ReplicateState::PreRemove;
+		// Instance->PreReplicatedRemove();
 	}
 	/**
 	 * Called after adding and serializing a new element
@@ -97,7 +97,7 @@ public:
 	 */
 	FORCEINLINE void PostReplicatedAdd(const struct FFastArraySerializer& InArraySerializer)
 	{
-		Instance->ReplicateState = EInvSys_ReplicateState::PostAdd;
+		// Instance->ReplicateState = EInvSys_ReplicateState::PostAdd;
 	}
 	/**
 	 * Called after updating an existing element with new data
@@ -107,7 +107,7 @@ public:
 	 */
 	FORCEINLINE void PostReplicatedChange(const struct FFastArraySerializer& InArraySerializer)
 	{
-		Instance->ReplicateState = EInvSys_ReplicateState::PostChange;
+		// Instance->ReplicateState = EInvSys_ReplicateState::PostChange;
 	}
 
 	FString GetDebugString() const;
@@ -161,7 +161,6 @@ public:
 		T* Result = NewObject<T>(InventoryFragment->GetInventoryComponent());
 		// Result->SetInventoryComponent(InventoryFragment->GetInventoryComponent());
 		Result->Entry_Private = &NewEntry;
-		// Result->Container_Private = this;
 		Result->SetItemDefinition(ItemDef);
 		Result->SetItemUniqueID(FGuid::NewGuid());
 		// 这两个属性表明了这个对象的最基础的位置信息
@@ -185,7 +184,6 @@ public:
 		if (InventoryFragment && InventoryFragment->GetNetMode() != NM_DedicatedServer)
 		{
 			Result->BroadcastAddItemInstanceMessage();
-			// BroadcastAddEntryMessage(NewEntry);
 		}
 		check(Result)
 		return Result;
@@ -195,18 +193,22 @@ public:
 	 * 添加其他物品实例
 	 */
 	template<class T, class... Arg>
-	bool AddInstance(UInvSys_InventoryItemInstance* Instance, const Arg&... Args)
+	T* AddInstance(UInvSys_InventoryItemInstance* ItemInstance, const Arg&... Args)
 	{
+		T* Instance = Cast<T>(ItemInstance);
 		check(Instance)
+		Instance = DuplicateObject<T>(Instance, InventoryFragment->GetInventoryComponent());
+		ItemInstance->ConditionalBeginDestroy();//标记目标待删除
+
 		// 更新物品的基础信息
 		Instance->SetSlotTag(InventoryFragment->GetInventoryObjectTag());
+		Instance->SetIsDraggingItem(false);
 		// Instance->SetInventoryComponent(InventoryFragment->GetInventoryComponent());
 		//执行可变参数模板，将参数列表中的值赋予目标对象。
 		int32 Arr[] = {0, (InitItemInstanceProps<T>(Instance, Args), 0)...};
 
 		FInvSys_ContainerEntry& NewEntry = Entries.AddDefaulted_GetRef();
 		Instance->Entry_Private = &NewEntry;
-		// Instance->Container_Private = InventoryFragment;
 
 		NewEntry.Instance = Instance;
 		MarkItemDirty(NewEntry);
@@ -214,9 +216,8 @@ public:
 		if (InventoryFragment && InventoryFragment->GetNetMode() != NM_DedicatedServer)
 		{
 			Instance->BroadcastAddItemInstanceMessage();
-			// BroadcastAddEntryMessage(NewEntry);
 		}
-		return true;
+		return Instance;
 	}
 
 	void RemoveAll();

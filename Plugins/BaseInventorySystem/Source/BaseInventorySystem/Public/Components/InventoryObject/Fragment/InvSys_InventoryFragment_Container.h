@@ -47,30 +47,15 @@ public:
 	// 作为对象属性，ContainerList 的复制优先 其内部其他对象的 复制！！！
 	/** 从其他容器添加物品，容器与容器间的交换，不会 RemoveReplicateObject，因为它们都在同一个Actor下 */
 	template<class T, class... Arg>
-	bool AddItemInstance(UInvSys_InventoryItemInstance* ItemInstance, const Arg&... Args)
+	T* AddItemInstance(UInvSys_InventoryItemInstance* ItemInstance, const Arg&... Args)
 	{
-		bool bIsSuccess = false;
-		/**
-		 * 判断物品实例之前所在的库存组件与当前组件是否一致
-		 * 不一致时，说明物品实例的 Outer 不是当前组件的 Owner 所以需要重新复制一份并更新 Outer
-		 */
-		T* TargetItemInstance = Cast<T>(ItemInstance);
-		check(TargetItemInstance)
-		check(InventoryComponent)
-		if (InventoryComponent != ItemInstance->GetInventoryComponent())
+		T* NewItemInstance = nullptr;
+		if (ItemInstance)
 		{
-			TargetItemInstance = DuplicateObject<T>(TargetItemInstance, InventoryComponent);
-			ItemInstance->ConditionalBeginDestroy();//标记目标待删除
+			NewItemInstance = ContainerList.AddInstance<T>(ItemInstance, Args...);
+			MarkItemInstanceDirty(NewItemInstance);
 		}
-		if (TargetItemInstance)
-		{
-			bIsSuccess = ContainerList.AddInstance<T>(TargetItemInstance, Args...);
-			if (bIsSuccess)
-			{
-				MarkItemInstanceDirty(TargetItemInstance);
-			}
-		}
-		return bIsSuccess;
+		return NewItemInstance;
 	}
 
 	template<class T, class... Arg>

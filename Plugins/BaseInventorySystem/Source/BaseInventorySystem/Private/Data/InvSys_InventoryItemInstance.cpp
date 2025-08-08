@@ -33,7 +33,7 @@ void UInvSys_InventoryItemInstance::PostDuplicate(bool bDuplicateForPIE)
 			LastInventoryComponent = InventoryComponent;
 			InventoryComponent = Cast<UInvSys_InventoryComponent>(MyOuter);
 			Owner = InventoryComponent->GetOwner();
-			// UE_LOG(LogInventorySystem, Error, TEXT("PostDuplicate 库存物品实例的 Outer[%s]！！！"), *InventoryComponent->GetOwner()->GetName())
+			UE_LOG(LogInventorySystem, Error, TEXT("PostDuplicate 库存物品实例的 Outer[%s]！！！"), *InventoryComponent->GetOwner()->GetName())
 		}
 	}
 }

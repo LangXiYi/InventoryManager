@@ -70,14 +70,14 @@ public:
 	}
 
 	template<class T, class... Arg>
-	bool AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args)
+	T* AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args)
 	{
 		auto ContainerFragment = FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(SlotTag);
 		if (InItemInstance != nullptr && ContainerFragment != nullptr)
 		{
 			return ContainerFragment->AddItemInstance<T>(InItemInstance, Args...);
 		}
-		return false;
+		return nullptr;
 	}
 
 	bool RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
@@ -117,19 +117,23 @@ public:
 	bool DropItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args)
 	{
 		bool bIsSuccess = false;
+		check(InItemInstance)
 		if (InItemInstance)
 		{
-			UpdateItemInstanceDragState(InItemInstance, SlotTag, false); // 不能在 AddItemInstance 之后执行，避免复制之后修改旧对象的值！
 			UInvSys_InventoryComponent* FromInvComp = InItemInstance->GetInventoryComponent();
 			if (SlotTag == InItemInstance->GetSlotTag() && this == FromInvComp)
 			{
+				UpdateItemInstanceDragState(InItemInstance, SlotTag, false); 
 				bIsSuccess = UpdateItemInstance<T>(InItemInstance, SlotTag, Args...);
 			}
 			else
 			{
-				FromInvComp->RemoveItemInstance(InItemInstance);
-				bIsSuccess = AddItemInstance<T>(InItemInstance, SlotTag, Args...);
-				check(bIsSuccess)
+				if (FromInvComp->RemoveItemInstance(InItemInstance))
+				{
+					// InItemInstance->SetIsDraggingItem(false);
+					T* NewItemInstance = AddItemInstance<T>(InItemInstance, SlotTag, Args...);
+					bIsSuccess = NewItemInstance != nullptr;
+				}
 			}
 		}
 		return bIsSuccess;

@@ -65,12 +65,14 @@ void UGridInvSys_ContainerGridLayoutWidget::NativeConstruct()
 {
 	auto WarpItemPreRemoveFunc = [this](FGameplayTag Tag, const FInvSys_InventoryItemChangedMessage& Message)
 	{
+		// 属性复制发生在PreRemove之前！！！？？？
 		if (Message.InvComp == GetInventoryComponent() && Message.InventoryObjectTag == GetSlotTag())
 		{
 			UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(Message.ItemInstance);
-			UE_LOG(LogInventorySystem, Warning, TEXT("%s:PreRemove -- Remove --> %s"),
-				GetOwningPlayer()->HasAuthority() ? TEXT("Server"):TEXT("Client"),
-				*GridItemInstance->GetItemPosition().ToString())
+			// UE_LOG(LogInventorySystem, Warning, TEXT("%s:PreRemove -- Remove[%s] --> %s"),
+			// 	GetOwningPlayer()->HasAuthority() ? TEXT("Server"):TEXT("Client"),
+			// 	*Message.ItemInstance->GetItemDisplayName().ToString(),
+			// 	*GridItemInstance->GetItemPosition().ToString())
 			RemoveItemInstance(Message.ItemInstance);
 		}
 	};
@@ -80,9 +82,10 @@ void UGridInvSys_ContainerGridLayoutWidget::NativeConstruct()
 		if (Message.InvComp == GetInventoryComponent() && Message.InventoryObjectTag == GetSlotTag())
 		{
 			UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(Message.ItemInstance);
-			UE_LOG(LogInventorySystem, Warning, TEXT("%s:PostAdd -- Added --> %s"),
-				GetOwningPlayer()->HasAuthority() ? TEXT("Server"):TEXT("Client"),
-				*GridItemInstance->GetItemPosition().ToString())
+			// UE_LOG(LogInventorySystem, Warning, TEXT("%s:PostAdd -- Added[%s] --> %s"),
+			// 	GetOwningPlayer()->HasAuthority() ? TEXT("Server"):TEXT("Client"),
+			// 	*Message.ItemInstance->GetItemDisplayName().ToString(),
+			// 	*GridItemInstance->GetItemPosition().ToString())
 			AddItemInstance(Message.ItemInstance);
 		}
 	};
@@ -93,12 +96,12 @@ void UGridInvSys_ContainerGridLayoutWidget::NativeConstruct()
 		{
 			if (Message.OldPosition.IsValid() && Message.OldPosition.EquipSlotTag == GetSlotTag())
 			{
-				UE_LOG(LogInventorySystem, Warning, TEXT("Changed -- Remove --> %s"), *Message.OldPosition.ToString())
+				// UE_LOG(LogInventorySystem, Warning, TEXT("Changed -- Remove --> %s"), *Message.OldPosition.ToString())
 				RemoveItemInstanceFrom(Message.ItemInstance, Message.OldPosition);
 			}
 			if (Message.NewPosition.IsValid() && Message.NewPosition.EquipSlotTag == GetSlotTag())
 			{
-				UE_LOG(LogInventorySystem, Warning, TEXT("Changed -- Added --> %s"), *Message.NewPosition.ToString())
+				// UE_LOG(LogInventorySystem, Warning, TEXT("Changed -- Added --> %s"), *Message.NewPosition.ToString())
 				AddItemInstanceTo(Message.ItemInstance, Message.NewPosition);
 			}
 		}

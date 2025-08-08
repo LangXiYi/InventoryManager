@@ -56,21 +56,7 @@ void UGridInvSys_InventoryComponent::AddItemDefinitionToContainerPos(
 void UGridInvSys_InventoryComponent::AddItemInstanceToContainerPos(UInvSys_InventoryItemInstance* InItemInstance,
 	const FGridInvSys_ItemPosition& InPos)
 {
-	UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(InItemInstance);
-	check(GridItemInstance)
-	if (GridItemInstance)
-	{
-		UGridInvSys_InventoryFragment_Container* ContainerFragment =
-			FindInventoryObjectFragment<UGridInvSys_InventoryFragment_Container>(InPos.EquipSlotTag);
-		if (ContainerFragment)
-		{
-			FIntPoint ItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSizeFrom(InItemInstance, InPos.Direction);
-			if (ContainerFragment->HasEnoughFreeSpace(InPos.Position, InPos.GridID, ItemSize))
-			{
-				AddItemInstance<UGridInvSys_InventoryItemInstance>(GridItemInstance, InPos.EquipSlotTag, InPos);
-			}
-		}
-	}
+	AddItemInstance<UGridInvSys_InventoryItemInstance>(InItemInstance, InPos.EquipSlotTag, InPos);
 }
 
 void UGridInvSys_InventoryComponent::RestoreItemInstanceToPos(UInvSys_InventoryItemInstance* InItemInstance,
@@ -154,6 +140,35 @@ void UGridInvSys_InventoryComponent::UpdateItemInstancePosition(UInvSys_Inventor
 				*NewPosition.ToString())
 		}
 	}
+}
+
+bool UGridInvSys_InventoryComponent::CheckItemPosition(UInvSys_InventoryItemInstance* ItemInstance,
+	const FGridInvSys_ItemPosition& NewPosition) const
+{
+	if (NewPosition.IsValid() && ItemInstance && ItemInstance->IsA<UGridInvSys_InventoryItemInstance>())
+	{
+		auto ContainerFragment = FindInventoryObjectFragment<UGridInvSys_InventoryFragment_Container>(NewPosition.EquipSlotTag);
+		if (ContainerFragment)
+		{
+			FIntPoint ItemSize = Cast<UGridInvSys_InventoryItemInstance>(ItemInstance)->GetItemSize(NewPosition.Direction);
+			return ContainerFragment->HasEnoughFreeSpace(NewPosition.Position, NewPosition.GridID, ItemSize);
+		}
+	}
+	return false;
+}
+
+bool UGridInvSys_InventoryComponent::CancelOccupied(UGridInvSys_InventoryItemInstance* ItemInstance)
+{
+	if (ItemInstance)
+	{
+		auto ContainerFragment = FindInventoryObjectFragment<UGridInvSys_InventoryFragment_Container>(ItemInstance->GetSlotTag());
+		if (ContainerFragment)
+		{
+			ContainerFragment->UpdateContainerGridItemState(ItemInstance, ItemInstance->GetItemPosition(), false);
+			return true;
+		}
+	}
+	return false;
 }
 
 UGridInvSys_ContainerGridWidget* UGridInvSys_InventoryComponent::FindContainerGridWidget(FGameplayTag SlotTag,

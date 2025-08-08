@@ -16,13 +16,13 @@ struct FDropItemMessage
 	GENERATED_BODY()
 	
 	UPROPERTY(BlueprintReadOnly)
-	class UInvSys_InventoryItemInstance* ItemInstance;
+	class UInvSys_InventoryItemInstance* ItemInstance = nullptr;
 	
 	UPROPERTY(BlueprintReadOnly)
-	class AInvSys_PickableItems* DropItem;
+	class AInvSys_PickableItems* DropItem = nullptr;
 
 	UPROPERTY(BlueprintReadOnly)
-	class AActor* FromActor;
+	class AActor* FromActor = nullptr;
 };
 
 /**

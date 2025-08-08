@@ -161,8 +161,15 @@ void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeEqual(UInvSys_Inve
 	check(PlayerInvComp)
 
 	UGridInvSys_ContainerGridItemWidget* ToGridItemWidget = GetGridItemWidget(DropPosition.Position);
-	UInvSys_InventoryItemInstance* ToItemInstance = ToGridItemWidget->GetItemInstance();
-	PlayerInvComp->Server_SwapItemInstance(ItemInstance, ToItemInstance);
+	UGridInvSys_InventoryItemInstance* ToItemInstance = ToGridItemWidget->GetItemInstance<UGridInvSys_InventoryItemInstance>();
+
+	UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(ItemInstance);
+
+	if (GridItemInstance && ToItemInstance)
+	{
+		PlayerInvComp->Server_CancelDragItemInstance(ItemInstance);
+		PlayerInvComp->Server_SwapItemInstance(GridItemInstance, ToItemInstance);
+	}
 }
 
 void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeGreaterThan_ComponentNotEqual(
@@ -177,6 +184,8 @@ void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeGreaterThan_Compon
 	FIntPoint FromTargetItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSizeFrom(ItemInstance, DropPosition.Direction);
 	TArray<UGridInvSys_InventoryItemInstance*> AllHoveredItemInstances;
 	GetAllHoveredItemInstances(AllHoveredItemInstances, DropPosition.Position, FromTargetItemSize);
+
+	TArray<FGridInvSys_ItemPosition> NewItemPositions;
 	for (UGridInvSys_InventoryItemInstance* HoveredItemInstance : AllHoveredItemInstances)
 	{
 		FGridInvSys_ItemPosition TempItemPos = HoveredItemInstance->GetItemPosition();
@@ -202,9 +211,12 @@ void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeGreaterThan_Compon
 		TempItemPos.EquipSlotTag = FromItemPosition.EquipSlotTag;
 		TempItemPos.GridID = FromItemPosition.GridID;
 		// TempItemPos.Direction; // 方向保持不变。
-		PlayerInvComp->Server_UpdateItemInstancePosition(ItemInstance->GetInventoryComponent(), HoveredItemInstance, TempItemPos);
+		NewItemPositions.Add(TempItemPos);
+		// PlayerInvComp->Server_UpdateItemInstancePosition(ItemInstance->GetInventoryComponent(), HoveredItemInstance, TempItemPos);
 	}
-	PlayerInvComp->Server_TryDropItemInstance(InventoryComponent.Get(), ItemInstance, DropPosition);
+	// PlayerInvComp->Server_TryDropItemInstance(InventoryComponent.Get(), ItemInstance, DropPosition);
+	PlayerInvComp->Server_CancelDragItemInstance(ItemInstance);
+	PlayerInvComp->Server_SwapItemInstances(InventoryComponent.Get(), GridItemInstance, DropPosition, AllHoveredItemInstances, NewItemPositions);
 }
 
 void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeGreaterThan_ComponentEqual(
@@ -216,7 +228,7 @@ void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeGreaterThan_Compon
 	UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(ItemInstance);
 	check(GridItemInstance)
 
-	FIntPoint FromTargetItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSizeFrom(ItemInstance, DropPosition.Direction);
+	FIntPoint FromTargetItemSize = GridItemInstance->GetItemSize(DropPosition.Direction);
 	TArray<UGridInvSys_InventoryItemInstance*> AllHoveredItemInstances;
 	GetAllHoveredItemInstances(AllHoveredItemInstances, DropPosition.Position, FromTargetItemSize);
 
@@ -260,6 +272,8 @@ void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeGreaterThan_Compon
 		// TempItemPos.Direction; // 方向保持不变。
 		NewItemPositions.Add(TempItemPos);
 	}
+	// PlayerInvComp->Server_CancelDragItemInstance(ItemInstance);
+	// PlayerInvComp->Server_SwapItemInstances(InventoryComponent.Get(), GridItemInstance, DropPosition, AllHoveredItemInstances, NewItemPositions);
 	for (int i = 0; i < AllHoveredItemInstances.Num(); ++i)
 	{
 		PlayerInvComp->Server_UpdateItemInstancePosition(
@@ -297,9 +311,9 @@ void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeLessThan(UInvSys_I
 		// 计算 To 物品在From容器下的位置
 		FGridInvSys_ItemPosition TempItemData = ToGridItemInstance->GetItemPosition();
 		TempItemData.Position = ValidPosition;
+		PlayerInvComp->Server_RemoveItemInstance(ItemInstance);
 		PlayerInvComp->Server_UpdateItemInstancePosition(GetInventoryComponent(), ToGridItemInstance, TempItemData);
 		PlayerInvComp->Server_TryDropItemInstance(GetInventoryComponent(), ItemInstance, DropPosition);
-
 	}
 }
 
@@ -326,7 +340,6 @@ EGridInvSys_DropType UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer
 	{
 		return EGridInvSys_DropType::None;
 	}
-	UGridInvSys_InventoryItemInstance* ToGridItemInstance = ToGridItemWidget->GetItemInstance<UGridInvSys_InventoryItemInstance>();
 
 #pragma endregion
 
@@ -380,7 +393,8 @@ EGridInvSys_DropType UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer
 	 * 目标位置下的物品与传入的物品实例大小一致 & 目标位置与重叠物品的位置一致
 	 */
 
-	FIntPoint ToTargetItemSize = ToGridItemInstance->GetItemSize();
+	UGridInvSys_InventoryItemInstance* ToGridItemInstance = ToGridItemWidget->GetItemInstance<UGridInvSys_InventoryItemInstance>();
+	FIntPoint ToTargetItemSize = ToGridItemInstance ? ToGridItemInstance->GetItemSize() : FIntPoint(1, 1);
 	if (TargetItemSize == ToTargetItemSize && ToGridItemWidget == ToGridItemWidget->GetOriginGridItemWidget())
 	{
 		// UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("To 的位置已经被其他物品占领，但 From 与 To 的大小一致 且 To 的位置是物品的左上角"))
@@ -630,22 +644,30 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(UInvSys_Inventory
 	switch (DropType)
 	{
 	case EGridInvSys_DropType::FreeSpace:
+		UE_LOG(LogInventorySystem, Log, TEXT("FreeSpace"));
 		TryDropItemInstance_FreeSpace(ItemInstance, DropPosition);
 		break;
 	case EGridInvSys_DropType::SizeEqual:
+		UE_LOG(LogInventorySystem, Log, TEXT("SizeEqual"));
 		TryDropItemInstance_SizeEqual(ItemInstance, DropPosition);
 		break;
 	case EGridInvSys_DropType::SizeGreaterThan_ComponentNotEqual:
+		UE_LOG(LogInventorySystem, Log, TEXT("SizeGreaterThan_ComponentNotEqual"));
 		TryDropItemInstance_SizeGreaterThan_ComponentNotEqual(ItemInstance, DropPosition);
 		break;
 	case EGridInvSys_DropType::SizeGreaterThan_ComponentEqual:
+		UE_LOG(LogInventorySystem, Log, TEXT("SizeGreaterThan_ComponentEqual"));
 		TryDropItemInstance_SizeGreaterThan_ComponentEqual(ItemInstance, DropPosition);
 		break;
 	case EGridInvSys_DropType::SizeLessThan:
+		UE_LOG(LogInventorySystem, Log, TEXT("TryDropItemInstance_SizeLessThan"));
 		TryDropItemInstance_SizeLessThan(ItemInstance, DropPosition);
 		break;
 	default:
 		UE_LOG(LogInventorySystem, Warning, TEXT("没有对应的处理方案"));
+		UGridInvSys_GridInventoryControllerComponent* PlayerInvComp =
+			UInvSys_InventorySystemLibrary::GetPlayerInventoryComponent<UGridInvSys_GridInventoryControllerComponent>(GetWorld());
+		PlayerInvComp->Server_CancelDragItemInstance(ItemInstance);
 		return false;
 	}
 	return true;

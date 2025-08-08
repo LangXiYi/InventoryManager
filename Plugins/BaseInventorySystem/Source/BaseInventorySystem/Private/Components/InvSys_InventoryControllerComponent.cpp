@@ -7,6 +7,7 @@
 #include "Components/InvSys_InventoryComponent.h"
 #include "Data/InvSys_ItemFragment_EquipItem.h"
 #include "Engine/ActorChannel.h"
+#include "Misc/LowLevelTestAdapter.h"
 
 
 UInvSys_InventoryControllerComponent::UInvSys_InventoryControllerComponent(const FObjectInitializer& ObjectInitializer)
@@ -30,14 +31,19 @@ void UInvSys_InventoryControllerComponent::Server_DragAndRemoveItemInstance_Impl
 		TEXT("尝试拽起物品实例失败！！"))
 }
 
-void UInvSys_InventoryControllerComponent::Server_CancelDragItemInstance_Implementation(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance)
+void UInvSys_InventoryControllerComponent::Server_CancelDragItemInstance_Implementation(UInvSys_InventoryItemInstance* InItemInstance)
 {
-	check(InItemInstance && InvComp)
-	if (InItemInstance && InvComp)
+	check(InItemInstance)
+	if (InItemInstance)
 	{
-		InvComp->CancelDragItemInstance(InItemInstance);
+		UInvSys_InventoryComponent* InvComp = InItemInstance->GetInventoryComponent();
+		check(InvComp)
+		if (InvComp)
+		{
+			InvComp->CancelDragItemInstance(InItemInstance);
+			DraggingItemInstance = nullptr;
+		}
 	}
-	DraggingItemInstance = nullptr;
 }
 
 bool UInvSys_InventoryControllerComponent::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch,
