@@ -229,10 +229,7 @@ void UInvSys_InventoryComponent::CancelDragItemInstance(UInvSys_InventoryItemIns
 	check(ItemInstance)
 	if (ItemInstance != nullptr && IsValid(ItemInstance))
 	{
-		if (ItemInstance->IsDraggingItemInstance() == false)
-		{
-			UpdateItemInstanceDragState(ItemInstance, ItemInstance->GetSlotTag(), false);
-		}
+		UpdateItemInstanceDragState(ItemInstance, ItemInstance->GetSlotTag(), false);
 	}
 }
 

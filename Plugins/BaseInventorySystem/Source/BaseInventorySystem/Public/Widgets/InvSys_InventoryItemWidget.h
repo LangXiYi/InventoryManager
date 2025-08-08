@@ -34,6 +34,7 @@ protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
 
+	UFUNCTION()
 	virtual void NativeOnDragItem(bool bIsDraggingItem);
 
 	UFUNCTION(BlueprintImplementableEvent)
@@ -52,5 +53,4 @@ private:
 	bool bIsEnableDragItem = true;
 
 	FTimerHandle ServerTimeoutHandle;
-	FGameplayMessageListenerHandle DragItemListenerHandle;
 };

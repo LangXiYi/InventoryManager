@@ -87,9 +87,12 @@ public:
 	void Server_DropItemInstanceToWorld(UInvSys_InventoryItemInstance* InItemInstance);
 
 protected:
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual bool ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags) override;
 
 protected:
-	UPROPERTY(Transient)
+	UPROPERTY(ReplicatedUsing = OnRep_DraggingItemInstance)
 	TWeakObjectPtr<UInvSys_InventoryItemInstance> DraggingItemInstance = nullptr;
+	UFUNCTION()
+	void OnRep_DraggingItemInstance();
 };

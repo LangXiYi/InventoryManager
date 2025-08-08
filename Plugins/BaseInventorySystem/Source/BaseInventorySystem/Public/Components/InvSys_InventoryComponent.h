@@ -125,6 +125,7 @@ public:
 			{
 				UpdateItemInstanceDragState(InItemInstance, SlotTag, false); 
 				bIsSuccess = UpdateItemInstance<T>(InItemInstance, SlotTag, Args...);
+				UE_CLOG(bIsSuccess == false, LogInventorySystem, Error, TEXT("%hs Falied, 更新物品属性失败")， __FUNCTION__)
 			}
 			else
 			{
@@ -133,9 +134,11 @@ public:
 					// InItemInstance->SetIsDraggingItem(false);
 					T* NewItemInstance = AddItemInstance<T>(InItemInstance, SlotTag, Args...);
 					bIsSuccess = NewItemInstance != nullptr;
+					UE_CLOG(bIsSuccess == false, LogInventorySystem, Error, TEXT("%hs Falied, 移除重新添加物品失败")， __FUNCTION__)
 				}
 			}
 		}
+		UE_CLOG(bIsSuccess == false, LogInventorySystem, Error, TEXT("%hs Falied, 物品实例为空")， __FUNCTION__)
 		return bIsSuccess;
 	}
 

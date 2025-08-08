@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GridInvSys_CommonType.h"
+#include "GameFramework/GameplayMessageSubsystem.h"
 #include "Widgets/InvSys_InventoryWidget.h"
 #include "GridInvSys_ContainerGridItemWidget.generated.h"
 
@@ -120,4 +121,6 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item")
 	bool bIsOccupied;
+	
+	FGameplayMessageListenerHandle DragItemListenerHandle;
 };

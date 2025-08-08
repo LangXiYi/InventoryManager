@@ -103,12 +103,10 @@ void UInvSys_InventoryItemInstance::GetLifetimeReplicatedProps(TArray<FLifetimeP
 
 void UInvSys_InventoryItemInstance::OnRep_IsDragging()
 {
-	FInvSys_DragItemInstanceMessage DragItemInstanceMessage;
-	DragItemInstanceMessage.ItemInstance = this;
-	DragItemInstanceMessage.bIsDraggingItem = bIsDragging;
-
-	UGameplayMessageSubsystem& GameplayMessageSubsystem = UGameplayMessageSubsystem::Get(GetWorld());
-	GameplayMessageSubsystem.BroadcastMessage(Inventory_Message_DragItem, DragItemInstanceMessage);
+	if (OnDragItemInstance.IsBound())
+	{
+		OnDragItemInstance.Execute(bIsDragging);
+	}
 }
 
 void UInvSys_InventoryItemInstance::SetItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> NewItemDef)

@@ -34,6 +34,10 @@ public:
 
 	bool HasEnoughFreeSpace(FIntPoint ToPosition, int32 ToGridID, FIntPoint ItemSize);
 
+	TArray<int32> GetItemGridOccupiedIndexes(UGridInvSys_InventoryItemInstance* ItemInstance) const;
+
+	bool CheckItemPosition(UInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& NewPosition);
+
 	void UpdateContainerGridItemState(UGridInvSys_InventoryItemInstance* GridItemInstance, const FGridInvSys_ItemPosition& ItemPosition, bool IsOccupy);
 
 	bool FindEmptyPosition(FIntPoint ItemSize, FGridInvSys_ItemPosition& OutPosition);
@@ -53,7 +57,7 @@ private:
 
 	void UpdateContainerData(UGridInvSys_ContainerGridLayoutWidget* ContainerLayout);
 
-	void PrintDebugOccupiedGrid(const FString& PrintReason = "");
+	void PrintDebugOccupiedGrid(const FString& PrintReason = "") const;
 
 protected:
 	// 设置容器数据的方式，若库存对象设置了装备片段则该值通常设置为 FromEquip，反之设置为 FromWidget（需要控件片段） 或 Custom

@@ -8,6 +8,7 @@
 #include "Data/InvSys_ItemFragment_EquipItem.h"
 #include "Engine/ActorChannel.h"
 #include "Misc/LowLevelTestAdapter.h"
+#include "Net/UnrealNetwork.h"
 
 
 UInvSys_InventoryControllerComponent::UInvSys_InventoryControllerComponent(const FObjectInitializer& ObjectInitializer)
@@ -44,6 +45,22 @@ void UInvSys_InventoryControllerComponent::Server_CancelDragItemInstance_Impleme
 			DraggingItemInstance = nullptr;
 		}
 	}
+}
+
+void UInvSys_InventoryControllerComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME_CONDITION(UInvSys_InventoryControllerComponent, DraggingItemInstance, COND_OwnerOnly);
+}
+
+void UInvSys_InventoryControllerComponent::OnRep_DraggingItemInstance()
+{
+	FInvSys_DragItemInstanceMessage DragItemInstanceMessage;
+	DragItemInstanceMessage.ItemInstance = DraggingItemInstance.Get();
+	DragItemInstanceMessage.bIsDraggingItem = DraggingItemInstance.IsValid();
+
+	UGameplayMessageSubsystem& GameplayMessageSubsystem = UGameplayMessageSubsystem::Get(GetWorld());
+	GameplayMessageSubsystem.BroadcastMessage(Inventory_Message_DragItem, DragItemInstanceMessage);
 }
 
 bool UInvSys_InventoryControllerComponent::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch,

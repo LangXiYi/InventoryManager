@@ -120,6 +120,8 @@ FORCEINLINE void operator<<(FStructuredArchiveSlot Slot, TInvSys_FastArrayItemPr
 	Slot << InProperty.Property;
 }
 
+DECLARE_DYNAMIC_DELEGATE_OneParam(FOnDragItemInstance, bool, bIsDragging);
+
 /**
  * 库存内容项
  * 注意：修改类成员属性后需要调用 MarkItemInstanceDirty 标记修改！！！
@@ -277,6 +279,8 @@ protected:
 	}
 
 public:
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory Item Instance")
+	FOnDragItemInstance OnDragItemInstance;
 	/**
 	 * 供容器使用，如果物品实例是一个容器，那么这个数组就会保存它拥有的所有物品。
 	 * 主要是为了在拖拽容器这类对象时，保存其内部储存所有物品，方便在结束拖拽时统一操作其内部物品。

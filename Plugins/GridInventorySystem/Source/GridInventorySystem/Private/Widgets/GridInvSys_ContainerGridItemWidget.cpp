@@ -104,32 +104,7 @@ UGridInvSys_ContainerGridItemWidget* UGridInvSys_ContainerGridItemWidget::GetOri
 
 bool UGridInvSys_ContainerGridItemWidget::IsOccupied()
 {
-	if (ItemInstance.IsValid())
-	{
-		return true;
-		/*UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(ItemInstance);
-		if (GridItemInstance)
-		{
-			// 物品有效
-			FGridInvSys_ItemPosition TempItemPos = GridItemInstance->GetItemPosition();
-			if (GetSlotTag() == TempItemPos.EquipSlotTag &&
-				GetGridID() == TempItemPos.GridID &&
-				GetOriginPosition() == TempItemPos.Position &&
-				GetInventoryComponent() == ItemInstance->GetInventoryComponent())
-			{
-				return true;
-			}
-			else
-			{
-				// 在 ContainerGridLayout 收到监听的 ItemPositionChanged 执行之前，该函数可能会被触发
-				//checkNoEntry()
-				// bug 在 1x2 大小的物品替换 两个 1x1 大小的物品时会报错
-				UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("检查槽位是否被占据时发现物品实例与当前槽位的位置不符，故自动将物品移除显示。"))
-				RemoveItemInstance();
-			}
-		}*/
-	}
-	return false;
+	return bIsOccupied;
 }
 
 EGridInvSys_ItemDirection UGridInvSys_ContainerGridItemWidget::GetItemDirection() const
@@ -227,4 +202,35 @@ void UGridInvSys_ContainerGridItemWidget::NativeConstruct()
 		SizeBox->SetWidthOverride(ItemDrawSize);
 		SizeBox->SetHeightOverride(ItemDrawSize);
 	}
+
+	auto WarpDragItemFunc = [this](FGameplayTag Tag, const FInvSys_DragItemInstanceMessage& Message)
+	{
+		if (Message.ItemInstance != nullptr && Message.ItemInstance == ItemInstance)
+		{
+			if (Message.bIsDraggingItem == true)
+			{
+				bIsOccupied = false;
+				TArray<UGridInvSys_ContainerGridItemWidget*> OutArray;
+				ContainerGridWidget->GetContainerGridItems<UGridInvSys_ContainerGridItemWidget>(OutArray, GetPosition(), GridItemSize, {this});
+				for (UGridInvSys_ContainerGridItemWidget* GridItemWidget : OutArray)
+				{
+					GridItemWidget->bIsOccupied = false;
+				}
+			}
+			else
+			{
+				bIsOccupied = true;
+				TArray<UGridInvSys_ContainerGridItemWidget*> OutArray;
+				ContainerGridWidget->GetContainerGridItems<UGridInvSys_ContainerGridItemWidget>(OutArray, GetPosition(), GridItemSize, {this});
+				for (UGridInvSys_ContainerGridItemWidget* GridItemWidget : OutArray)
+				{
+					GridItemWidget->bIsOccupied = true;
+				}
+			}
+		}
+	};
+
+	UGameplayMessageSubsystem& GameplayMessageSubsystem = UGameplayMessageSubsystem::Get(GetWorld());
+	DragItemListenerHandle = GameplayMessageSubsystem.RegisterListener<FInvSys_DragItemInstanceMessage>(
+		Inventory_Message_DragItem, WarpDragItemFunc);
 }

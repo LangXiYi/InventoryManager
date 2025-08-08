@@ -196,26 +196,21 @@ void UGridInvSys_GridInventoryControllerComponent::Server_TryDropItemInstance_Im
 	UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance,
 	const FGridInvSys_ItemPosition& InPos)
 {
-	if (InvComp == nullptr || InItemInstance == nullptr)
+	UGridInvSys_InventoryComponent* GridInvComp = Cast<UGridInvSys_InventoryComponent>(InvComp);
+	UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(InItemInstance);
+	if (GridInvComp == nullptr || GridItemInstance == nullptr)
 	{
-		checkf(false, TEXT("传入的库存组件或物品实例为空"));
+		checkNoEntry();
 		return;
 	}
-	bool bIsSuccess = false;
-	auto ContainerFragment = InvComp->FindInventoryObjectFragment<UGridInvSys_InventoryFragment_Container>(InPos.EquipSlotTag);
-	if (InItemInstance)
+
+	UGridInvSys_InventoryComponent* FromInvComp = InItemInstance->GetInventoryComponent<UGridInvSys_InventoryComponent>();
+	if (FromInvComp == GridInvComp && GridItemInstance->GetItemPosition() == InPos)
 	{
-		FIntPoint ItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSizeFrom(InItemInstance, InPos.Direction);
-		bool bHasEnoughFreeSpace = ContainerFragment->HasEnoughFreeSpace(InPos.Position, InPos.GridID, ItemSize);
-
-		UE_CLOG(bHasEnoughFreeSpace == false, LogInventorySystem, Error, TEXT("位置 %s 无法容纳大小为 %s 的 %s"),
-			*InPos.ToString(), *ItemSize.ToString(), *InItemInstance->GetItemDisplayName().ToString())
-
-		if (bHasEnoughFreeSpace)
-		{
-			bIsSuccess = DropItemInstance<UGridInvSys_InventoryItemInstance>(InvComp, InItemInstance, InPos.EquipSlotTag, InPos);
-		}
+		InvComp->CancelDragItemInstance(InItemInstance);
 	}
-	UE_CLOG(bIsSuccess == false, LogInventorySystem, Error, TEXT("放置 %s 失败 ---> %s"),
-		*InItemInstance->GetItemDisplayName().ToString(), *InPos.ToString())
+	else if(GridInvComp->CheckItemPosition(InItemInstance, InPos))
+	{
+		DropItemInstance<UGridInvSys_InventoryItemInstance>(InvComp, InItemInstance, InPos.EquipSlotTag, InPos);
+	}
 }

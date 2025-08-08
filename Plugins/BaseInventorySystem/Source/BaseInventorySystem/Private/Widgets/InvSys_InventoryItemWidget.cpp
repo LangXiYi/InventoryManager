@@ -65,13 +65,8 @@ void UInvSys_InventoryItemWidget::NativeOnDragDetected(const FGeometry& InGeomet
 		DragDropOperation->Pivot = DragDropFragment->DragPivot;
 		DragDropOperation->Offset = DragDropFragment->DragOffset;
 		OutOperation = DragDropOperation;
-		
+
 		PlayerInvComp->Server_DragItemInstance(FromInvComp, ItemInstance.Get()); //通知服务器: 玩家正在拖拽物品
-		// GetWorld()->GetTimerManager().SetTimer(ServerTimeoutHandle, [&]()
-		// {
-		// 	bIsWaitingServerResponse = false;
-		// 	// TODO::发送网络环境较差通知？
-		// }, 5.f, false);
 	}
 }
 
@@ -91,26 +86,23 @@ void UInvSys_InventoryItemWidget::NativeOnDragCancelled(const FDragDropEvent& In
 void UInvSys_InventoryItemWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-
-	auto OnDraggingItemFunc = [this](FGameplayTag Tag, const FInvSys_DragItemInstanceMessage& Message)
+	if (ItemInstance.IsValid())
 	{
-		if (ItemInstance.IsValid() && Message.ItemInstance == ItemInstance)
-		{
-			NativeOnDragItem(Message.bIsDraggingItem);
-		}
-	};
-
-	// 监听 Dragging 事件
-	UGameplayMessageSubsystem& GameplayMessageSubsystem = UGameplayMessageSubsystem::Get(GetWorld());
-	DragItemListenerHandle = GameplayMessageSubsystem.RegisterListener<FInvSys_DragItemInstanceMessage>(Inventory_Message_DragItem, MoveTemp(OnDraggingItemFunc));
+		ItemInstance->OnDragItemInstance.BindDynamic(this, &UInvSys_InventoryItemWidget::NativeOnDragItem);
+	}
 }
 
 void UInvSys_InventoryItemWidget::NativeDestruct()
 {
 	Super::NativeDestruct();
 
-	GetWorld()->GetTimerManager().ClearTimer(ServerTimeoutHandle);
-	DragItemListenerHandle.Unregister();
+	if (ItemInstance.IsValid())
+	{
+		if (ItemInstance->OnDragItemInstance.IsBoundToObject(this))
+		{
+			ItemInstance->OnDragItemInstance.Unbind();
+		} 
+	}
 }
 
 void UInvSys_InventoryItemWidget::NativeOnDragItem(bool bIsDraggingItem)

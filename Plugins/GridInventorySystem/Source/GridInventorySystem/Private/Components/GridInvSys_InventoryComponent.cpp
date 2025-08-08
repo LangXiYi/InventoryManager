@@ -150,8 +150,7 @@ bool UGridInvSys_InventoryComponent::CheckItemPosition(UInvSys_InventoryItemInst
 		auto ContainerFragment = FindInventoryObjectFragment<UGridInvSys_InventoryFragment_Container>(NewPosition.EquipSlotTag);
 		if (ContainerFragment)
 		{
-			FIntPoint ItemSize = Cast<UGridInvSys_InventoryItemInstance>(ItemInstance)->GetItemSize(NewPosition.Direction);
-			return ContainerFragment->HasEnoughFreeSpace(NewPosition.Position, NewPosition.GridID, ItemSize);
+			return ContainerFragment->CheckItemPosition(ItemInstance, NewPosition);
 		}
 	}
 	return false;
