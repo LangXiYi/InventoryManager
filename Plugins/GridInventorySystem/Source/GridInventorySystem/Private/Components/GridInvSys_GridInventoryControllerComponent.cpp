@@ -169,10 +169,10 @@ void UGridInvSys_GridInventoryControllerComponent::Server_SwapItemInstance_Imple
 		if (FromInvComp && ToInvComp)
 		{
 			// 这里需要提前缓存ToItem的位置信息，避免在第一次添加执行完成后修改FromItem到To位置时的数据被污染。
-			FGameplayTag FromItemTag = FromItemInstance->GetSlotTag();
+			FGameplayTag FromItemTag = FromItemInstance->GetInventoryObjectTag();
 			FGridInvSys_ItemPosition FromItemPosition = FromItemInstance->GetItemPosition();
 			
-			FGameplayTag ToItemTag = ToItemInstance->GetSlotTag();
+			FGameplayTag ToItemTag = ToItemInstance->GetInventoryObjectTag();
 			FGridInvSys_ItemPosition ToItemPosition = ToItemInstance->GetItemPosition();
 
 			FromInvComp->RemoveItemInstance(FromItemInstance);

@@ -19,8 +19,21 @@ class BASEINVENTORYSYSTEM_API UInvSys_InventoryControllerComponent : public UCon
 public:
 	UInvSys_InventoryControllerComponent(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
-	void SetDraggingItemInstance(UInvSys_InventoryItemInstance* NewDragItemInstance);
-	
+	/**
+	 * 由于放置逻辑可能存在其他不确定的属性，所以这里没有办法提前定义 RPC 函数，需要子类实现自定义的 Server RPC
+	 * void Server_TryDropItemInstance(InvComp, ItemInstance, SlotTag...);
+	 */
+	template<class T, class... Arg>
+	bool DropItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args);
+
+	/**
+	 * 由于放置逻辑可能存在其他不确定的属性，所以这里没有办法提前定义 RPC 函数，需要子类实现自定义的 Server RPC
+	 * void Server_TryDropItemInstance(InvComp, ItemInstance, SlotTag...);
+	 */
+	template<class T, class... Arg>
+	T* DropAndAddItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args);
+
+public:
 	/**
 	 * RPC Functions
 	 **/
@@ -33,48 +46,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_RestoreItemInstance(UInvSys_InventoryComponent* InvComp,UInvSys_InventoryItemInstance* InItemInstance);
-
-	/**
-	 * 由于放置逻辑可能存在其他不确定的属性，所以这里没有办法提前定义 RPC 函数，需要子类实现自定义的 Server RPC
-	 * void Server_TryDropItemInstance(InvComp, ItemInstance, SlotTag...);
-	 */
-	template<class T, class... Arg>
-	bool DropItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args)
-	{
-		if (InvComp == nullptr)
-		{
-			UE_LOG(LogInventorySystem, Error, TEXT("%hs Failed, Inventory Component is nullptr."), __FUNCTION__)
-			return false;
-		}
-		if (DraggingItemInstance == nullptr)
-		{
-			UE_LOG(LogInventorySystem, Error, TEXT("%hs Failed, Dragging ItemInstance is nullptr."), __FUNCTION__)
-			return false;
-		}
-		if (DraggingItemInstance != InItemInstance)
-		{
-			UE_LOG(LogInventorySystem, Error, TEXT("%hs Failed, DraggingItemInstance != InItemInstance."), __FUNCTION__)
-			return false;
-		}
-
-		SetDraggingItemInstance(nullptr);
-		return InvComp->DropItemInstance<T>(InItemInstance, SlotTag, Args...);
-	}
-
-	/**
-	 * 由于放置逻辑可能存在其他不确定的属性，所以这里没有办法提前定义 RPC 函数，需要子类实现自定义的 Server RPC
-	 * void Server_TryDropItemInstance(InvComp, ItemInstance, SlotTag...);
-	 */
-	template<class T, class... Arg>
-	T* DropAndAddItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args)
-	{
-		if (DraggingItemInstance.IsValid() && DraggingItemInstance == InItemInstance && InvComp)
-		{
-			SetDraggingItemInstance(nullptr);
-			return InvComp->AddItemInstance<T>(InItemInstance, SlotTag, Args...);
-		}
-		return nullptr;
-	}
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_DragItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance);
@@ -89,8 +60,9 @@ public:
 	void Server_DropItemInstanceToWorld(UInvSys_InventoryItemInstance* InItemInstance);
 
 protected:
+	void SetDraggingItemInstance(UInvSys_InventoryItemInstance* NewDragItemInstance);
+
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-	virtual bool ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags) override;
 
 protected:
 	UPROPERTY(ReplicatedUsing = OnRep_DraggingItemInstance)
@@ -98,3 +70,39 @@ protected:
 	UFUNCTION()
 	void OnRep_DraggingItemInstance(const TWeakObjectPtr<UInvSys_InventoryItemInstance>& OldDraggingItemInstance);
 };
+
+template <class T, class ... Arg>
+bool UInvSys_InventoryControllerComponent::DropItemInstance(UInvSys_InventoryComponent* InvComp,
+	UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args)
+{
+	if (InvComp == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Failed, Inventory Component is nullptr."), __FUNCTION__)
+		return false;
+	}
+	if (DraggingItemInstance == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Failed, Dragging ItemInstance is nullptr."), __FUNCTION__)
+		return false;
+	}
+	if (DraggingItemInstance != InItemInstance)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Failed, DraggingItemInstance != InItemInstance."), __FUNCTION__)
+		return false;
+	}
+
+	SetDraggingItemInstance(nullptr);
+	return InvComp->DropItemInstance<T>(InItemInstance, SlotTag, Args...);
+}
+
+template <class T, class ... Arg>
+T* UInvSys_InventoryControllerComponent::DropAndAddItemInstance(UInvSys_InventoryComponent* InvComp,
+	UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args)
+{
+	if (DraggingItemInstance.IsValid() && DraggingItemInstance == InItemInstance && InvComp)
+	{
+		SetDraggingItemInstance(nullptr);
+		return InvComp->AddItemInstance<T>(InItemInstance, SlotTag, Args...);
+	}
+	return nullptr;
+}

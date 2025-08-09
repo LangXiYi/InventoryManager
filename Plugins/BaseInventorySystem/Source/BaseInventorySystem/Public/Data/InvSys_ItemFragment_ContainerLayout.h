@@ -7,9 +7,7 @@
 #include "InvSys_ItemFragment_ContainerLayout.generated.h"
 
 class UInvSys_InventoryWidget;
-/**
- * 
- */
+
 UCLASS()
 class BASEINVENTORYSYSTEM_API UInvSys_ItemFragment_ContainerLayout : public UInvSys_InventoryItemFragment
 {

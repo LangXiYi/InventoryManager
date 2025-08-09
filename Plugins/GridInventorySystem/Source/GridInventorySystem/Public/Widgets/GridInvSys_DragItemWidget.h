@@ -3,23 +3,15 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GridInvSys_CommonType.h"
-#include "Widgets/InvSys_InventoryWidget.h"
+#include "Widgets/InvSys_DraggingItemWidget.h"
 #include "GridInvSys_DragItemWidget.generated.h"
 
-class UGridInvSys_EquipmentSlotWidget;
-class UGridInvSys_ContainerGridItemWidget;
-class UGridInvSys_DragDropWidget;
-class UInvSys_InventoryItemInstance;
-class UImage;
-class UGridInvSys_InventoryItemInfo;
-class USizeBox;
-class UInvSys_InventoryItemInfo;
+
 /**
  * 
  */
 UCLASS()
-class GRIDINVENTORYSYSTEM_API UGridInvSys_DragItemWidget : public UInvSys_InventoryWidget
+class GRIDINVENTORYSYSTEM_API UGridInvSys_DragItemWidget : public UInvSys_DraggingItemWidget
 {
 	GENERATED_BODY()
 

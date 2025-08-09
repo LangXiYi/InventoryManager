@@ -6,9 +6,8 @@
 #include "InvSys_InventoryWidget.h"
 #include "InvSys_InventoryLayoutWidget.generated.h"
 
-/**
- * 
- */
+class UInvSys_TagSlot;
+
 UCLASS()
 class BASEINVENTORYSYSTEM_API UInvSys_InventoryLayoutWidget : public UUserWidget
 {
@@ -21,9 +20,6 @@ public:
 
 	virtual void AddWidget(UUserWidget* Widget, const FGameplayTag& Tag);
 
-protected:
-	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
-	
 protected:
 	UPROPERTY(Transient)
 	TMap<FGameplayTag, UInvSys_TagSlot*> TagSlots;

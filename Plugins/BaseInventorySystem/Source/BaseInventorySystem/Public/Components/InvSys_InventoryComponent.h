@@ -4,18 +4,18 @@
 
 #include "CoreMinimal.h"
 #include "BaseInventorySystem.h"
-#include "Components/ActorComponent.h"
 #include "GameplayTagContainer.h"
+#include "Components/ActorComponent.h"
 #include "InventoryObject/InvSys_BaseInventoryObject.h"
 #include "InventoryObject/Fragment/InvSys_InventoryFragment_Container.h"
+#include "InventoryObject/Fragment/InvSys_InventoryFragment_Equipment.h"
 #include "InvSys_InventoryComponent.generated.h"
 
-class UInvSys_InventoryFragment_Container;
 class AInvSys_PickableItems;
+class UInvSys_BaseInventoryObject;
 class UInvSys_InventoryLayoutWidget;
 class UInvSys_InventoryItemDefinition;
 class UInvSys_PreEditInventoryObject;
-class UInvSys_BaseInventoryObject;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDropItemInstanceToWorld, AInvSys_PickableItems*, DropItem);
 
@@ -28,10 +28,7 @@ class BASEINVENTORYSYSTEM_API UInvSys_InventoryComponent : public UActorComponen
 	friend class AInvSys_PickableContainer;
 
 public:
-	// Sets default values for this component's properties
 	UInvSys_InventoryComponent(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
-
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	/** 构建库存对象列表，推荐在BeginPlay阶段就调用该函数 */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
@@ -54,25 +51,22 @@ public:
 	 * 支持自定义参数传入物品实例，支持在不同库存组件下转移物品，在转移时需要注意将旧物品的实例删除。
 	 * 注意：该函数消耗较大会创建新的物品实例，故只推荐在不同库存组件交换物品时使用。
 	 *		对于相同库存组件下的物品交换，只需要更改物品实例内的信息即可。
-	 * @param ItemDef 物品的定义
-	 * @param InSlotTag 目标容器标签
-	 * @param InStackCount 当前物品的堆叠数量 
-	 * @param Args 可变参数列表，传入的参数会同一赋值给创建的物品实例
 	 */
-	template<class T, class... Arg>
+	template<class T, class... ArgList>
 	T* AddItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
-		FGameplayTag InSlotTag,	int32 InStackCount, const Arg&... Args)
+		FGameplayTag InventoryObjectTag,	int32 StackCount, const ArgList&... Args)
 	{
-		auto ContainerFragment = FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(InSlotTag);
+		auto ContainerFragment = FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(InventoryObjectTag);
+		check(ContainerFragment)
 		if (ContainerFragment)
 		{
-			return ContainerFragment->AddItemDefinition<T>(ItemDef, InStackCount, Args...);
+			return ContainerFragment->AddItemDefinition<T>(ItemDef, StackCount, Args...);
 		}
 		return nullptr;
 	}
 
-	template<class T, class... Arg>
-	T* AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args)
+	template<class T, class... ArgList>
+	T* AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const ArgList&... Args)
 	{
 		auto ContainerFragment = FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(SlotTag);
 		if (InItemInstance != nullptr && ContainerFragment != nullptr)
@@ -86,17 +80,16 @@ public:
 	bool RestoreItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
 
 	template<class T, class... Arg>
-	bool UpdateItemInstance(UInvSys_InventoryItemInstance* ItemInstance, FGameplayTag SlotTag, const Arg&... Args)
+	void UpdateItemInstance(UInvSys_InventoryItemInstance* ItemInstance, FGameplayTag SlotTag, const Arg&... Args)
 	{
 		auto ContainerFragment = FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(SlotTag);
 		if (ItemInstance && ContainerFragment)
 		{
-			return ContainerFragment->UpdateItemInstance<T>(ItemInstance, Args...);
+			ContainerFragment->UpdateItemInstance<T>(ItemInstance, Args...);
 		}
-		return false;
 	}
 
-	bool UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance, const FGameplayTag& InventoryTag, bool NewState);
+	void UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance, const FGameplayTag& InventoryTag, bool NewState);
 
 	// Begin Drag Drop ====================
 	bool DragAndRemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
@@ -116,33 +109,7 @@ public:
 	 *		B、加入新容器前需要判断物品所有者是否发生改变，以此决定是否进行深度拷贝并重设所有者。
 	 */
 	template<class T, class... Arg>
-	bool DropItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args)
-	{
-		bool bIsSuccess = false;
-		check(InItemInstance)
-		if (InItemInstance)
-		{
-			UInvSys_InventoryComponent* FromInvComp = InItemInstance->GetInventoryComponent();
-			if (SlotTag == InItemInstance->GetSlotTag() && this == FromInvComp)
-			{
-				UpdateItemInstanceDragState(InItemInstance, SlotTag, false); 
-				bIsSuccess = UpdateItemInstance<T>(InItemInstance, SlotTag, Args...);
-				UE_CLOG(bIsSuccess == false, LogInventorySystem, Error, TEXT("DropItemInstance Falied, 更新物品属性失败"))
-			}
-			else
-			{
-				if (FromInvComp->RemoveItemInstance(InItemInstance))
-				{
-					// InItemInstance->SetIsDraggingItem(false);
-					T* NewItemInstance = AddItemInstance<T>(InItemInstance, SlotTag, Args...);
-					bIsSuccess = NewItemInstance != nullptr;
-					UE_CLOG(bIsSuccess == false, LogInventorySystem, Error, TEXT("DropItemInstance Falied, 移除重新添加物品失败"))
-				}
-			}
-		}
-		UE_CLOG(bIsSuccess == false, LogInventorySystem, Error, TEXT("DropItemInstance Falied, 物品实例为空"))
-		return bIsSuccess;
-	}
+	bool DropItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args);
 
 	void DropItemInstanceToWorld(UInvSys_InventoryItemInstance* InItemInstance);
 	// End Drag Drop ====================
@@ -168,16 +135,6 @@ public:
 		if (InventoryObjectMap.Contains(Tag))
 		{
 			return InventoryObjectMap[Tag]->FindInventoryFragment<T>();
-		}
-		return nullptr;
-	}
-
-	template<class T = UInvSys_BaseInventoryObject>
-	T* FindInventoryObject(FGameplayTag Tag) const
-	{
-		if (InventoryObjectMap.Contains(Tag))
-		{
-			return InventoryObjectMap[Tag];
 		}
 		return nullptr;
 	}
@@ -245,3 +202,23 @@ protected:
 	UPROPERTY(BlueprintReadWrite, BlueprintAssignable, Category = "Inventory Component")
 	FOnDropItemInstanceToWorld OnDropItemInstanceToWorld;
 };
+
+template <class T, class ... Arg>
+bool UInvSys_InventoryComponent::DropItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag,
+	const Arg&... Args)
+{
+	check(InItemInstance)
+	UInvSys_InventoryComponent* FromInvComp = InItemInstance->GetInventoryComponent();
+	if (SlotTag == InItemInstance->GetInventoryObjectTag() && this == FromInvComp)
+	{
+		UpdateItemInstanceDragState(InItemInstance, SlotTag, false); 
+		UpdateItemInstance<T>(InItemInstance, SlotTag, Args...);
+		return true;
+	}
+	if (FromInvComp->RemoveItemInstance(InItemInstance))
+	{
+		AddItemInstance<T>(InItemInstance, SlotTag, Args...);
+		return true;
+	}
+	return false;
+}

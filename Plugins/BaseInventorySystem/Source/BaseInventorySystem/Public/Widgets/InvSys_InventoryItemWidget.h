@@ -44,7 +44,7 @@ protected:
 	void OnDisableDragItemInstance();
 
 protected:
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Item", meta = (ExposeOnSpawn))
+	UPROPERTY(BlueprintReadOnly, Transient, Category = "Inventory Item", meta = (ExposeOnSpawn))
 	TWeakObjectPtr<UInvSys_InventoryItemInstance> ItemInstance;
 
 private:

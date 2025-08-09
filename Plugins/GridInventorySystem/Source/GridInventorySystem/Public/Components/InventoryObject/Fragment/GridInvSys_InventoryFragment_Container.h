@@ -42,7 +42,7 @@ public:
 
 	bool FindEmptyPosition(FIntPoint ItemSize, FGridInvSys_ItemPosition& OutPosition);
 
-	virtual void RemoveAllItemInstance() override;
+	// virtual void RemoveAllItemInstance() override;
 
 protected:
 	virtual void NativeOnContainerEntryAdded(FInvSys_InventoryItemChangedMessage ChangeInfo) override;

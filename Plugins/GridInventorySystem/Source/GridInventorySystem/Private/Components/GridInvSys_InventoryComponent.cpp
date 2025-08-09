@@ -8,7 +8,7 @@
 #include "Components/InventoryObject/Fragment/InvSys_InventoryFragment_DisplayWidget.h"
 #include "Data/GridInvSys_InventoryItemInstance.h"
 #include "Data/GridInvSys_ItemFragment_GridItemSize.h"
-#include "Data/InvSys_ItemFragment_ContainerPriority.h"
+#include "Data/InvSys_ItemFragment_PickUpItem.h"
 #include "Library/GridInvSys_CommonFunctionLibrary.h"
 #include "Widgets/GridInvSys_ContainerGridLayoutWidget.h"
 
@@ -87,7 +87,7 @@ bool UGridInvSys_InventoryComponent::FindEmptyPosition(UInvSys_InventoryItemInst
 		return false;
 	}
 	TArray<FGameplayTag> OutContainerTags;
-	auto ContainerPriority = InItemInstance->FindFragmentByClass<UInvSys_ItemFragment_ContainerPriority>();
+	auto ContainerPriority = InItemInstance->FindFragmentByClass<UInvSys_ItemFragment_PickUpItem>();
 	if (ContainerPriority)
 	{
 		OutContainerTags = ContainerPriority->ContainerPriority; // 根据各个物品自定义的优先级，优先寻找对应物品
@@ -169,7 +169,7 @@ bool UGridInvSys_InventoryComponent::CancelOccupied(UGridInvSys_InventoryItemIns
 {
 	if (ItemInstance)
 	{
-		auto ContainerFragment = FindInventoryObjectFragment<UGridInvSys_InventoryFragment_Container>(ItemInstance->GetSlotTag());
+		auto ContainerFragment = FindInventoryObjectFragment<UGridInvSys_InventoryFragment_Container>(ItemInstance->GetInventoryObjectTag());
 		if (ContainerFragment)
 		{
 			ContainerFragment->UpdateContainerGridItemState(ItemInstance, ItemInstance->GetItemPosition(), false);
@@ -201,5 +201,5 @@ UGridInvSys_ContainerGridWidget* UGridInvSys_InventoryComponent::FindContainerGr
 	UGridInvSys_InventoryItemInstance* InItemInstance)
 {
 	check(InItemInstance)
-	return FindContainerGridWidget(InItemInstance->GetSlotTag(), InItemInstance->GetItemPosition().GridID);
+	return FindContainerGridWidget(InItemInstance->GetInventoryObjectTag(), InItemInstance->GetItemPosition().GridID);
 }

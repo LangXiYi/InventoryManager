@@ -125,17 +125,17 @@ TArray<int32> UGridInvSys_InventoryFragment_Container::GetItemGridOccupiedIndexe
 		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, 物品实例为空."), __FUNCTION__)
 		return OutArray;
 	}
-	if (ItemInstance->GetInventoryComponent() != InventoryComponent)
+	if (ItemInstance->GetInventoryComponent() != GetInventoryComponent())
 	{
 		// 容器组件不同
 		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, 物品实例的库存组件与当前片段的库存组件不同."), __FUNCTION__)
 		return OutArray;
 	}
-	if (ItemInstance->GetSlotTag() != InventoryObjectTag)
+	if (ItemInstance->GetInventoryObjectTag() != InventoryObjectTag)
 	{
 		// 容器片段不同
 		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, 物品实例的标签 %s 与当前片段的标签 %s 不同."), __FUNCTION__,
-			*ItemInstance->GetSlotTag().ToString(), *InventoryObjectTag.ToString())
+			*ItemInstance->GetInventoryObjectTag().ToString(), *InventoryObjectTag.ToString())
 		return OutArray;
 	}
 	if (ContainsItem(ItemInstance) == false)
@@ -287,6 +287,7 @@ bool UGridInvSys_InventoryFragment_Container::FindEmptyPosition(FIntPoint ItemSi
 	return false;
 }
 
+/*
 void UGridInvSys_InventoryFragment_Container::RemoveAllItemInstance()
 {
 	Super::RemoveAllItemInstance();
@@ -300,6 +301,7 @@ void UGridInvSys_InventoryFragment_Container::RemoveAllItemInstance()
 		}
 	}
 }
+*/
 
 void UGridInvSys_InventoryFragment_Container::NativeOnContainerEntryAdded(
 	FInvSys_InventoryItemChangedMessage ChangeInfo)

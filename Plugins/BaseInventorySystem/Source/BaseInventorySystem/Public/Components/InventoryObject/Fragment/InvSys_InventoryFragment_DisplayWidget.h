@@ -8,9 +8,7 @@
 #include "InvSys_InventoryFragment_DisplayWidget.generated.h"
 
 class UInvSys_InventoryWidget;
-/**
- * 
- */
+
 UCLASS()
 class BASEINVENTORYSYSTEM_API UInvSys_InventoryFragment_DisplayWidget : public UInvSys_BaseInventoryFragment
 {

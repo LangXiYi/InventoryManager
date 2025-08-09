@@ -9,7 +9,8 @@
 UENUM(BlueprintType)
 enum class EGridInvSys_ItemDirection : uint8
 {
-	Horizontal = 0,
+	None = 0,
+	Horizontal,
 	Vertical
 };
 

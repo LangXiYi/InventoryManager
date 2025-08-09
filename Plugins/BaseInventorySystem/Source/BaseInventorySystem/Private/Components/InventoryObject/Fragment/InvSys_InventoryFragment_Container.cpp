@@ -73,18 +73,14 @@ void UInvSys_InventoryFragment_Container::RefreshInventoryFragment()
 	}
 }
 
-bool UInvSys_InventoryFragment_Container::UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance,
+void UInvSys_InventoryFragment_Container::UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance,
 	bool NewState)
 {
 	if (ContainsItem(ItemInstance))
 	{
 		ItemInstance->SetIsDraggingItem(NewState);
 		MarkItemInstanceDirty(ItemInstance);		
-		return true;
 	}
-	UE_LOG(LogInventorySystem, Warning, TEXT("传入的物品实例 [%s] 在当前容器 [%s] 内不存在"),
-		*ItemInstance->GetItemDisplayName().ToString(), *InventoryObjectTag.ToString())
-	return false;
 }
 
 void UInvSys_InventoryFragment_Container::RemoveAllItemInstance()
@@ -103,53 +99,36 @@ bool UInvSys_InventoryFragment_Container::RemoveItemInstance(UInvSys_InventoryIt
 	return false;
 }
 
-bool UInvSys_InventoryFragment_Container::UpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance,
-	int32 NewStackCount)
-{
-	// MarkItemInstanceDirty(ItemInstance);
-	return false;
-}
-
 bool UInvSys_InventoryFragment_Container::ContainsItem(UInvSys_InventoryItemInstance* ItemInstance) const
 {
 	return ContainerList.Contains(ItemInstance);
 }
 
-void UInvSys_InventoryFragment_Container::GetAllItemInstance(TArray<UInvSys_InventoryItemInstance*>& OutArray)
+void UInvSys_InventoryFragment_Container::GetAllItemInstance(TArray<UInvSys_InventoryItemInstance*>& OutArray) const
 {
 	ContainerList.GetAllItems<UInvSys_InventoryItemInstance>(OutArray);
 }
 
 void UInvSys_InventoryFragment_Container::MarkItemInstanceDirty(UInvSys_InventoryItemInstance* ItemInstance)
 {
-	// UE_LOG(LogInventorySystem, Warning, TEXT("Mark Item Instance Dirty......"))
-	if (ItemInstance)
+	check(ItemInstance)
+	int32 Index = ContainerList.FindEntryIndex(ItemInstance);
+	if (ContainerList.IsValidIndex(Index))
 	{
-		int32 Index = ContainerList.FindEntryIndex(ItemInstance);
-		if (ContainerList.Entries.IsValidIndex(Index))
-		{
-			FInvSys_ContainerEntry& ContainerEntry = ContainerList.Entries[Index];
-			if (ContainerEntry.IsValid())
-			{
-				ContainerList.MarkItemDirty(ContainerEntry);
-				UE_LOG(LogInventorySystem, Error, TEXT("标记物品实例 %s 为脏"), *ItemInstance->GetName())
-				MarkContainerDirty();
-			}
-		}
-		else
-		{
-			UE_LOG(LogInventorySystem, Error, TEXT("标记物品实例为脏失败，目标%s的Entry有效性为FALSE"),
-				*ItemInstance->GetItemDisplayName().ToString())
-		}
+		FInvSys_ContainerEntry& ContainerEntry = ContainerList[Index];
+		ContainerList.MarkItemDirty(ContainerEntry);
+		MarkContainerDirty();
+	}
+	else
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("标记物品实例为脏失败，容器内不存在 %s"), *ItemInstance->GetName())
 	}
 }
 
 void UInvSys_InventoryFragment_Container::MarkContainerDirty()
 {
-	// ContainerEntryRepKeyMap 始终存储了一个 ArrayReplicationKey
-	if (ContainerList.Entries.Num() != ContainerEntryRepKeyMap.Num() - 1)
+	if (ContainerList.Num() != ContainerEntryRepKeyMap.Num() - 1)
 	{
-		// UE_LOG(LogInventorySystem, Error, TEXT("Reset Container Entry Replication Key Map."))
 		ContainerEntryRepKeyMap.Reset();
 	}
 	ContainerList.MarkArrayDirty();
@@ -192,15 +171,16 @@ bool UInvSys_InventoryFragment_Container::ReplicateSubobjects(UActorChannel* Cha
 	if (KeyNeedsToReplicate(0, ContainerList.ArrayReplicationKey)) // 容器内成员从下标 1 开始标记，所以数组本身可以直接使用 0 
 	{
 		UE_LOG(LogInventorySystem, Log, TEXT("%s::%s --> Container Size = %d"),
-			*GetOwner()->GetName(), *InventoryObjectTag.ToString(), ContainerList.Entries.Num())
-		for (const FInvSys_ContainerEntry& Entry : ContainerList.Entries)
+			*GetOwner()->GetName(), *InventoryObjectTag.ToString(), ContainerList.Num())
+		for (int Index = 0; Index < ContainerList.Num(); ++Index)
 		{
+			const FInvSys_ContainerEntry& Entry = ContainerList[Index];
 			if (KeyNeedsToReplicate(Entry.ReplicationID, Entry.ReplicationKey))
 			{
 				UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
 					TEXT("[%s:%s] %s:%s 的属性发生变化，正在同步至客户端。"), *GetOwner()->GetName(),
 					*InventoryObjectTag.ToString(), *Entry.Instance->GetItemDisplayName().ToString(), *Entry.Instance.GetName())
-				if (Entry.Instance && IsValid(Entry.Instance))
+				if (Entry.IsValid())
 				{
 					// 同步所有需要同步的数据
 					bWroteSomething |= Channel->ReplicateSubobject(Entry.Instance, *Bunch, *RepFlags);
@@ -228,26 +208,10 @@ void UInvSys_InventoryFragment_Container::Debug_PrintContainerAllItems()
 		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
 			TEXT("DisplayName = %s \t Tag = %s \t Name: %s \t OuterName = %s \t"),
 			*ItemInstance->GetItemDisplayName().ToString(),
-			*ItemInstance->GetSlotTag().ToString(),
+			*ItemInstance->GetInventoryObjectTag().ToString(),
 			*ItemInstance->GetName(),
 			*ItemInstance->GetOuter()->GetName())
 	}
 	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
 		TEXT("= END =========================================================================="))
 }
-
-// void UInvSys_InventoryFragment_Container::OnRep_ContainerList()
-// {
-// 	/*
-// 	 * 调用了 MarkArrayDirty 后，必定会触发容器本身的复制事件！！
-// 	 * 子对象的复制不会严格遵循容器内数组的顺序，某些情况下可能会导致程序执行出错。
-// 	 * 注意: 容器内对象的 OnRep 函数必定在容器本身的 OnRep 函数执行之后。
-// 	 */
-// 	for (const FInvSys_ContainerEntry& Entry : ContainerList.Entries)
-// 	{
-// 		if (Entry.Instance && Entry.Instance->GetIsReadyReplicatedProperties())
-// 		{
-// 			Entry.Instance->ReplicatedProperties();
-// 		}
-// 	}
-// }

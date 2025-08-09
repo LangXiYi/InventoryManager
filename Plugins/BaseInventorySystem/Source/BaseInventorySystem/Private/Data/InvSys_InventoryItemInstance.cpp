@@ -8,7 +8,7 @@
 #include "Data/InvSys_InventoryItemDefinition.h"
 #include "Net/UnrealNetwork.h"
 
-UInvSys_InventoryItemInstance::UInvSys_InventoryItemInstance(const FObjectInitializer& ObjectInitializer)
+UInvSys_InventoryItemInstance::UInvSys_InventoryItemInstance()
 {
 	UObject* MyOuter = GetOuter();
 	if (MyOuter)
@@ -16,7 +16,7 @@ UInvSys_InventoryItemInstance::UInvSys_InventoryItemInstance(const FObjectInitia
 		if (MyOuter->IsA<UInvSys_InventoryComponent>())
 		{
 			InventoryComponent = Cast<UInvSys_InventoryComponent>(MyOuter);
-			Owner = InventoryComponent->GetOwner();
+			Owner_Private = InventoryComponent->GetOwner();
 			// UE_LOG(LogInventorySystem, Error, TEXT("构建库存物品实例的 Outer[%s]！！！"), *InventoryComponent->GetOwner()->GetName())
 		}
 	}
@@ -30,10 +30,9 @@ void UInvSys_InventoryItemInstance::PostDuplicate(bool bDuplicateForPIE)
 	{
 		if (MyOuter->IsA<UInvSys_InventoryComponent>())
 		{
-			LastInventoryComponent = InventoryComponent;
 			InventoryComponent = Cast<UInvSys_InventoryComponent>(MyOuter);
-			Owner = InventoryComponent->GetOwner();
-			UE_LOG(LogInventorySystem, Log, TEXT("PostDuplicate 库存物品实例的 Outer[%s]！！！"), *InventoryComponent->GetOwner()->GetName())
+			Owner_Private = InventoryComponent->GetOwner();
+			// UE_LOG(LogInventorySystem, Log, TEXT("PostDuplicate 库存物品实例的 Outer[%s]！！！"), *InventoryComponent->GetOwner()->GetName())
 		}
 	}
 }
@@ -82,14 +81,14 @@ void UInvSys_InventoryItemInstance::PostReplicatedChange()
 
 bool UInvSys_InventoryItemInstance::HasAuthority() const
 {
-	check(Owner)
-	return Owner->HasAuthority();
+	check(Owner_Private)
+	return Owner_Private->HasAuthority();
 }
 
 ENetMode UInvSys_InventoryItemInstance::GetNetMode() const
 {
-	check(Owner)
-	return Owner->GetNetMode();
+	check(Owner_Private)
+	return Owner_Private->GetNetMode();
 }
 
 void UInvSys_InventoryItemInstance::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -98,7 +97,7 @@ void UInvSys_InventoryItemInstance::GetLifetimeReplicatedProps(TArray<FLifetimeP
 
 	DOREPLIFETIME(UInvSys_InventoryItemInstance, ItemDefinition);
 	DOREPLIFETIME(UInvSys_InventoryItemInstance, ItemUniqueID);
-	DOREPLIFETIME(UInvSys_InventoryItemInstance, SlotTag);
+	DOREPLIFETIME(UInvSys_InventoryItemInstance, InventoryObjectTag);
 	DOREPLIFETIME(UInvSys_InventoryItemInstance, bIsDragging);
 }
 
@@ -122,7 +121,7 @@ void UInvSys_InventoryItemInstance::SetItemUniqueID(FGuid Guid)
 
 void UInvSys_InventoryItemInstance::SetSlotTag(FGameplayTag Tag)
 {
-	SlotTag = Tag;
+	InventoryObjectTag = Tag;
 }
 
 void UInvSys_InventoryItemInstance::SetIsDraggingItem(bool NewDragState)
@@ -143,31 +142,29 @@ bool UInvSys_InventoryItemInstance::IsDraggingItemInstance() const
 	return bIsDragging;
 }
 
-void UInvSys_InventoryItemInstance::ReplicatedProperties()
+TSubclassOf<UInvSys_InventoryItemDefinition> UInvSys_InventoryItemInstance::GetItemDefinition() const
 {
-	if (bIsReadyReplicatedProperties == false)
-	{
-		return;
-	}
-	// 遍历所有需要处理的属性并执行对应的函数！！
-	for (FInvSys_ItemInstancePropertyHandle OnRepProperty : RegisterPropertyArrays)
-	{
-		OnRepProperty.OnRepCallback();
-	}
-	bIsReadyReplicatedProperties = false;
-	RegisterPropertyArrays.Reset();
+	check(ItemDefinition);
+	return ItemDefinition;
 }
 
-void UInvSys_InventoryItemInstance::RemoveFromInventory()
+const FGuid& UInvSys_InventoryItemInstance::GetItemUniqueID() const
 {
-	// SetSlotTag(FGameplayTag());
+	check(ItemUniqueID.IsValid());
+	return ItemUniqueID;
+}
+
+const FGameplayTag& UInvSys_InventoryItemInstance::GetInventoryObjectTag() const
+{
+	check(InventoryObjectTag.IsValid())
+	return InventoryObjectTag;
 }
 
 void UInvSys_InventoryItemInstance::BroadcastAddItemInstanceMessage()
 {
 	FInvSys_InventoryItemChangedMessage ItemChangedMessage;
 	ItemChangedMessage.InvComp = GetInventoryComponent();
-	ItemChangedMessage.InventoryObjectTag = GetSlotTag();
+	ItemChangedMessage.InventoryObjectTag = GetInventoryObjectTag();
 	ItemChangedMessage.ItemInstance = this;
 
 	UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(GetWorld());
@@ -178,11 +175,17 @@ void UInvSys_InventoryItemInstance::BroadcastRemoveItemInstanceMessage()
 {
 	FInvSys_InventoryItemChangedMessage ItemChangedMessage;
 	ItemChangedMessage.InvComp = GetInventoryComponent();
-	ItemChangedMessage.InventoryObjectTag = GetSlotTag();
+	ItemChangedMessage.InventoryObjectTag = GetInventoryObjectTag();
 	ItemChangedMessage.ItemInstance = this;
 
 	UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(GetWorld());
 	MessageSubsystem.BroadcastMessage(Inventory_Message_RemoveItem, ItemChangedMessage);
+}
+
+FText UInvSys_InventoryItemInstance::GetItemDisplayName() const
+{
+	check(ItemDefinition);
+	return GetDefault<UInvSys_InventoryItemDefinition>(ItemDefinition)->GetItemDisplayName();
 }
 
 const UInvSys_InventoryItemFragment* UInvSys_InventoryItemInstance::FindFragmentByClass(TSubclassOf<UInvSys_InventoryItemFragment> FragmentClass) const

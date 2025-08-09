@@ -2,12 +2,7 @@
 
 
 #include "Widgets/GridInvSys_DragItemWidget.h"
-#include "GridInvSys_InventorySystemConfig.h"
-#include "Components/Image.h"
-#include "Components/SizeBox.h"
-#include "Data/InvSys_InventoryItemInstance.h"
-#include "Data/GridInvSys_ItemFragment_EquippedIcon.h"
-#include "Data/GridInvSys_ItemFragment_GridItemSize.h"
+
 
 /*void UGridInvSys_DragItemWidget::UpdateItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)
 {

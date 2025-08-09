@@ -24,6 +24,9 @@ class BASEINVENTORYSYSTEM_API UInvSys_BaseInventoryObject : public UObject
 public:
 	UInvSys_BaseInventoryObject();
 
+	/** Fragments 的 RepNotify 优先级大于当前对象，故客户端需要延迟最少一帧，确保该对象的 RepNotify 执行完成。 */
+	virtual void PostRepNotifies() override;
+
 	// [Only Server] 在构建库存对象后调用
 	// InvComp::ConstructInventoryObject ---> UInvSys_PreEditInventoryObject::NewInventoryObject ---> This Func
 	virtual void ConstructInventoryFragment(const TArray<UInvSys_BaseInventoryFragment*>& Fragments);
@@ -57,6 +60,11 @@ public:
 		return nullptr;
 	}
 
+public:
+	/**
+	 * Getter or Setter
+	 */
+
 	FORCEINLINE FGameplayTag GetInventoryObjectTag() const;
 
 	FORCEINLINE UInvSys_InventoryComponent* GetInventoryComponent() const;
@@ -69,7 +77,7 @@ public:
 
 	FORCEINLINE bool IsReadyForReplication() const;
 	
-	FORCEINLINE bool IsUsingRegisteredSubObjectList();
+	FORCEINLINE bool IsUsingRegisteredSubObjectList() const;
 	
 	FORCEINLINE virtual bool IsSupportedForNetworking() const override { return true; }
 
@@ -82,19 +90,17 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 protected:
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Object")
-	UInvSys_InventoryComponent* InventoryComponent = nullptr;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Object")
+	UPROPERTY(BlueprintReadOnly, Replicated, Category = "Inventory Object")
 	FGameplayTag InventoryObjectTag;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Replicated, Category = "Inventory Object")
 	TArray<UInvSys_BaseInventoryFragment*> InventoryObjectFragments;
 
 private:
-	bool bIsInitInventoryObject = false;
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory Object", meta = (AllowPrivateAccess))
+	UInvSys_InventoryComponent* InventoryComponent = nullptr;
 
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory Object", meta = (AllowPrivateAccess))
 	AActor* Owner_Private;
 };
 

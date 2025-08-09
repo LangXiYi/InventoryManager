@@ -3,55 +3,26 @@
 
 #include "Components/InvSys_InventoryComponent.h"
 
+#include "Net/UnrealNetwork.h"
+#include "Engine/ActorChannel.h"
+#include "Engine/AssetManager.h"
 #include "BaseInventorySystem.h"
-#include "Blueprint/UserWidget.h"
-#include "Components/InventoryObject/InvSys_BaseInventoryObject.h"
-#include "Components/InventoryObject/Fragment/InvSys_InventoryFragment_DisplayWidget.h"
-#include "Components/InventoryObject/Fragment/InvSys_InventoryFragment_Equipment.h"
+#include "Items/InvSys_PickableItems.h"
 #include "Data/InvSys_InventoryContentMapping.h"
 #include "Data/InvSys_InventoryItemInstance.h"
 #include "Data/InvSys_ItemFragment_DragDrop.h"
-#include "Data/InvSys_ItemFragment_EquipItem.h"
-#include "Engine/ActorChannel.h"
-#include "Engine/AssetManager.h"
-#include "Items/InvSys_PickableItems.h"
-#include "Net/UnrealNetwork.h"
 #include "Widgets/InvSys_InventoryLayoutWidget.h"
-#include "Widgets/Components/InvSys_TagSlot.h"
+#include "Components/InventoryObject/Fragment/InvSys_InventoryFragment_DisplayWidget.h"
+#include "Components/InventoryObject/Fragment/InvSys_InventoryFragment_Equipment.h"
 
 UInvSys_InventoryComponent::UInvSys_InventoryComponent(const FObjectInitializer& ObjectInitializer)
 	:Super(ObjectInitializer)
 {
-	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bCanEverTick = false;
 	SetIsReplicatedByDefault(true);
-	// 不开启该属性，开启该属性可能会出现子对象与FastArray的属性同步失序的问题。
+
 	bReplicateUsingRegisteredSubObjectList = false;
 	//bReplicateUsingRegisteredSubObjectList = true; // 不推荐使用，否则可能会出现子对象与FastArray的属性同步失序的问题。
-}
-
-void UInvSys_InventoryComponent::TickComponent(float DeltaTime, ELevelTick TickType,
-	FActorComponentTickFunction* ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	auto ContainerFragment = FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(FGameplayTag::RequestGameplayTag("Inventory.Container.Backpack"));
-	check(ContainerFragment)
-	if (ContainerFragment)
-	{
-		TArray<UInvSys_InventoryItemInstance*> ItemInstances;
-		ContainerFragment->GetAllItemInstance(ItemInstances);
-		for (UInvSys_InventoryItemInstance* ItemInstance : ItemInstances)
-		{
-			if (ItemInstance == nullptr)
-			{
-				UE_LOG(LogInventorySystem, Error, TEXT("物品实例为空"))
-			}
-			else if (IsValid(ItemInstance) == false)
-			{
-				UE_LOG(LogInventorySystem, Error, TEXT("物品实例 %s 无效"), *ItemInstance->GetName())
-			}
-		}
-	}
 }
 
 void UInvSys_InventoryComponent::ConstructInventoryObjects()
@@ -157,7 +128,7 @@ bool UInvSys_InventoryComponent::RestoreItemInstance(UInvSys_InventoryItemInstan
 {
 	if (InItemInstance)
 	{
-		FGameplayTag EquipSlotTag = InItemInstance->GetSlotTag();
+		FGameplayTag EquipSlotTag = InItemInstance->GetInventoryObjectTag();
 		UInvSys_InventoryFragment_Equipment* EquipmentFragment =
 			FindInventoryObjectFragment<UInvSys_InventoryFragment_Equipment>(EquipSlotTag);
 
@@ -183,16 +154,15 @@ bool UInvSys_InventoryComponent::RestoreItemInstance(UInvSys_InventoryItemInstan
 	return false;
 }
 
-bool UInvSys_InventoryComponent::UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance,
+void UInvSys_InventoryComponent::UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance,
 	const FGameplayTag& InventoryTag, bool NewState)
 {
 	auto ContainerFragment = FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(InventoryTag);
 	check(ContainerFragment)
 	if (ContainerFragment)
 	{
-		return ContainerFragment->UpdateItemInstanceDragState(ItemInstance, NewState);
+		ContainerFragment->UpdateItemInstanceDragState(ItemInstance, NewState);
 	}
-	return false;
 }
 
 bool UInvSys_InventoryComponent::DragAndRemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
@@ -206,7 +176,7 @@ bool UInvSys_InventoryComponent::DragAndRemoveItemInstance(UInvSys_InventoryItem
 		return false;
 	}
 
-	FGameplayTag ItemTag = InItemInstance->GetSlotTag();
+	FGameplayTag ItemTag = InItemInstance->GetInventoryObjectTag();
 	//判断拖拽的物品是不是装备槽正在装备的物品
 	auto EquipmentFragment = FindInventoryObjectFragment<UInvSys_InventoryFragment_Equipment>(ItemTag);
 	if (EquipmentFragment && EquipmentFragment->GetEquipItemInstance() == InItemInstance)
@@ -226,8 +196,7 @@ bool UInvSys_InventoryComponent::DragAndRemoveItemInstance(UInvSys_InventoryItem
 
 bool UInvSys_InventoryComponent::DragItemInstance(UInvSys_InventoryItemInstance* ItemInstance)
 {
-	bool bIsSuccess = false;
-	check(ItemInstance)
+	check(ItemInstance);
 	if (ItemInstance != nullptr && IsValid(ItemInstance))
 	{
 		/**
@@ -240,14 +209,12 @@ bool UInvSys_InventoryComponent::DragItemInstance(UInvSys_InventoryItemInstance*
 		 */
 		if (ItemInstance->IsDraggingItemInstance() == false)
 		{
-			bIsSuccess = UpdateItemInstanceDragState(ItemInstance, ItemInstance->GetSlotTag(), true);
+			UpdateItemInstanceDragState(ItemInstance, ItemInstance->GetInventoryObjectTag(), true);
+			return true;
 		}
+		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, 物品实例已经被其他玩家拖拽."), __FUNCTION__);
 	}
-#if WITH_EDITOR
-	UE_CLOG(bIsSuccess == false, LogInventorySystem, Warning, TEXT("[%s]拖拽物品失败:物品实例已经被其他玩家拖拽"),
-		*GPlayInEditorContextString);
-#endif
-	return bIsSuccess;
+	return false;
 }
 
 void UInvSys_InventoryComponent::CancelDragItemInstance(UInvSys_InventoryItemInstance* ItemInstance)
@@ -255,7 +222,7 @@ void UInvSys_InventoryComponent::CancelDragItemInstance(UInvSys_InventoryItemIns
 	check(ItemInstance)
 	if (ItemInstance != nullptr && IsValid(ItemInstance))
 	{
-		UpdateItemInstanceDragState(ItemInstance, ItemInstance->GetSlotTag(), false);
+		UpdateItemInstanceDragState(ItemInstance, ItemInstance->GetInventoryObjectTag(), false);
 	}
 }
 
@@ -361,7 +328,7 @@ bool UInvSys_InventoryComponent::UnEquipItemInstance(UInvSys_InventoryItemInstan
 	if (InItemInstance)
 	{
 		UInvSys_InventoryFragment_Equipment* EquipmentFragment =
-			FindInventoryObjectFragment<UInvSys_InventoryFragment_Equipment>(InItemInstance->GetSlotTag());
+			FindInventoryObjectFragment<UInvSys_InventoryFragment_Equipment>(InItemInstance->GetInventoryObjectTag());
 		
 		if (EquipmentFragment)
 		{
@@ -369,7 +336,7 @@ bool UInvSys_InventoryComponent::UnEquipItemInstance(UInvSys_InventoryItemInstan
 		}
 
 		UInvSys_InventoryFragment_Container* ContainerFragment =
-			FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(InItemInstance->GetSlotTag());
+			FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(InItemInstance->GetInventoryObjectTag());
 		if (ContainerFragment)
 		{
 			TArray<UInvSys_InventoryItemInstance*> AllItemInstance;
@@ -391,7 +358,7 @@ bool UInvSys_InventoryComponent::RemoveItemInstance(UInvSys_InventoryItemInstanc
 {
 	if (ItemInstance)
 	{
-		FGameplayTag InventoryFragmentTag = ItemInstance->GetSlotTag();
+		FGameplayTag InventoryFragmentTag = ItemInstance->GetInventoryObjectTag();
 		UInvSys_InventoryFragment_Container* ContainerFragment =
 			FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(InventoryFragmentTag);
 		check(ContainerFragment)

@@ -3,12 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "InvSys_InventoryItemDefinition.h"
 #include "InvSys_ItemFragment_PickUpItem.generated.h"
 
-/**
- * 
- */
 UCLASS()
 class BASEINVENTORYSYSTEM_API UInvSys_ItemFragment_PickUpItem : public UInvSys_InventoryItemFragment
 {
@@ -16,4 +14,12 @@ class BASEINVENTORYSYSTEM_API UInvSys_ItemFragment_PickUpItem : public UInvSys_I
 public:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment")
 	TSubclassOf<AActor> PickUpActor;
+
+	/** 拾取物品时优先放置的容器顺序 */
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment")
+	TArray<FGameplayTag> ContainerPriority;
+
+	/** 拾取的物品禁止放置的容器 */
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment")
+	FGameplayTagContainer BlockContainer;
 };

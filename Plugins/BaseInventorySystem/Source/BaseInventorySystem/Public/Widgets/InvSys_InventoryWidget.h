@@ -5,11 +5,9 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "GameplayTagContainer.h"
-#include "Components/InventoryObject/InvSys_BaseInventoryObject.h"
 #include "InvSys_InventoryWidget.generated.h"
 
 class UInvSys_BaseInventoryObject;
-class UInvSys_TagSlot;
 class UInvSys_InventoryComponent;
 
 /**
@@ -20,48 +18,31 @@ class BASEINVENTORYSYSTEM_API UInvSys_InventoryWidget : public UUserWidget
 {
 	GENERATED_BODY()
 
-	friend class UInvSys_InventoryFragment_DisplayWidget;
-
 public:
 	virtual void RefreshInventoryWidget(UInvSys_BaseInventoryObject* NewInventoryObject);
 
+protected:
+	virtual void NativeConstruct() override;
+
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnRefreshWidget();
-	
-	virtual void NativeConstruct() override;
-	
-	virtual void SetInventoryComponent(UInvSys_InventoryComponent* NewInvComp);
 
-	UInvSys_InventoryComponent* GetInventoryComponent() const;
+public:
+	/**
+	 * Getter or Setter
+	 */
 
-	/*UFUNCTION(BlueprintImplementableEvent)
-	UInvSys_InventoryComponent* GetPlayerInventoryComponent() const;*/
+	FORCEINLINE UInvSys_InventoryComponent* GetInventoryComponent() const;
 
 	template<class T>
-	T* GetInventoryComponent() const
+	FORCEINLINE T* GetInventoryComponent() const
 	{
-		check(InventoryObject)
-		return Cast<T>(InventoryObject->GetInventoryComponent());		
+		return (T*)GetInventoryComponent();		
 	}
 
-	FORCEINLINE void SetSlotTag(FGameplayTag InSlotTag)
-	{
-		SlotTag = InSlotTag;
-	}
+	FORCEINLINE FGameplayTag GetSlotTag() const;
 
-	FORCEINLINE FGameplayTag GetSlotTag() const
-	{
-		check(InventoryObject)
-		return InventoryObject->GetInventoryObjectTag();
-	}
-
-	void SetInventoryObject(UInvSys_BaseInventoryObject* NewInventoryObject);
-
-	UInvSys_BaseInventoryObject* GetInventoryObject()
-	{
-		check(InventoryObject);
-		return InventoryObject;
-	}
+	FORCEINLINE UInvSys_BaseInventoryObject* GetInventoryObject();
 
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Container Grid Layout", meta = (ExposeOnSpawn))

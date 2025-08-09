@@ -9,13 +9,6 @@
 #include "GameFramework/GameplayMessageSubsystem.h"
 #include "InvSys_InventoryFragment_Container.generated.h"
 
-/**
- * 如果添加了可装备片段，那么容器片段中的容器布局就应该是可变的
- * 如果没有可装备片段，那么容器片段中的容器布局就应该是不可变的
- * 所以这个构建库存容器的作用是什么？
- * 在库存对象中，存储了该对象的所有的片段，所以它应该知道
- * 库存对象在初始化片段时，检查是否存在可装备片段，如果
- */
 UCLASS()
 class BASEINVENTORYSYSTEM_API UInvSys_InventoryFragment_Container : public UInvSys_BaseInventoryFragment
 {
@@ -29,64 +22,68 @@ public:
 	virtual void RefreshInventoryFragment() override;
 
 	/**
-	 * 主要用于初始化库存，或不同库存组件间的物品交换
-	 * 注意：传入可变参数时，请确保目标类型中正确创建了对于的处理函数。
+	 * 根据物品定义创建物品并添加至当前容器内
+	 * 注意：可变参数列表要求目标类型必须实现 InitItemInstanceProps 函数，且参数类型一致。
 	 */
-	template<class T, class... Arg>
-	T* AddItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, const Arg&... Args)
+	template<class T, class... ArgList>
+	T* AddItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, const ArgList&... Args)
 	{
-		check(ItemDef)
 		T* ItemInstance = ContainerList.AddDefinition<T>(ItemDef, StackCount, Args...);
-		if (ItemInstance)
-		{
-			MarkItemInstanceDirty(ItemInstance);
-		}
+		MarkItemInstanceDirty(ItemInstance);
 		return ItemInstance;
 	}
 
-	// 作为对象属性，ContainerList 的复制优先 其内部其他对象的 复制！！！
-	/** 从其他容器添加物品，容器与容器间的交换，不会 RemoveReplicateObject，因为它们都在同一个Actor下 */
-	template<class T, class... Arg>
-	T* AddItemInstance(UInvSys_InventoryItemInstance* ItemInstance, const Arg&... Args)
+	/**
+	 * 添加物品至当前容器
+	 * 注意：可变参数列表要求目标类型必须实现 InitItemInstanceProps 函数，且参数类型一致。
+	 */
+	template<class T, class... ArgList>
+	T* AddItemInstance(UInvSys_InventoryItemInstance* ItemInstance, const ArgList&... Args)
 	{
-		T* NewItemInstance = nullptr;
-		if (ItemInstance)
-		{
-			NewItemInstance = ContainerList.AddInstance<T>(ItemInstance, Args...);
-			MarkItemInstanceDirty(NewItemInstance);
-		}
+		T* NewItemInstance = ContainerList.AddInstance<T>(ItemInstance, Args...);
+		MarkItemInstanceDirty(NewItemInstance);
 		return NewItemInstance;
 	}
 
-	template<class T, class... Arg>
-	bool UpdateItemInstance(UInvSys_InventoryItemInstance* ItemInstance, const Arg&... Args)
+	/**
+	 * 更新容器内物品的属性
+	 * 注意：可变参数列表要求目标类型必须实现 InitItemInstanceProps 函数，且参数类型一致。
+	 */
+	template<class T, class... ArgList>
+	void UpdateItemInstance(UInvSys_InventoryItemInstance* ItemInstance, const ArgList&... Args)
 	{
-		if (ItemInstance == nullptr) return false;
-		//执行可变参数模板，将参数列表中的值赋予目标对象。
-		int32 Arr[] = {0, (InitItemInstanceProps<T>(ItemInstance, Args, true), 0)...};
-		MarkItemInstanceDirty(ItemInstance);
-		return true;
+		check(ItemInstance)
+		if (ContainsItem(ItemInstance))
+		{
+			//执行可变参数模板，将参数列表中的值赋予目标对象。
+			int32 Arr[] = {0, (InitItemInstanceProps<T>(ItemInstance, Args, true), 0)...};
+			MarkItemInstanceDirty(ItemInstance);
+		}
 	}
 
-	bool UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance, bool NewState);
+	/** 更新物品的拖拽状态 */
+	FORCEINLINE void UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance, bool NewState);
 
-	virtual void RemoveAllItemInstance();
+	/** 移除所有物品 */
+	FORCEINLINE void RemoveAllItemInstance();
 
-	virtual bool RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
+	/** 移除指定物品 */
+	FORCEINLINE bool RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
 
-	virtual bool UpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance, int32 NewStackCount);
+	/** 获取当前容器内的所有物品 */
+	FORCEINLINE bool ContainsItem(UInvSys_InventoryItemInstance* ItemInstance) const;
 
-	virtual bool ContainsItem(UInvSys_InventoryItemInstance* ItemInstance) const;
+	/** 获取当前容器内的所有物品 */
+	FORCEINLINE void GetAllItemInstance(TArray<UInvSys_InventoryItemInstance*>& OutArray) const;
 
-	UFUNCTION(BlueprintCallable)
-	void GetAllItemInstance(TArray<UInvSys_InventoryItemInstance*>& OutArray);
-
+	/** 标记指定物品为脏 */
 	void MarkItemInstanceDirty(UInvSys_InventoryItemInstance* ItemInstance);
 
+	/** 标记当前容器为脏 */
 	void MarkContainerDirty();
 
 protected:
-	virtual void NativeOnItemStackChange(FInvSys_InventoryStackChangeMessage ChangeInfo) {} // DEPRECATED
+	virtual void NativeOnItemStackChange(FInvSys_InventoryStackChangeMessage ChangeInfo) {}
 	virtual void NativeOnContainerEntryAdded(FInvSys_InventoryItemChangedMessage ChangeInfo) {}
 	virtual void NativeOnContainerEntryRemove(FInvSys_InventoryItemChangedMessage ChangeInfo) {}
 
@@ -115,8 +112,6 @@ private:
 protected:
 	UPROPERTY(Replicated)
 	FInvSys_ContainerList ContainerList;
-	// UFUNCTION()
-	// void OnRep_ContainerList();
 
 	TMap<int32, int32> ContainerEntryRepKeyMap;
 

@@ -10,9 +10,7 @@
 
 class AInvSys_PickableItems;
 class UInvSys_DraggingItemWidget;
-/**
- * 
- */
+
 UCLASS()
 class BASEINVENTORYSYSTEM_API UInvSys_ItemFragment_DragDrop : public UInvSys_InventoryItemFragment
 {

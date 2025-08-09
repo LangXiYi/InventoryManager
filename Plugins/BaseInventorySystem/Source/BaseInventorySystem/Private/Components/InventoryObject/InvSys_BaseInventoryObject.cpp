@@ -22,6 +22,19 @@ UInvSys_BaseInventoryObject::UInvSys_BaseInventoryObject()
 	}
 }
 
+void UInvSys_BaseInventoryObject::PostRepNotifies()
+{
+	UObject::PostRepNotifies();
+	for (int i = 0; i < InventoryObjectFragments.Num(); ++i)
+	{
+		if (InventoryObjectFragments[i] != nullptr)
+		{
+			InventoryObjectFragments[i]->InventoryObject = this;
+			InventoryObjectFragments[i]->InventoryObjectTag = GetInventoryObjectTag();
+		}
+	}
+}
+
 void UInvSys_BaseInventoryObject::ConstructInventoryFragment(const TArray<UInvSys_BaseInventoryFragment*>& Fragments)
 {
 	InventoryObjectFragments.Empty();
@@ -34,8 +47,9 @@ void UInvSys_BaseInventoryObject::ConstructInventoryFragment(const TArray<UInvSy
 			UInvSys_BaseInventoryFragment* TargetFragment =
 				NewObject<UInvSys_BaseInventoryFragment>(GetInventoryComponent(), Fragment->GetClass());
 
+			TargetFragment->InventoryObject = this;
 			TargetFragment->InventoryObjectTag = GetInventoryObjectTag();
-			int32 Index = InventoryObjectFragments.Emplace(TargetFragment);
+			InventoryObjectFragments.Emplace(TargetFragment);
 		}
 	}
 }
@@ -45,15 +59,13 @@ void UInvSys_BaseInventoryObject::InitInventoryObject(UInvSys_PreEditInventoryOb
 	check(PreEditPayLoad)
 	if (PreEditPayLoad)
 	{
-		InventoryObjectFragments.Sort(); // 对数组进行排序，确定内部片段的执行顺序
+		// 对数组进行排序，确定内部片段的执行顺序
+		InventoryObjectFragments.Sort();
 		PreEditPayLoad->Fragments.Sort();
-		// 将预先编辑的片段中的之复制到对象内
-		InventoryObjectTag = PreEditPayLoad->InventoryObjectTag;
 		for (int i = 0; i < PreEditPayLoad->Fragments.Num(); ++i)
 		{
 			if (InventoryObjectFragments[i] != nullptr)
 			{
-				InventoryObjectFragments[i]->InventoryObject = this;
 				InventoryObjectFragments[i]->InitInventoryFragment(PreEditPayLoad->Fragments[i]);
 			}
 		}
@@ -126,20 +138,12 @@ bool UInvSys_BaseInventoryObject::ReplicateSubobjects(UActorChannel* Channel, FO
 
 bool UInvSys_BaseInventoryObject::IsReadyForReplication() const
 {
-	if (InventoryComponent == nullptr)
-	{
-		return false;
-	}
 	check(InventoryComponent)
 	return InventoryComponent->IsReadyForReplication();
 }
 
-bool UInvSys_BaseInventoryObject::IsUsingRegisteredSubObjectList()
+bool UInvSys_BaseInventoryObject::IsUsingRegisteredSubObjectList() const
 {
-	if (InventoryComponent == nullptr)
-	{
-		return false;
-	}
 	check(InventoryComponent)
 	return InventoryComponent->IsUsingRegisteredSubObjectList();
 }
@@ -158,16 +162,14 @@ UInvSys_InventoryComponent* UInvSys_BaseInventoryObject::GetInventoryComponent()
 
 bool UInvSys_BaseInventoryObject::HasAuthority() const
 {
-	const AActor* Actor = GetOwner();
-	check(Actor);
-	return Actor->HasAuthority();
+	check(Owner_Private);
+	return Owner_Private->HasAuthority();
 }
 
 ENetMode UInvSys_BaseInventoryObject::GetNetMode() const
 {
-	const AActor* Actor = GetOwner();
-	check(Actor);
-	return Actor->GetNetMode();
+	check(Owner_Private);
+	return Owner_Private->GetNetMode();
 }
 
 AActor* UInvSys_BaseInventoryObject::GetOwner() const
@@ -179,5 +181,6 @@ void UInvSys_BaseInventoryObject::GetLifetimeReplicatedProps(TArray<FLifetimePro
 {
 	UObject::GetLifetimeReplicatedProps(OutLifetimeProps);
 
+	DOREPLIFETIME_CONDITION(UInvSys_BaseInventoryObject, InventoryObjectTag, COND_None);
 	DOREPLIFETIME_CONDITION(UInvSys_BaseInventoryObject, InventoryObjectFragments, COND_None);
 }

@@ -86,6 +86,7 @@ FIntPoint UGridInvSys_InventoryItemInstance::GetItemSize(EGridInvSys_ItemDirecti
 		TargetItemSize.X = NativeItemSize.Y;
 		TargetItemSize.Y = NativeItemSize.X;
 		break;
+	default: ;
 	}
 	return TargetItemSize;
 }
@@ -100,7 +101,7 @@ void UGridInvSys_InventoryItemInstance::BroadcastItemPositionChangeMessage(const
 {
 	FGridInvSys_ItemPositionChangeMessage ItemPositionChangeMessage;
 	ItemPositionChangeMessage.ItemInstance = this;
-	ItemPositionChangeMessage.InventoryComponent = InventoryComponent;
+	ItemPositionChangeMessage.InventoryComponent = GetInventoryComponent();
 	ItemPositionChangeMessage.OldPosition = OldPosition;
 	ItemPositionChangeMessage.NewPosition = NewPosition;
 
@@ -114,7 +115,7 @@ void UGridInvSys_InventoryItemInstance::OnRep_ItemPosition(const FGridInvSys_Ite
 	// UE_LOG(LogInventorySystem, Warning, TEXT("%s::%hs: %s %s ---> %s"),
 	// 	*GPlayInEditorContextString, __FUNCTION__, *GetItemDisplayName().ToString(), *LastItemPosition.ToString(), *ItemPosition.ToString())
 	UE_LOG(LogInventorySystem, Error, TEXT("OnRep--->%s"), *GetName())
-	if (GetReplicateState() == EInvSys_ReplicateState::PostChange)
+	if (ReplicateState == EInvSys_ReplicateState::PostChange)
 	{
 		bWaitPostRepNotify_ItemPosition = true;
 	}

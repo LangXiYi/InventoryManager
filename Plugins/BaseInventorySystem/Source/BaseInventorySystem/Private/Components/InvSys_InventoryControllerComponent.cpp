@@ -3,11 +3,8 @@
 
 #include "Components/InvSys_InventoryControllerComponent.h"
 
-#include "BaseInventorySystem.h"
 #include "Components/InvSys_InventoryComponent.h"
 #include "Data/InvSys_ItemFragment_EquipItem.h"
-#include "Engine/ActorChannel.h"
-#include "Misc/LowLevelTestAdapter.h"
 #include "Net/UnrealNetwork.h"
 
 
@@ -15,16 +12,6 @@ UInvSys_InventoryControllerComponent::UInvSys_InventoryControllerComponent(const
 	:Super(ObjectInitializer)
 {
 	PrimaryComponentTick.bCanEverTick = false;
-}
-
-void UInvSys_InventoryControllerComponent::SetDraggingItemInstance(UInvSys_InventoryItemInstance* NewDragItemInstance)
-{
-	auto LastDragItemInstance = DraggingItemInstance;
-	DraggingItemInstance = NewDragItemInstance;
-	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
-	{
-		OnRep_DraggingItemInstance(LastDragItemInstance);
-	}
 }
 
 void UInvSys_InventoryControllerComponent::Server_DragAndRemoveItemInstance_Implementation(
@@ -58,48 +45,6 @@ void UInvSys_InventoryControllerComponent::Server_CancelDragItemInstance_Impleme
 			SetDraggingItemInstance(nullptr);
 		}
 	}
-}
-
-void UInvSys_InventoryControllerComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME_CONDITION(UInvSys_InventoryControllerComponent, DraggingItemInstance, COND_OwnerOnly);
-}
-
-void UInvSys_InventoryControllerComponent::OnRep_DraggingItemInstance(const TWeakObjectPtr<UInvSys_InventoryItemInstance>& OldDraggingItemInstance)
-{
-	FInvSys_DragItemInstanceMessage DragItemInstanceMessage;
-	DragItemInstanceMessage.ItemInstance = DraggingItemInstance.Get();
-	DragItemInstanceMessage.bIsDraggingItem = true;
-	if (DragItemInstanceMessage.ItemInstance == nullptr)
-	{
-		DragItemInstanceMessage.ItemInstance = OldDraggingItemInstance.Get();
-		DragItemInstanceMessage.bIsDraggingItem = false;
-		check(DragItemInstanceMessage.ItemInstance)
-	}
-
-	UGameplayMessageSubsystem& GameplayMessageSubsystem = UGameplayMessageSubsystem::Get(GetWorld());
-	GameplayMessageSubsystem.BroadcastMessage(Inventory_Message_DragItem, DragItemInstanceMessage);
-}
-
-bool UInvSys_InventoryControllerComponent::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch,
-                                                               FReplicationFlags* RepFlags)
-{
-	// 持续同步被拽起的物品
-	bool bWroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
-	// if (DraggingItemInstance.IsValid())
-	// {
-	// 	// UActorChannel::SetCurrentSubObjectOwner(DraggingItemInstance->GetInventoryComponent());
-	// 	if (DraggingItemInstance->MyInstances.Num() > 0)
-	// 	{
-	// 		for (UInvSys_InventoryItemInstance* ItemInstance : DraggingItemInstance->MyInstances)
-	// 		{
-	// 			bWroteSomething |= Channel->ReplicateSubobject(ItemInstance, *Bunch, * RepFlags);
-	// 		}
-	// 	}
-	// 	bWroteSomething |= Channel->ReplicateSubobject(DraggingItemInstance.Get(), *Bunch, * RepFlags);
-	// }
-	return bWroteSomething;
 }
 
 void UInvSys_InventoryControllerComponent::Server_EquipItemDefinition_Implementation(
@@ -209,3 +154,35 @@ void UInvSys_InventoryControllerComponent::Server_DragItemInstance_Implementatio
 	}
 }
 
+void UInvSys_InventoryControllerComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	// 限制仅拥有者同步数据
+	DOREPLIFETIME_CONDITION(UInvSys_InventoryControllerComponent, DraggingItemInstance, COND_OwnerOnly);
+}
+
+void UInvSys_InventoryControllerComponent::SetDraggingItemInstance(UInvSys_InventoryItemInstance* NewDragItemInstance)
+{
+	auto LastDragItemInstance = DraggingItemInstance;
+	DraggingItemInstance = NewDragItemInstance;
+	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
+	{
+		OnRep_DraggingItemInstance(LastDragItemInstance);
+	}
+}
+
+void UInvSys_InventoryControllerComponent::OnRep_DraggingItemInstance(const TWeakObjectPtr<UInvSys_InventoryItemInstance>& OldDraggingItemInstance)
+{
+	FInvSys_DragItemInstanceMessage DragItemInstanceMessage;
+	DragItemInstanceMessage.ItemInstance = DraggingItemInstance.Get();
+	DragItemInstanceMessage.bIsDraggingItem = true;
+	if (DragItemInstanceMessage.ItemInstance == nullptr)
+	{
+		DragItemInstanceMessage.ItemInstance = OldDraggingItemInstance.Get();
+		DragItemInstanceMessage.bIsDraggingItem = false;
+		check(DragItemInstanceMessage.ItemInstance)
+	}
+
+	UGameplayMessageSubsystem& GameplayMessageSubsystem = UGameplayMessageSubsystem::Get(GetWorld());
+	GameplayMessageSubsystem.BroadcastMessage(Inventory_Message_DragItem, DragItemInstanceMessage);
+}

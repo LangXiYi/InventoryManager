@@ -49,6 +49,7 @@ FIntPoint UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSizeFrom(UInvS
 		TargetItemSize.X = NativeItemSize.Y;
 		TargetItemSize.Y = NativeItemSize.X;
 		break;
+	default: ;
 	}
 	return TargetItemSize;
 }
@@ -95,6 +96,7 @@ FIntPoint UGridInvSys_CommonFunctionLibrary::CalculateItemDefinitionSizeFrom(
 		TargetItemSize.X = NativeItemSize.Y;
 		TargetItemSize.Y = NativeItemSize.X;
 		break;
+	default: ;
 	}
 	return TargetItemSize;
 }

@@ -38,50 +38,42 @@ void UInvSys_InventoryFragment_Equipment::InitInventoryFragment(UObject* PreEdit
 UInvSys_InventoryItemInstance* UInvSys_InventoryFragment_Equipment::EquipItemDefinition(
 	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef)
 {
-	if (HasAuthority())
+	check(HasAuthority())
+	UInvSys_InventoryItemInstance* TempItemInstance = NewObject<UInvSys_InventoryItemInstance>(GetInventoryComponent());
+	if (TempItemInstance)
 	{
-		UInvSys_InventoryItemInstance* TempItemInstance = NewObject<UInvSys_InventoryItemInstance>(GetInventoryComponent());
-		if (TempItemInstance)
-		{
-			TempItemInstance->SetItemDefinition(ItemDef);
-			TempItemInstance->SetItemUniqueID(FGuid::NewGuid());
-			EquipItemInstance(TempItemInstance);
-		}
-		return TempItemInstance;
+		TempItemInstance->SetItemDefinition(ItemDef);
+		TempItemInstance->SetItemUniqueID(FGuid::NewGuid());
+		EquipItemInstance(TempItemInstance);
 	}
-	return nullptr;
+	return TempItemInstance;
 }
 
 void UInvSys_InventoryFragment_Equipment::EquipItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)
 {
-	if (HasAuthority())
+	check(HasAuthority())
+	if (NewItemInstance)
 	{
-		if (NewItemInstance)
+		ItemInstance = NewItemInstance;
+		ItemInstance->SetSlotTag(GetInventoryObjectTag());
+		if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
 		{
-			ItemInstance = NewItemInstance;
-			// ItemInstance->SetInventoryComponent(GetInventoryComponent());
-			ItemInstance->SetSlotTag(GetInventoryObjectTag());
-			if (GetNetMode() != NM_DedicatedServer)
-			{
-				OnRep_ItemInstance();
-			}
+			OnRep_ItemInstance();
 		}
 	}
 }
 
 bool UInvSys_InventoryFragment_Equipment::UnEquipItemInstance()
 {
-	if (HasAuthority())
+	check(HasAuthority())
+
+	ItemInstance->RemoveFromInventory();
+	ItemInstance = nullptr;
+	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
 	{
-		// EquipItemInstance->RemoveFromInventory();
-		ItemInstance = nullptr;
-		if (GetNetMode() != NM_DedicatedServer)
-		{
-			OnRep_ItemInstance();
-		}
-		return true;
+		OnRep_ItemInstance();
 	}
-	return false;
+	return true;
 }
 
 bool UInvSys_InventoryFragment_Equipment::HasEquipmentItems() const

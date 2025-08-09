@@ -4,15 +4,15 @@
 
 #include "CoreMinimal.h"
 #include "BaseInventorySystem.h"
-#include "InvSys_InventoryItemDefinition.h"
 #include "InvSys_InventoryItemInstance.h"
-#include "NativeGameplayTags.h"
-#include "Components/InventoryObject/InvSys_BaseInventoryObject.h"
+#include "InvSys_InventoryItemDefinition.h"
 #include "Net/Serialization/FastArraySerializer.h"
+#include "Components/InventoryObject/Fragment/InvSys_BaseInventoryFragment.h"
 #include "InvSys_ContainerList.generated.h"
 
 class UInvSys_InventoryComponent;
 class UInvSys_InventoryItemInstance;
+class UInvSys_BaseInventoryFragment;
 struct FInvSys_ContainerEntry;
 
 USTRUCT(BlueprintType)
@@ -51,13 +51,6 @@ struct FInvSys_InventoryStackChangeMessage
 	int32 Delta = 0;
 };
 
-/*
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnInventoryStackChange, FInvSys_InventoryStackChangeMessage);*/
-DECLARE_DELEGATE_TwoParams(FOnInventoryItemChange, UInvSys_InventoryItemInstance*, bool);
-// 由容器广播给外部。
-DECLARE_DELEGATE_TwoParams(FOnContainerEntryChange, const FInvSys_ContainerEntry&, bool);
-
-/** Example */
 USTRUCT()
 struct FInvSys_ContainerEntry : public FFastArraySerializerItem
 {
@@ -82,11 +75,13 @@ public:
 	 * @param InArraySerializer	Array serializer that owns the item and has triggered the replication call
 	 * 
 	 * NOTE: intentionally not virtual; invoked via templated code, @see FExampleItemEntry
+	 * NOTE: 函数执行优先级在对象的 RepNotify 之前
 	 */
 	FORCEINLINE void PreReplicatedRemove(const struct FFastArraySerializer& InArraySerializer)
 	{
-		// Instance->ReplicateState = EInvSys_ReplicateState::PreRemove;
-		// Instance->PreReplicatedRemove();
+		Instance->ReplicateState = EInvSys_ReplicateState::PreRemove;
+		// UE_LOG(LogInventorySystem, Log, TEXT("PreReplicatedRemove: %s "), *Instance->GetName())
+		Instance->PreReplicatedRemove();
 	}
 	/**
 	 * Called after adding and serializing a new element
@@ -94,20 +89,24 @@ public:
 	 * @param InArraySerializer	Array serializer that owns the item and has triggered the replication call
 	 * 
 	 * NOTE: intentionally not virtual; invoked via templated code, @see FExampleItemEntry
+	 * NOTE: 函数执行优先级在对象的 RepNotify 之前
 	 */
 	FORCEINLINE void PostReplicatedAdd(const struct FFastArraySerializer& InArraySerializer)
 	{
-		// Instance->ReplicateState = EInvSys_ReplicateState::PostAdd;
+		Instance->ReplicateState = EInvSys_ReplicateState::PostAdd;
+		// UE_LOG(LogInventorySystem, Log, TEXT("PostReplicatedAdd: %s "), *Instance->GetName())
 	}
 	/**
 	 * Called after updating an existing element with new data
 	 *
 	 * @param InArraySerializer	Array serializer that owns the item and has triggered the replication call
 	 * NOTE: intentionally not virtual; invoked via templated code, @see FExampleItemEntry
+	 * NOTE: 函数执行优先级在对象的 RepNotify 之前
 	 */
 	FORCEINLINE void PostReplicatedChange(const struct FFastArraySerializer& InArraySerializer)
 	{
-		// Instance->ReplicateState = EInvSys_ReplicateState::PostChange;
+		Instance->ReplicateState = EInvSys_ReplicateState::PostChange;
+		// UE_LOG(LogInventorySystem, Log, TEXT("PostReplicatedChange: %s "), *Instance->GetName())
 	}
 
 	FString GetDebugString() const;
@@ -120,7 +119,7 @@ public:
 
 	bool IsValid() const
 	{
-		return Instance != nullptr;
+		return Instance->IsValidLowLevel();
 	}
 };
 
@@ -135,13 +134,14 @@ struct BASEINVENTORYSYSTEM_API FInvSys_ContainerList : public FFastArraySerializ
 
 	friend class UInvSys_BaseEquipContainerObject;
 
+	typedef int32 SizeType;
+
 public:
 	FInvSys_ContainerList() { }
 
 	FInvSys_ContainerList(UInvSys_BaseInventoryFragment* InOwnerObject) : InventoryFragment(InOwnerObject)
 	{
 		SetDeltaSerializationEnabled(false);
-		Entries.Empty();
 	}
 
 public:
@@ -152,138 +152,73 @@ public:
 	TObjectPtr<UInvSys_BaseInventoryFragment> InventoryFragment;
 
 public:
-	template<class T, class... Arg>
-	T* AddDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, const Arg&... Args)
-	{
-		check(ItemDef)
-		check(InventoryFragment)
-		check(InventoryFragment->HasAuthority());
-		FInvSys_ContainerEntry& NewEntry = Entries.AddDefaulted_GetRef();
-		T* Result = NewObject<T>(InventoryFragment->GetInventoryComponent());
-		// Result->SetInventoryComponent(InventoryFragment->GetInventoryComponent());
-		// Result->Entry_Private = &NewEntry;
-		Result->SetItemDefinition(ItemDef);
-		Result->SetItemUniqueID(FGuid::NewGuid());
-		// 这两个属性表明了这个对象的最基础的位置信息
-		Result->SetSlotTag(InventoryFragment->GetInventoryObjectTag());
-
-		for (const UInvSys_InventoryItemFragment* Fragment : GetDefault<UInvSys_InventoryItemDefinition>(ItemDef)->GetFragments())
-		{
-			if (Fragment != nullptr)
-			{
-				Fragment->OnInstanceCreated(NewEntry.Instance);
-			}
-		}
-		
-		NewEntry.Instance = Result;
-		NewEntry.StackCount = StackCount;
-		//执行可变参数模板，将参数列表中的值赋予目标对象。
-		int32 Arr[] = {0, (InitItemInstanceProps<T>(Result, Args, false), 0)...}; 
-		
-		MarkItemDirty(NewEntry);
-		
-		if (InventoryFragment && InventoryFragment->GetNetMode() != NM_DedicatedServer)
-		{
-			Result->BroadcastAddItemInstanceMessage();
-		}
-		check(Result)
-		return Result;
-	}
-
 	/**
-	 * 添加其他物品实例
+	 * 创建物品实例并初始化该物品的属性，添加过程中会广播添加事件。
+	 * 注意：可变参数列表要求目标类型必须实现 InitItemInstanceProps 函数，且参数类型一致。
 	 */
 	template<class T, class... Arg>
-	T* AddInstance(UInvSys_InventoryItemInstance* ItemInstance, const Arg&... Args)
-	{
-		if (ItemInstance && ItemInstance->IsA<T>())
-		{
-			T* TargetItemInstance = Cast<T>(ItemInstance);
-			TargetItemInstance = DuplicateObject<T>(TargetItemInstance, InventoryFragment->GetInventoryComponent());
-			ItemInstance->ConditionalBeginDestroy();//标记目标待删除
+	T* AddDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, const Arg&... Args);
 
-			// 更新物品的基础信息
-			TargetItemInstance->SetSlotTag(InventoryFragment->GetInventoryObjectTag());
-			TargetItemInstance->SetIsDraggingItem(false);
-			// Instance->SetInventoryComponent(InventoryFragment->GetInventoryComponent());
-			//执行可变参数模板，将参数列表中的值赋予目标对象。
-			int32 Arr[] = {0, (InitItemInstanceProps<T>(TargetItemInstance, Args, false), 0)...};
+	/**
+	 * 将其他物品实例添加到当前容器内，添加过程中会广播添加事件。
+	 * 注意：可变参数列表要求目标类型必须实现 InitItemInstanceProps 函数，且参数类型一致。
+	 */
+	template<class T, class... Arg>
+	T* AddInstance(UInvSys_InventoryItemInstance* ItemInstance, const Arg&... Args);
 
-			FInvSys_ContainerEntry& NewEntry = Entries.AddDefaulted_GetRef();
-			/*
-			 * 使用Entry的引用会出现问题，该引用始终指向的是地址，是一个固定的位置，当对象在数组中的位置发生改变时，这个值不会改变！！！
-			 */
-			// TargetItemInstance->Entry_Private = &NewEntry;
-
-			NewEntry.Instance = TargetItemInstance;
-			MarkItemDirty(NewEntry);
-			check(InventoryFragment)
-			if (InventoryFragment && InventoryFragment->GetNetMode() != NM_DedicatedServer)
-			{
-				TargetItemInstance->BroadcastAddItemInstanceMessage();
-			}
-			return TargetItemInstance;
-		}
-		checkNoEntry();
-		return nullptr;
-	}
-
+	/** 移除所有物品，移除过程中会广播删除事件。 */
 	void RemoveAll();
-	
+
+	/** 将物品实例从当前容器内删除，移除过程中会广播删除事件。 */
 	bool RemoveEntry(UInvSys_InventoryItemInstance* Instance);
 
-	void RemoveAt(int32 Index);
-
-	// bool UpdateEntryStackCount(UInvSys_InventoryItemInstance* Instance, int32 NewCount);
-
+	/** 获取当前容器的所有物品实例，然后将其转换为指定类型。 */
 	template<class T = UInvSys_InventoryItemInstance>
 	void GetAllItems(TArray<T*>& OutArray) const
 	{
 		OutArray.Reserve(Entries.Num());
 		for (const FInvSys_ContainerEntry& Entry : Entries)
 		{
-			if (Entry.Instance && Entry.Instance->IsA<T>()) //@TODO: Would prefer to not deal with this here and hide it further?
+			if (Entry.Instance && Entry.Instance->IsA<T>())
 			{
 				OutArray.Add((T*)Entry.Instance);
 			}
 		}
 	}
 
-	UInvSys_InventoryItemInstance* FindItem(FGuid ItemUniqueID) const;
+	/** 根据物品的唯一ID查找物品 */
+	UInvSys_InventoryItemInstance* FindItemInstance(FGuid ItemUniqueID) const;
 
+	/** 获取物品实例在当前容器内的索引 */
 	int32 FindEntryIndex(UInvSys_InventoryItemInstance* ItemInstance);
 
-	/**
-	 * PreRemove 发生在对象的属性复制之前
-	 */
-	void PreReplicatedRemove(const TArrayView<int32>& RemovedIndices, int32 FinalSize);
-	/**
-	 * PostAdd 发生在对象的属性复制之前
-	 */
-	void PostReplicatedAdd(const TArrayView<int32>& AddedIndices, int32 FinalSize);
-	/**
-	 * PostChange 发生在对象的属性复制之前
-	 */
-	void PostReplicatedChange(const TArrayView<int32>& ChangedIndices, int32 FinalSize);
-	// void PostReplicatedReceive(const FPostReplicatedReceiveParameters& Parameters);
+	/** 检查目标物品在当前容器内是否存在 */
+	bool Contains(UInvSys_InventoryItemInstance* ItemInstance) const;
+
+	/** 检查索引在容器内是否有效 */
+	FORCEINLINE bool IsValidIndex(SizeType Index) const
+	{
+		return Index >= 0 && Index < Entries.Num();
+	}
+
+	/** 重载[]运算符，返回指定索引下的容器条目 */
+	FORCEINLINE FInvSys_ContainerEntry& operator[](SizeType Index)
+	{
+		return Entries[Index];
+	}
+
+	/** 返回当前容器内存储的物品数量 */
+	FORCEINLINE SizeType Num() const
+	{
+		return Entries.Num();
+	}
 
 	bool NetDeltaSerialize(FNetDeltaSerializeInfo& DeltaParms)
 	{
 		return FFastArraySerializer::FastArrayDeltaSerialize<FInvSys_ContainerEntry, FInvSys_ContainerList>(Entries, DeltaParms, *this);
 	}
 
-	bool Contains(UInvSys_InventoryItemInstance* ItemInstance) const
-	{
-		for (FInvSys_ContainerEntry Entry : Entries)
-		{
-			if (Entry.Instance == ItemInstance)
-			{
-				return true;
-			}
-		}
-		return false;
-	}
-
+protected:
 	void BroadcastRemoveEntryMessage(UInvSys_InventoryItemInstance* ItemInstance) const;
 
 	void BroadcastAddEntryMessage(UInvSys_InventoryItemInstance* ItemInstance) const;
@@ -308,6 +243,85 @@ private:
 		}
 	}
 };
+
+template <class T, class ... Arg>
+T* FInvSys_ContainerList::AddDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount,
+	const Arg&... Args)
+{
+	check(ItemDef)
+	check(InventoryFragment)
+	check(InventoryFragment->HasAuthority());
+	if (ItemDef == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("AddDefinition Falied, Item definition is nullptr."))
+		return nullptr;
+	}
+
+	FInvSys_ContainerEntry& NewEntry = Entries.AddDefaulted_GetRef();
+	T* Result = NewObject<T>(InventoryFragment->GetInventoryComponent());
+	// Result->SetInventoryComponent(InventoryFragment->GetInventoryComponent());
+	Result->SetItemDefinition(ItemDef);
+	Result->SetItemUniqueID(FGuid::NewGuid());
+	Result->SetSlotTag(InventoryFragment->GetInventoryObjectTag());
+
+	for (const UInvSys_InventoryItemFragment* Fragment : GetDefault<UInvSys_InventoryItemDefinition>(ItemDef)->GetFragments())
+	{
+		if (Fragment != nullptr)
+		{
+			Fragment->OnInstanceCreated(NewEntry.Instance);
+		}
+	}
+		
+	NewEntry.Instance = Result;
+	NewEntry.StackCount = StackCount;
+
+	//执行可变参数模板，将参数列表中的值赋予目标对象。
+	int32 Arr[] = {0, (InitItemInstanceProps<T>(Result, Args, false), 0)...}; 
+		
+	MarkItemDirty(NewEntry);
+		
+	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
+	{
+		Result->BroadcastAddItemInstanceMessage();
+	}
+	return Result;
+}
+
+template <class T, class ... Arg>
+T* FInvSys_ContainerList::AddInstance(UInvSys_InventoryItemInstance* ItemInstance, const Arg&... Args)
+{
+	check(ItemInstance)
+	check(InventoryFragment)
+	check(InventoryFragment->HasAuthority());
+	if (ItemInstance->IsA<T>() == false)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("AddInstance Falied, 传入的物品实例的类型不匹配."))
+		return nullptr;
+	}
+	T* TargetItemInstance = Cast<T>(ItemInstance);
+	// todo::使用对象池获取新对象，优化深度拷贝对象带来的消耗？
+	TargetItemInstance = DuplicateObject<T>(TargetItemInstance, InventoryFragment->GetInventoryComponent());
+	ItemInstance->ConditionalBeginDestroy();//标记目标待删除
+
+	// 更新物品的基础信息
+	TargetItemInstance->SetSlotTag(InventoryFragment->GetInventoryObjectTag());
+	TargetItemInstance->SetIsDraggingItem(false);
+	// Instance->SetInventoryComponent(InventoryFragment->GetInventoryComponent());
+
+	//执行可变参数模板，将参数列表中的值赋予目标对象。
+	int32 Arr[] = {0, (InitItemInstanceProps<T>(TargetItemInstance, Args, false), 0)...};
+
+	FInvSys_ContainerEntry& NewEntry = Entries.AddDefaulted_GetRef();
+	NewEntry.Instance = TargetItemInstance;
+
+	MarkItemDirty(NewEntry);
+
+	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
+	{
+		TargetItemInstance->BroadcastAddItemInstanceMessage();
+	}
+	return TargetItemInstance;
+}
 
 template<>
 struct TStructOpsTypeTraits< FInvSys_ContainerList > : public TStructOpsTypeTraitsBase2< FInvSys_ContainerList >

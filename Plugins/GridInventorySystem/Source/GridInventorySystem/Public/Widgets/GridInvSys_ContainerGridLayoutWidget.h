@@ -7,15 +7,12 @@
 #include "Widgets/InvSys_InventoryWidget.h"
 #include "GridInvSys_ContainerGridLayoutWidget.generated.h"
 
-class UGridInvSys_GridEquipContainerObject;
+struct FGridInvSys_ItemPosition;
+
 class UInvSys_InventoryItemInstance;
 class UGridInvSys_ContainerGridItemWidget;
-struct FGridInvSys_ItemPosition;
-class UGridInvSys_InventoryContainerInfo;
 class UGridInvSys_ContainerGridWidget;
-/**
- * 
- */
+
 UCLASS()
 class GRIDINVENTORYSYSTEM_API UGridInvSys_ContainerGridLayoutWidget : public UInvSys_InventoryWidget
 {
@@ -70,9 +67,6 @@ protected:
 
 	UPROPERTY()
 	TMap<FName, UGridInvSys_ContainerGridWidget*> ContainerGridMap;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Container Grid Layout")
-	TObjectPtr<UGridInvSys_InventoryContainerInfo> ContainerInfo;
 
 private:
 	FGameplayMessageListenerHandle OnAddItemInstanceHandle;

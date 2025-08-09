@@ -5,15 +5,10 @@
 #include "CoreMinimal.h"
 #include "GridInvSys_CommonType.h"
 #include "Components/CanvasPanel.h"
-#include "Components/GridPanel.h"
-#include "Components/UniformGridPanel.h"
 #include "Widgets/InvSys_InventoryWidget.h"
 #include "GridInvSys_ContainerGridWidget.generated.h"
 
 class UInvSys_InventoryItemInstance;
-class UGridInvSys_ContainerGridLayoutWidget;
-class UGridInvSys_DragItemWidget;
-class UGridInvSys_ContainerGridDropWidget;
 class UGridInvSys_ContainerGridItemWidget;
 
 UENUM()
@@ -27,9 +22,6 @@ enum class EGridInvSys_DropType : uint8
 	SizeLessThan
 };
 
-/**
- * 
- */
 UCLASS()
 class GRIDINVENTORYSYSTEM_API UGridInvSys_ContainerGridWidget : public UInvSys_InventoryWidget
 {
@@ -58,15 +50,15 @@ protected:
 	virtual void ResetDragDropData();
 
 	/** 放下物品至容器的目标位置，From必须是来自容器对象而非装备槽，仅在同容器组件下有效！！ */
-	bool TryDropItemFromContainer(UInvSys_InventoryItemInstance* ItemInstance, FGridInvSys_ItemPosition DropPosition);
+	bool TryDropItemFromContainer(UInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& DropPosition);
 
 	void ShowDragGridEffect(FIntPoint Position, FIntPoint Size, bool bIsRight);
 	
+public:
 	/**
 	 * Getter Or Setter
 	 **/
 
-public:
 	int32 GetItemIndex(const FIntPoint Position) const;
 	UGridInvSys_ContainerGridItemWidget* GetGridItemWidget(FIntPoint Position) const;
 
@@ -125,18 +117,17 @@ public:
 	bool IsInContainer(FIntPoint TargetPos, FIntPoint TargetSize) const;
 
 protected:
-	void TryDropItemInstance_FreeSpace(UInvSys_InventoryItemInstance* ItemInstance, FGridInvSys_ItemPosition DropPosition);
+	void TryDropItemInstance_FreeSpace(UInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& DropPosition);
 
-	void TryDropItemInstance_SizeEqual(UInvSys_InventoryItemInstance* ItemInstance, FGridInvSys_ItemPosition DropPosition);
+	void TryDropItemInstance_SizeEqual(UInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& DropPosition);
 
-	void TryDropItemInstance_SizeGreaterThan_ComponentNotEqual(UInvSys_InventoryItemInstance* ItemInstance, FGridInvSys_ItemPosition DropPosition);
+	void TryDropItemInstance_SizeGreaterThan_ComponentNotEqual(UInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& DropPosition);
 
-	void TryDropItemInstance_SizeGreaterThan_ComponentEqual(UInvSys_InventoryItemInstance* ItemInstance, FGridInvSys_ItemPosition DropPosition);
+	void TryDropItemInstance_SizeGreaterThan_ComponentEqual(UInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& DropPosition);
 
-	void TryDropItemInstance_SizeLessThan(UInvSys_InventoryItemInstance* ItemInstance, FGridInvSys_ItemPosition DropPosition);
+	void TryDropItemInstance_SizeLessThan(UInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& DropPosition);
 
 	// 判断目标位置能否放置物品，注意：使用此方法时From必须是来自其他容器
-	// todo::优化传参
 	EGridInvSys_DropType IsCanDropItemFromContainer(UInvSys_InventoryItemInstance* ItemInstance,
 		FIntPoint ToPosition, EGridInvSys_ItemDirection ItemDirection) const;
 
@@ -157,7 +148,7 @@ protected:
 	int32 ContainerGridID;
 
 private:
-	UPROPERTY()
+	UPROPERTY(Transient)
 	TArray<UGridInvSys_ContainerGridItemWidget*> LastDropOverItems;
 
 	// 上一次拖拽时，计算得到的坐标位置

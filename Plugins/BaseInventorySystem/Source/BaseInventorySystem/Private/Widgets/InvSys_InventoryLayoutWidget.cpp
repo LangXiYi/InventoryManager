@@ -4,12 +4,7 @@
 #include "Widgets/InvSys_InventoryLayoutWidget.h"
 
 #include "BaseInventorySystem.h"
-#include "Blueprint/DragDropOperation.h"
 #include "Blueprint/WidgetTree.h"
-#include "Components/InvSys_InventoryComponent.h"
-#include "Data/InvSys_InventoryItemInstance.h"
-#include "Library/InvSys_InventorySystemLibrary.h"
-#include "Widgets/InvSys_InventoryItemWidget.h"
 #include "Widgets/Components/InvSys_TagSlot.h"
 
 
@@ -35,7 +30,6 @@ void UInvSys_InventoryLayoutWidget::NativeOnInitialized()
 				TagSlots.Emplace(TagSlot->GetSlotTag(), TagSlot);
 			}
 		});
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("重构控件时，同步收集所有命名槽！收集数量 = %d"), TagSlots.Num())
 	}
 }
 
@@ -48,27 +42,6 @@ void UInvSys_InventoryLayoutWidget::AddWidget(UUserWidget* Widget, const FGamepl
 	}
 	else
 	{
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("标签为 %s 的控件在布局中未找到"), *Tag.ToString());
+		UE_LOG(LogInventorySystem, Error, TEXT("标签为 %s 的控件在布局中未找到"), *Tag.ToString());
 	}
-}
-
-bool UInvSys_InventoryLayoutWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent,
-                                                 UDragDropOperation* InOperation)
-{
-	bool bIsHandled = Super::NativeOnDrop(InGeometry, InDragDropEvent, InOperation);
-	if (bIsHandled) return bIsHandled; // 如果蓝图实现了处理，则不会继续执行 C++ 定义的逻辑
-	UInvSys_InventoryItemInstance* LOCAL_ItemInstance = Cast<UInvSys_InventoryItemInstance>(InOperation->Payload);
-	check(LOCAL_ItemInstance)
-	if (LOCAL_ItemInstance)
-	{
-		UInvSys_InventoryComponent* From_InvComp = LOCAL_ItemInstance->GetInventoryComponent();
-		UInvSys_InventoryControllerComponent* ICC = UInvSys_InventorySystemLibrary::GetPlayerInventoryComponent(GetWorld());
-		if (From_InvComp && ICC)
-		{
-			// 对于在容器布局内放下拖拽的物品，则将该物品返回原位置
-			// ICC->Server_RestoreItemInstance(From_InvComp, LOCAL_ItemInstance);
-			// return true;
-		}
-	}
-	return false;
 }

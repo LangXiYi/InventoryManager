@@ -3,21 +3,15 @@
 
 #include "Widgets/GridInvSys_ContainerGridItemWidget.h"
 
+#include "Components/SizeBox.h"
 #include "BaseInventorySystem.h"
 #include "GridInvSys_InventorySystemConfig.h"
-#include "Blueprint/WidgetBlueprintLibrary.h"
-#include "Components/CanvasPanelSlot.h"
-#include "Components/GridSlot.h"
-#include "Components/SizeBox.h"
-#include "Data/GridInvSys_InventoryItemInfo.h"
 #include "Data/GridInvSys_InventoryItemInstance.h"
-#include "Data/InvSys_ItemFragment_DragDrop.h"
 #include "Data/GridInvSys_ItemFragment_GridItemSize.h"
-#include "Widgets/GridInvSys_DragItemWidget.h"
 #include "Data/InvSys_InventoryItemInstance.h"
-#include "Framework/Notifications/NotificationManager.h"
 #include "Widgets/GridInvSys_ContainerGridWidget.h"
 #include "Widgets/Notifications/SNotificationList.h"
+#include "Framework/Notifications/NotificationManager.h"
 
 void UGridInvSys_ContainerGridItemWidget::OnConstructGridItem(UGridInvSys_ContainerGridWidget* InContainerGrid,
 	FIntPoint InPosition)

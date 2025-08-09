@@ -4,9 +4,9 @@
 #include "Data/InvSys_ContainerList.h"
 
 #include "BaseInventorySystem.h"
-#include "NativeGameplayTags.h"
-#include "GameFramework/GameplayMessageSubsystem.h"
 #include "Data/InvSys_InventoryItemInstance.h"
+#include "GameFramework/GameplayMessageSubsystem.h"
+
 
 FString FInvSys_ContainerEntry::GetDebugString() const
 {
@@ -59,18 +59,7 @@ bool FInvSys_ContainerList::RemoveEntry(UInvSys_InventoryItemInstance* Instance)
 	return false;
 }
 
-void FInvSys_ContainerList::RemoveAt(int32 Index)
-{
-	if (Entries.IsValidIndex(Index))
-	{
-		FInvSys_ContainerEntry& Entry = Entries[Index];
-		Entry.Instance->RemoveFromInventory();
-		Entries.RemoveAt(Index);
-		MarkArrayDirty();
-	}
-}
-
-UInvSys_InventoryItemInstance* FInvSys_ContainerList::FindItem(FGuid ItemUniqueID) const
+UInvSys_InventoryItemInstance* FInvSys_ContainerList::FindItemInstance(FGuid ItemUniqueID) const
 {
 	for (FInvSys_ContainerEntry Entry : Entries)
 	{
@@ -88,48 +77,31 @@ UInvSys_InventoryItemInstance* FInvSys_ContainerList::FindItem(FGuid ItemUniqueI
 
 int32 FInvSys_ContainerList::FindEntryIndex(UInvSys_InventoryItemInstance* ItemInstance)
 {
-	for (int i = 0; i < Entries.Num(); ++i)
+	if (ItemInstance)
 	{
-		if (Entries[i].Instance == ItemInstance)
+		for (int i = 0; i < Entries.Num(); ++i)
 		{
-			return i;
+			if (Entries[i].Instance == ItemInstance)
+			{
+				return i;
+			}
 		}
 	}
 	return INDEX_NONE;
 }
 
-void FInvSys_ContainerList::PreReplicatedRemove(const TArrayView<int32>& RemovedIndices, int32 FinalSize)
+bool FInvSys_ContainerList::Contains(UInvSys_InventoryItemInstance* ItemInstance) const
 {
-	for (int32 Index : RemovedIndices)
+	for (FInvSys_ContainerEntry Entry : Entries)
 	{
-		FInvSys_ContainerEntry& Entry = Entries[Index];
-		Entry.Instance->ReplicateState = EInvSys_ReplicateState::PreRemove;
-		UE_LOG(LogInventorySystem, Log, TEXT("Replicate PreRemove: %s ------- %s"),
-			*Entry.Instance->GetName(), *InventoryFragment->GetInventoryObjectTag().ToString())
-		Entry.Instance->PreReplicatedRemove();
+		if (Entry.Instance == ItemInstance)
+		{
+			return true;
+		}
 	}
-}
-
-void FInvSys_ContainerList::PostReplicatedAdd(const TArrayView<int32>& AddedIndices, int32 FinalSize)
-{
-	for (int32 Index : AddedIndices)
-	{
-		FInvSys_ContainerEntry& Entry = Entries[Index];
-		Entry.Instance->ReplicateState = EInvSys_ReplicateState::PostAdd;
-		UE_LOG(LogInventorySystem, Log, TEXT("Replicate PostAdd: %s ------- %s"),
-			*Entry.Instance->GetName(), *InventoryFragment->GetInventoryObjectTag().ToString())
-	}
-}
-
-void FInvSys_ContainerList::PostReplicatedChange(const TArrayView<int32>& ChangedIndices, int32 FinalSize)
-{
-	for (int32 Index : ChangedIndices)
-	{
-		FInvSys_ContainerEntry& Entry = Entries[Index];
-		Entry.Instance->ReplicateState = EInvSys_ReplicateState::PostChange;
-		UE_LOG(LogInventorySystem, Log, TEXT("Replicate PostChange: %s ------- %s"),
-			*Entry.Instance->GetName(), *InventoryFragment->GetInventoryObjectTag().ToString())
-	}
+	UE_LOG(LogInventorySystem, Warning, TEXT("传入的物品实例 [%s] 在当前容器 [%s] 内不存在"),
+		*ItemInstance->GetItemDisplayName().ToString(), *GetInventoryObjectTag().ToString())
+	return false;
 }
 
 void FInvSys_ContainerList::BroadcastRemoveEntryMessage(UInvSys_InventoryItemInstance* ItemInstance) const

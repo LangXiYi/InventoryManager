@@ -4,12 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "InvSys_BaseInventoryFragment.h"
-#include "NativeGameplayTags.h"
 #include "InvSys_InventoryFragment_Equipment.generated.h"
 
 class UInvSys_InventoryItemDefinition;
 class UInvSys_InventoryItemInstance;
-
 
 USTRUCT(BlueprintType)
 struct FInvSys_EquipItemInstanceMessage
@@ -17,30 +15,15 @@ struct FInvSys_EquipItemInstanceMessage
 	GENERATED_BODY()
 
 	UPROPERTY(BlueprintReadOnly, Category = "Message")
-	TObjectPtr<UInvSys_InventoryComponent> InvComp;
+	TObjectPtr<UInvSys_InventoryComponent> InvComp = nullptr;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Message")
-	UInvSys_InventoryItemInstance* ItemInstance;
+	TObjectPtr<UInvSys_InventoryItemInstance> ItemInstance = nullptr;
 	
 	UPROPERTY(BlueprintReadOnly, Category = "Message")
 	FGameplayTag InventoryObjectTag;
 };
 
-// USTRUCT(BlueprintType)
-// struct FInvSys_UnEquipItemInstanceMessage
-// {
-// 	GENERATED_BODY()
-//
-// 	UPROPERTY(BlueprintReadOnly, Category = "Message")
-// 	UInvSys_BaseInventoryObject* InventoryObject;
-//
-// 	// UPROPERTY(BlueprintReadOnly, Category = "Message")
-// 	// UInvSys_InventoryItemInstance* ItemInstance;
-// };
-
-/**
- * 
- */
 UCLASS()
 class BASEINVENTORYSYSTEM_API UInvSys_InventoryFragment_Equipment : public UInvSys_BaseInventoryFragment
 {
@@ -60,9 +43,9 @@ public:
 	virtual bool UnEquipItemInstance();
 
 	UFUNCTION(BlueprintPure, Category = "Inventory Fragment|Equipment")
-	bool HasEquipmentItems() const;
+	FORCEINLINE bool HasEquipmentItems() const;
 
-	UInvSys_InventoryItemInstance* GetEquipItemInstance() const;
+	FORCEINLINE UInvSys_InventoryItemInstance* GetEquipItemInstance() const;
 
 protected:
 	virtual bool ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags) override;
@@ -78,10 +61,9 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_ItemInstance, Category = "Inventory Fragment")
 	TObjectPtr<UInvSys_InventoryItemInstance> ItemInstance;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Fragment")
-	TWeakObjectPtr<UInvSys_InventoryItemInstance> LastItemInstance;
-
 	UFUNCTION()
 	void OnRep_ItemInstance();
+	
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory Fragment")
+	TWeakObjectPtr<UInvSys_InventoryItemInstance> LastItemInstance;
 };

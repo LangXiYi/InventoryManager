@@ -8,7 +8,6 @@
 #include "Components/PanelWidget.h"
 #include "Data/GridInvSys_InventoryItemInstance.h"
 #include "Data/InvSys_InventoryItemInstance.h"
-#include "Library/InvSys_InventorySystemLibrary.h"
 #include "Widgets/GridInvSys_ContainerGridItemWidget.h"
 #include "Widgets/GridInvSys_ContainerGridWidget.h"
 
@@ -192,7 +191,7 @@ void UGridInvSys_ContainerGridLayoutWidget::Debug_PrintContainerAllItems()
 				UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
 					TEXT("DisplayName = %s \t Tag = %s \t Name: %s \t OuterName = %s \t"),
 					*ItemInstance->GetItemDisplayName().ToString(),
-					*ItemInstance->GetSlotTag().ToString(),
+					*ItemInstance->GetInventoryObjectTag().ToString(),
 					*ItemInstance->GetName(),
 					*ItemInstance->GetOuter()->GetName())
 			}
@@ -277,23 +276,7 @@ void UGridInvSys_ContainerGridLayoutWidget::AddItemInstanceTo(
 	check(GridItemWidget)
 	if (GridItemWidget)
 	{
-		// if (GridItemWidget->IsOccupied() == false)
-		{
-			GridItemWidget->AddItemInstance(InItemInstance);
-		}
-		// bug::重复刷新出现问题！！！
-		// else if(InItemInstance != GridItemWidget->GetItemInstance())
-		// {
-		// 	UInvSys_InventoryControllerComponent* PlayerInvComp = UInvSys_InventorySystemLibrary::GetPlayerInventoryComponent(GetWorld());
-		// 	if (PlayerInvComp)
-		// 	{
-		// 		// bug 在 1x2 大小的物品替换 两个 1x1 大小的物品时会报错
-		// 		//checkNoEntry();
-		// 		// UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Error, TEXT("位置已经被其他物品占领，物品已被丢弃至世界"))
-		// 		// PlayerInvComp->Server_DropItemInstanceToWorld(InItemInstance);
-		// 		return;
-		// 	}
-		// }
+		GridItemWidget->AddItemInstance(InItemInstance);
 	}
 }
 

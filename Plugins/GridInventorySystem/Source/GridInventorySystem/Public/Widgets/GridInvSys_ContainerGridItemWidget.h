@@ -3,22 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Blueprint/UserWidget.h"
 #include "GridInvSys_CommonType.h"
 #include "GameFramework/GameplayMessageSubsystem.h"
-#include "Widgets/InvSys_InventoryWidget.h"
 #include "GridInvSys_ContainerGridItemWidget.generated.h"
 
 class UInvSys_InventoryItemInstance;
-struct FGridInvSys_InventoryItem;
-class UGridPanel;
 class UGridInvSys_ContainerGridWidget;
-class UGridInvSys_InventoryComponent;
-class UGridInvSys_DragDropWidget;
-class USizeBox;
-class UInvSys_InventoryItemInfo;
-/**
- * 
- */
+
 UCLASS()
 class GRIDINVENTORYSYSTEM_API UGridInvSys_ContainerGridItemWidget : public UUserWidget
 {
@@ -94,14 +86,11 @@ private:
 	FIntPoint CalculateGridItemSize(UInvSys_InventoryItemInstance* InItemInstance) const;
 
 protected:
-	/*UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item", meta = (BindWidget))
-	TObjectPtr<UGridInvSys_DragDropWidget> DragDropWidget;*/
-
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item", meta = (BindWidget))
 	TObjectPtr<UNamedSlot> ItemSlot;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item", meta = (BindWidget))
-	TObjectPtr<USizeBox> SizeBox;
+	TObjectPtr<class USizeBox> SizeBox;
 	
 	UPROPERTY()
 	TObjectPtr<UGridInvSys_ContainerGridWidget> ContainerGridWidget;
@@ -116,7 +105,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item")
 	FIntPoint GridItemSize = FIntPoint(1, 1);
 
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item")
+	UPROPERTY(BlueprintReadOnly, Transient, Category = "Inventory Grid Item")
 	TWeakObjectPtr<UInvSys_InventoryItemInstance> ItemInstance;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Grid Item")

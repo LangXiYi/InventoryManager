@@ -3,8 +3,6 @@
 
 #include "Components/InventoryObject/Fragment/InvSys_BaseInventoryFragment.h"
 
-#include "BaseInventorySystem.h"
-#include "Components/InventoryObject/InvSys_BaseInventoryObject.h"
 #include "Components/InvSys_InventoryComponent.h"
 #include "Engine/ActorChannel.h"
 #include "Net/UnrealNetwork.h"
@@ -22,22 +20,6 @@ UInvSys_BaseInventoryFragment::UInvSys_BaseInventoryFragment()
 	}
 }
 
-void UInvSys_BaseInventoryFragment::InitInventoryFragment(/*UInvSys_BaseInventoryObject* InvObj,*/ UObject* PreEditFragment)
-{
-	// if (InventoryComponent)
-	// {
-	// 	InventoryObject = InventoryComponent->FindInventoryObject<UInvSys_BaseInventoryObject>(InventoryObjectTag);
-	// }
-	// check(InvObj)
-	// InventoryObject = InvObj;
-
-	// COPY_INVENTORY_FRAGMENT_PROPERTY(UInvSys_BaseInventoryFragment, Priority);
-}
-
-void UInvSys_BaseInventoryFragment::RefreshInventoryFragment()
-{
-}
-
 bool UInvSys_BaseInventoryFragment::ReplicateSubobjects(
 	UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags)
 {
@@ -45,26 +27,22 @@ bool UInvSys_BaseInventoryFragment::ReplicateSubobjects(
 	return false;
 }
 
+void UInvSys_BaseInventoryFragment::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	UObject::GetLifetimeReplicatedProps(OutLifetimeProps);
+	// DOREPLIFETIME(UInvSys_BaseInventoryFragment, InventoryObjectTag);
+}
+
 bool UInvSys_BaseInventoryFragment::HasAuthority() const
 {
-	AActor* MyOwner = GetOwner();
-	check(MyOwner);
-	if (MyOwner)
-	{
-		return MyOwner->HasAuthority();
-	}
-	return false;
+	check(Owner_Private);
+	return Owner_Private->HasAuthority();
 }
 
 ENetMode UInvSys_BaseInventoryFragment::GetNetMode() const
 {
-	AActor* MyOwner = GetOwner();
-	check(MyOwner);
-	if (MyOwner)
-	{
-		return MyOwner->GetNetMode();
-	}
-	return ENetMode::NM_Standalone;
+	check(Owner_Private);
+	return Owner_Private->GetNetMode();
 }
 
 AActor* UInvSys_BaseInventoryFragment::GetOwner() const
@@ -89,11 +67,4 @@ UInvSys_BaseInventoryObject* UInvSys_BaseInventoryFragment::GetInventoryObject()
 {
 	check(InventoryObject)
 	return InventoryObject;
-}
-
-void UInvSys_BaseInventoryFragment::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	UObject::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME_CONDITION(UInvSys_BaseInventoryFragment, InventoryObjectTag, COND_None);
 }

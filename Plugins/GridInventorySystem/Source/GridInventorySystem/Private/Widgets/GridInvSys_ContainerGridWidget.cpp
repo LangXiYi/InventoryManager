@@ -3,31 +3,23 @@
 
 #include "Widgets/GridInvSys_ContainerGridWidget.h"
 
+#include "Components/SizeBox.h"
 #include "BaseInventorySystem.h"
-#include "GridInvSys_CommonType.h"
+#include "Widgets/Notifications/SNotificationList.h"
+#include "Framework/Notifications/NotificationManager.h"
 #include "GridInvSys_InventorySystemConfig.h"
 #include "Blueprint/DragDropOperation.h"
-#include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/GridInvSys_GridInventoryControllerComponent.h"
 #include "Components/GridInvSys_InventoryComponent.h"
-#include "Components/GridPanel.h"
-#include "Components/SizeBox.h"
-#include "Components/UniformGridPanel.h"
-#include "Data/GridInvSys_InventoryItemInfo.h"
 #include "Data/GridInvSys_InventoryItemInstance.h"
 #include "Data/InvSys_ItemFragment_DragDrop.h"
 #include "Data/GridInvSys_ItemFragment_GridItemSize.h"
-#include "Framework/Notifications/NotificationManager.h"
 #include "Interface/GridInvSys_DraggingItemInterface.h"
 #include "Library/GridInvSys_CommonFunctionLibrary.h"
 #include "Library/InvSys_InventorySystemLibrary.h"
 #include "Widgets/GridInvSys_ContainerGridItemWidget.h"
-#include "Widgets/GridInvSys_ContainerGridLayoutWidget.h"
-#include "Widgets/GridInvSys_DragItemWidget.h"
-#include "Widgets/Notifications/SNotificationList.h"
-
 
 void UGridInvSys_ContainerGridWidget::FindContainerGridItems(TArray<UGridInvSys_ContainerGridItemWidget*>& OutArray,
                                                              FIntPoint Position, FIntPoint ItemSize, const TSet<UGridInvSys_ContainerGridItemWidget*>& Ignores)
@@ -143,8 +135,8 @@ bool UGridInvSys_ContainerGridWidget::IsInContainer(FIntPoint TargetPos, FIntPoi
 	return IsInRange(TargetPos, TargetSize, FIntPoint(0, 0), ContainerGridSize);
 }
 
-void UGridInvSys_ContainerGridWidget::TryDropItemInstance_FreeSpace(UInvSys_InventoryItemInstance* ItemInstance,
-	FGridInvSys_ItemPosition DropPosition)
+void UGridInvSys_ContainerGridWidget::TryDropItemInstance_FreeSpace(
+	UInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& DropPosition)
 {
 	UGridInvSys_GridInventoryControllerComponent* PlayerInvComp =
 	UInvSys_InventorySystemLibrary::GetPlayerInventoryComponent<UGridInvSys_GridInventoryControllerComponent>(GetWorld());
@@ -153,8 +145,8 @@ void UGridInvSys_ContainerGridWidget::TryDropItemInstance_FreeSpace(UInvSys_Inve
 	PlayerInvComp->Server_TryDropItemInstance(InventoryComponent.Get(), ItemInstance, DropPosition);
 }
 
-void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeEqual(UInvSys_InventoryItemInstance* ItemInstance,
-	FGridInvSys_ItemPosition DropPosition)
+void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeEqual(
+	UInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& DropPosition)
 {
 	UGridInvSys_GridInventoryControllerComponent* PlayerInvComp =
 	UInvSys_InventorySystemLibrary::GetPlayerInventoryComponent<UGridInvSys_GridInventoryControllerComponent>(GetWorld());
@@ -173,7 +165,7 @@ void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeEqual(UInvSys_Inve
 }
 
 void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeGreaterThan_ComponentNotEqual(
-	UInvSys_InventoryItemInstance* ItemInstance, FGridInvSys_ItemPosition DropPosition)
+	UInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& DropPosition)
 {
 	UGridInvSys_GridInventoryControllerComponent* PlayerInvComp =
 	UInvSys_InventorySystemLibrary::GetPlayerInventoryComponent<UGridInvSys_GridInventoryControllerComponent>(GetWorld());
@@ -220,7 +212,7 @@ void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeGreaterThan_Compon
 }
 
 void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeGreaterThan_ComponentEqual(
-	UInvSys_InventoryItemInstance* ItemInstance, FGridInvSys_ItemPosition DropPosition)
+	UInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& DropPosition)
 {
 	UGridInvSys_GridInventoryControllerComponent* PlayerInvComp =
 	UInvSys_InventorySystemLibrary::GetPlayerInventoryComponent<UGridInvSys_GridInventoryControllerComponent>(GetWorld());
@@ -282,8 +274,8 @@ void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeGreaterThan_Compon
 	// PlayerInvComp->Server_TryDropItemInstance(InventoryComponent.Get(), ItemInstance, DropPosition);
 }
 
-void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeLessThan(UInvSys_InventoryItemInstance* ItemInstance,
-	FGridInvSys_ItemPosition DropPosition)
+void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeLessThan(
+	UInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& DropPosition)
 {
 	UGridInvSys_GridInventoryControllerComponent* PlayerInvComp =
 	UInvSys_InventorySystemLibrary::GetPlayerInventoryComponent<UGridInvSys_GridInventoryControllerComponent>(GetWorld());
@@ -405,7 +397,7 @@ EGridInvSys_DropType UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer
 	 * 物品实例不在当前容器内 & 物品实例的大小 >= 占据目标位置的物品的大小
 	 */
 
-	if (GridInvComp != this->GetInventoryComponent() || GridItemInstance->GetSlotTag() != this->GetSlotTag())
+	if (GridInvComp != this->GetInventoryComponent() || GridItemInstance->GetInventoryObjectTag() != this->GetSlotTag())
 	{
 		if (TargetItemSize.X >= ToTargetItemSize.X &&
 			TargetItemSize.Y >= ToTargetItemSize.Y)
@@ -638,7 +630,7 @@ void UGridInvSys_ContainerGridWidget::ResetDragDropData()
 }
 
 // 优化传入参数：ItemInstance、FromContainer、ToPosition
-bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(UInvSys_InventoryItemInstance* ItemInstance, FGridInvSys_ItemPosition DropPosition)
+bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(UInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& DropPosition)
 {
 	EGridInvSys_DropType DropType = IsCanDropItemFromContainer(ItemInstance, DropPosition.Position, DropPosition.Direction);
 	switch (DropType)
