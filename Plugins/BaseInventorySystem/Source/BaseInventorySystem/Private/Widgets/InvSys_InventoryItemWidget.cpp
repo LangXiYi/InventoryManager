@@ -44,7 +44,7 @@ void UInvSys_InventoryItemWidget::NativeOnDragDetected(const FGeometry& InGeomet
 		return;
 	}
 	auto DragDropFragment = ItemInstance->FindFragmentByClass<UInvSys_ItemFragment_DragDrop>();
-	if (DragDropFragment && bIsWaitingServerResponse == false)
+	if (DragDropFragment)
 	{
 		// 获取当前玩家的库存组件
 		UInvSys_DraggingItemWidget* DraggingWidget = CreateWidget<UInvSys_DraggingItemWidget>(this, DragDropFragment->DraggingWidgetClass);
@@ -54,9 +54,6 @@ void UInvSys_InventoryItemWidget::NativeOnDragDetected(const FGeometry& InGeomet
 		{
 			return;
 		}
-		/** 等待服务器响应用户拖拽事件 */
-		bIsWaitingServerResponse = true;
-
 		DraggingWidget->ItemInstance = ItemInstance.Get();
 
 		UDragDropOperation* DragDropOperation = NewObject<UDragDropOperation>(GetOwningPlayer(), DragDropFragment->DragDropOperationClass);
@@ -78,7 +75,6 @@ void UInvSys_InventoryItemWidget::NativeOnDragCancelled(const FDragDropEvent& In
 	if (PlayerInvComp)
 	{
 		UE_LOG(LogInventorySystem, Warning, TEXT("Cancel Drag"))
-		bIsWaitingServerResponse = false;
 		PlayerInvComp->Server_CancelDragItemInstance(ItemInstance.Get());
 	}
 }

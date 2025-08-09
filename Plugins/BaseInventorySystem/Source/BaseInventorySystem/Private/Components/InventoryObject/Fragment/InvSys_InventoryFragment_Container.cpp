@@ -55,7 +55,8 @@ void UInvSys_InventoryFragment_Container::InitInventoryFragment(UObject* PreEdit
 void UInvSys_InventoryFragment_Container::RefreshInventoryFragment()
 {
 	Super::RefreshInventoryFragment();
-	TArray<UInvSys_InventoryItemInstance*> AllItems = ContainerList.GetAllItems();
+	TArray<UInvSys_InventoryItemInstance*> AllItems;
+	ContainerList.GetAllItems(AllItems);
 	Debug_PrintContainerAllItems();
 	if (AllItems.Num() > 0)
 	{
@@ -94,24 +95,18 @@ void UInvSys_InventoryFragment_Container::RemoveAllItemInstance()
 
 bool UInvSys_InventoryFragment_Container::RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
 {
-	bool bIsSuccess = false;
-	check(InItemInstance)
-	if (InItemInstance)
+	if (ContainerList.RemoveEntry(InItemInstance))
 	{
-		bIsSuccess = ContainerList.RemoveEntry(InItemInstance);
-		if (bIsSuccess)
-		{
-			MarkContainerDirty();
-		}
+		MarkContainerDirty();
+		return true;
 	}
-	UE_CLOG(bIsSuccess == false, LogInventorySystem, Warning, TEXT("RemoveItemInstance Falied, 物品实例在容器内不存在."))
-	return bIsSuccess;
+	return false;
 }
 
 bool UInvSys_InventoryFragment_Container::UpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance,
 	int32 NewStackCount)
 {
-	MarkItemInstanceDirty(ItemInstance);
+	// MarkItemInstanceDirty(ItemInstance);
 	return false;
 }
 
@@ -120,9 +115,9 @@ bool UInvSys_InventoryFragment_Container::ContainsItem(UInvSys_InventoryItemInst
 	return ContainerList.Contains(ItemInstance);
 }
 
-TArray<UInvSys_InventoryItemInstance*> UInvSys_InventoryFragment_Container::GetAllItemInstance()
+void UInvSys_InventoryFragment_Container::GetAllItemInstance(TArray<UInvSys_InventoryItemInstance*>& OutArray)
 {
-	return ContainerList.GetAllItems<UInvSys_InventoryItemInstance>();
+	ContainerList.GetAllItems<UInvSys_InventoryItemInstance>(OutArray);
 }
 
 void UInvSys_InventoryFragment_Container::MarkItemInstanceDirty(UInvSys_InventoryItemInstance* ItemInstance)
@@ -130,12 +125,21 @@ void UInvSys_InventoryFragment_Container::MarkItemInstanceDirty(UInvSys_Inventor
 	// UE_LOG(LogInventorySystem, Warning, TEXT("Mark Item Instance Dirty......"))
 	if (ItemInstance)
 	{
-		FInvSys_ContainerEntry& ContainerEntry = ItemInstance->GetContainerEntryRef();
-		check(ContainerEntry.IsValid())
-		if (ContainerEntry.IsValid())
+		int32 Index = ContainerList.FindEntryIndex(ItemInstance);
+		if (ContainerList.Entries.IsValidIndex(Index))
 		{
-			ContainerList.MarkItemDirty(ContainerEntry);
-			MarkContainerDirty();
+			FInvSys_ContainerEntry& ContainerEntry = ContainerList.Entries[Index];
+			if (ContainerEntry.IsValid())
+			{
+				ContainerList.MarkItemDirty(ContainerEntry);
+				UE_LOG(LogInventorySystem, Error, TEXT("标记物品实例 %s 为脏"), *ItemInstance->GetName())
+				MarkContainerDirty();
+			}
+		}
+		else
+		{
+			UE_LOG(LogInventorySystem, Error, TEXT("标记物品实例为脏失败，目标%s的Entry有效性为FALSE"),
+				*ItemInstance->GetItemDisplayName().ToString())
 		}
 	}
 }
@@ -187,13 +191,15 @@ bool UInvSys_InventoryFragment_Container::ReplicateSubobjects(UActorChannel* Cha
 	 */
 	if (KeyNeedsToReplicate(0, ContainerList.ArrayReplicationKey)) // 容器内成员从下标 1 开始标记，所以数组本身可以直接使用 0 
 	{
+		UE_LOG(LogInventorySystem, Log, TEXT("%s::%s --> Container Size = %d"),
+			*GetOwner()->GetName(), *InventoryObjectTag.ToString(), ContainerList.Entries.Num())
 		for (const FInvSys_ContainerEntry& Entry : ContainerList.Entries)
 		{
 			if (KeyNeedsToReplicate(Entry.ReplicationID, Entry.ReplicationKey))
 			{
-				// UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
-				// 	TEXT("[%s:%s] %s 的属性发生变化，正在同步至客户端。"), *GetOwner()->GetName(), *InventoryObjectTag.ToString(),
-				// 	*Entry.Instance->GetItemDisplayName().ToString())
+				UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
+					TEXT("[%s:%s] %s:%s 的属性发生变化，正在同步至客户端。"), *GetOwner()->GetName(),
+					*InventoryObjectTag.ToString(), *Entry.Instance->GetItemDisplayName().ToString(), *Entry.Instance.GetName())
 				if (Entry.Instance && IsValid(Entry.Instance))
 				{
 					// 同步所有需要同步的数据
@@ -207,7 +213,8 @@ bool UInvSys_InventoryFragment_Container::ReplicateSubobjects(UActorChannel* Cha
 
 void UInvSys_InventoryFragment_Container::Debug_PrintContainerAllItems()
 {
-	TArray<UInvSys_InventoryItemInstance*> AllItems = GetAllItemInstance();
+	TArray<UInvSys_InventoryItemInstance*> AllItems;
+	GetAllItemInstance(AllItems);
 
 	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
 		TEXT("= BEG =========================================================================="))

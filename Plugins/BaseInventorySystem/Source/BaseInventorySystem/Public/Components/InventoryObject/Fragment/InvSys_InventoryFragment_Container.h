@@ -63,7 +63,7 @@ public:
 	{
 		if (ItemInstance == nullptr) return false;
 		//执行可变参数模板，将参数列表中的值赋予目标对象。
-		int32 Arr[] = {0, (InitItemInstanceProps<T>(ItemInstance, Args), 0)...};
+		int32 Arr[] = {0, (InitItemInstanceProps<T>(ItemInstance, Args, true), 0)...};
 		MarkItemInstanceDirty(ItemInstance);
 		return true;
 	}
@@ -78,7 +78,8 @@ public:
 
 	virtual bool ContainsItem(UInvSys_InventoryItemInstance* ItemInstance) const;
 
-	TArray<UInvSys_InventoryItemInstance*> GetAllItemInstance();
+	UFUNCTION(BlueprintCallable)
+	void GetAllItemInstance(TArray<UInvSys_InventoryItemInstance*>& OutArray);
 
 	void MarkItemInstanceDirty(UInvSys_InventoryItemInstance* ItemInstance);
 
@@ -103,11 +104,11 @@ private:
 	void Debug_PrintContainerAllItems();
 
 	template<class C, class V>
-	void InitItemInstanceProps(UInvSys_InventoryItemInstance* ItemInstance, const V& Value)
+	void InitItemInstanceProps(UInvSys_InventoryItemInstance* ItemInstance, const V& Value, bool bIsBroadcast = true)
 	{
 		if (ItemInstance != nullptr && ItemInstance->IsA<C>())
 		{
-			((C*)ItemInstance)->InitItemInstanceProps(Value);	// ItemInstance 需要创建对应的函数处理该值
+			((C*)ItemInstance)->InitItemInstanceProps(Value, bIsBroadcast);	// ItemInstance 需要创建对应的函数处理该值
 		}
 	}
 

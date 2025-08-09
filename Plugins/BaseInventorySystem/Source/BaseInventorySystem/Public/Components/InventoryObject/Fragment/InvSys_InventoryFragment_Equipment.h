@@ -80,7 +80,7 @@ protected:
 	TObjectPtr<UInvSys_InventoryItemInstance> ItemInstance;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Fragment")
-	TObjectPtr<UInvSys_InventoryItemInstance> LastItemInstance;
+	TWeakObjectPtr<UInvSys_InventoryItemInstance> LastItemInstance;
 
 	UFUNCTION()
 	void OnRep_ItemInstance();

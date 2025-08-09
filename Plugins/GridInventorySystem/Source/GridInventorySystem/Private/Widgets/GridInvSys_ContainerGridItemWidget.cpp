@@ -181,7 +181,12 @@ void UGridInvSys_ContainerGridItemWidget::NativePreConstruct()
 	Super::NativePreConstruct();
 	if (IsDesignTime())
 	{
-		NativeConstruct();
+		const int32 ItemDrawSize = GetDefault<UGridInvSys_InventorySystemConfig>()->ItemDrawSize;
+		if (SizeBox)
+		{
+			SizeBox->SetWidthOverride(ItemDrawSize);
+			SizeBox->SetHeightOverride(ItemDrawSize);
+		}
 
 		if (SizeBox != GetRootWidget())
 		{
@@ -205,32 +210,29 @@ void UGridInvSys_ContainerGridItemWidget::NativeConstruct()
 
 	auto WarpDragItemFunc = [this](FGameplayTag Tag, const FInvSys_DragItemInstanceMessage& Message)
 	{
-		if (Message.ItemInstance != nullptr && Message.ItemInstance == ItemInstance)
+		check(Message.ItemInstance)
+		if (Message.ItemInstance == ItemInstance)
 		{
-			if (Message.bIsDraggingItem == true)
-			{
-				bIsOccupied = false;
-				TArray<UGridInvSys_ContainerGridItemWidget*> OutArray;
-				ContainerGridWidget->GetContainerGridItems<UGridInvSys_ContainerGridItemWidget>(OutArray, GetPosition(), GridItemSize, {this});
-				for (UGridInvSys_ContainerGridItemWidget* GridItemWidget : OutArray)
-				{
-					GridItemWidget->bIsOccupied = false;
-				}
-			}
-			else
-			{
-				bIsOccupied = true;
-				TArray<UGridInvSys_ContainerGridItemWidget*> OutArray;
-				ContainerGridWidget->GetContainerGridItems<UGridInvSys_ContainerGridItemWidget>(OutArray, GetPosition(), GridItemSize, {this});
-				for (UGridInvSys_ContainerGridItemWidget* GridItemWidget : OutArray)
-				{
-					GridItemWidget->bIsOccupied = true;
-				}
-			}
+			bIsOccupied = !Message.bIsDraggingItem;
+		}
+	};
+
+	auto WarpRemoveItemFunc = [this](FGameplayTag Tag, const FInvSys_InventoryItemChangedMessage& Message)
+	{
+		check(Message.ItemInstance)
+		if (Message.ItemInstance == ItemInstance)
+		{
+			ItemInstance = nullptr;
+			GridItemSize = FIntPoint(1, 1);
+			bIsOccupied = false;
+			OriginGridItemWidget = this;
 		}
 	};
 
 	UGameplayMessageSubsystem& GameplayMessageSubsystem = UGameplayMessageSubsystem::Get(GetWorld());
 	DragItemListenerHandle = GameplayMessageSubsystem.RegisterListener<FInvSys_DragItemInstanceMessage>(
 		Inventory_Message_DragItem, WarpDragItemFunc);
+
+	// GameplayMessageSubsystem.RegisterListener<FInvSys_InventoryItemChangedMessage>(
+	// 	Inventory_Message_RemoveItem, WarpRemoveItemFunc);
 }

@@ -178,7 +178,7 @@ public:
 	 * 那么你就必须在你的类中定义一个与该属性类型一致的 InitItemInstanceProps 函数。
 	 * 注意：多个相同类型的该函数，只会调用第一个函数
 	 */
-	// void InitItemInstanceProps(const int32& Data) {}
+	// void InitItemInstanceProps(const int32& Data, bool bIsBroadcast) {}
 
 	/**
 	 * 对于所有需要在 OnRep 函数中执行的逻辑都推荐转移至该函数！
@@ -250,11 +250,6 @@ public:
 		return SlotTag;
 	}
 	
-	FInvSys_ContainerEntry& GetContainerEntryRef() const
-	{
-		return *Entry_Private;
-	}
-
 	EInvSys_ReplicateState GetReplicateState() const
 	{
 		return ReplicateState;
@@ -317,6 +312,5 @@ protected:
 	bool bIsReadyReplicatedProperties = false;
 
 private:
-	FInvSys_ContainerEntry* Entry_Private = nullptr; // 其在FastArray中的值
 	EInvSys_ReplicateState ReplicateState = EInvSys_ReplicateState::None; // 操作标记，供客户端使用
 };

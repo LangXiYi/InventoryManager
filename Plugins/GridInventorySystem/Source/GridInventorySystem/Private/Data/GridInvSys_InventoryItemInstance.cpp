@@ -12,6 +12,7 @@ void UGridInvSys_InventoryItemInstance::PostReplicatedChange()
 {
 	Super::PostReplicatedChange();
 
+	UE_LOG(LogInventorySystem, Error, TEXT("Post Replicated Change %s"), bWaitPostRepNotify_ItemPosition ? TEXT("TRUE"):TEXT("FALSE"))
 	if (bWaitPostRepNotify_ItemPosition)
 	{
 		bWaitPostRepNotify_ItemPosition = false;
@@ -26,10 +27,10 @@ void UGridInvSys_InventoryItemInstance::GetLifetimeReplicatedProps(TArray<FLifet
 	DOREPLIFETIME(UGridInvSys_InventoryItemInstance, ItemPosition);
 }
 
-void UGridInvSys_InventoryItemInstance::InitItemInstanceProps(const FGridInvSys_ItemPosition& NewItemPosition)
+void UGridInvSys_InventoryItemInstance::InitItemInstanceProps(const FGridInvSys_ItemPosition& NewItemPosition, bool bIsBroadcast)
 {
 	// 初始化物品实例时 LastItemPosition 与当前位置一致，直到下次更新
-	SetItemPosition(NewItemPosition);
+	SetItemPosition(NewItemPosition, bIsBroadcast);
 }
 
 void UGridInvSys_InventoryItemInstance::RemoveFromInventory()
@@ -39,11 +40,17 @@ void UGridInvSys_InventoryItemInstance::RemoveFromInventory()
 	// SetItemPosition(FGridInvSys_ItemPosition());
 }
 
-void UGridInvSys_InventoryItemInstance::SetItemPosition(const FGridInvSys_ItemPosition& NewItemPosition)
+void UGridInvSys_InventoryItemInstance::SetItemPosition(const FGridInvSys_ItemPosition& NewItemPosition, bool bIsBroadcast)
 {
 	LastItemPosition = ItemPosition;
 	ItemPosition = NewItemPosition;
-	BroadcastItemPositionChangeMessage(LastItemPosition, ItemPosition);
+	UE_LOG(LogInventorySystem, Warning, TEXT("%s::%hs: %s %s ---> %s"),
+		*GPlayInEditorContextString, __FUNCTION__, *GetName(), *LastItemPosition.ToString(), *ItemPosition.ToString())
+
+	if (bIsBroadcast)
+	{
+		BroadcastItemPositionChangeMessage(LastItemPosition, ItemPosition);
+	}
 	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
 	{
 		OnRep_ItemPosition(LastItemPosition);
@@ -104,6 +111,9 @@ void UGridInvSys_InventoryItemInstance::BroadcastItemPositionChangeMessage(const
 void UGridInvSys_InventoryItemInstance::OnRep_ItemPosition(const FGridInvSys_ItemPosition& OldItemPosition)
 {
 	LastItemPosition = OldItemPosition;
+	// UE_LOG(LogInventorySystem, Warning, TEXT("%s::%hs: %s %s ---> %s"),
+	// 	*GPlayInEditorContextString, __FUNCTION__, *GetItemDisplayName().ToString(), *LastItemPosition.ToString(), *ItemPosition.ToString())
+	UE_LOG(LogInventorySystem, Error, TEXT("OnRep--->%s"), *GetName())
 	if (GetReplicateState() == EInvSys_ReplicateState::PostChange)
 	{
 		bWaitPostRepNotify_ItemPosition = true;

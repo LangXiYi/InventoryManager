@@ -17,6 +17,16 @@ UInvSys_InventoryControllerComponent::UInvSys_InventoryControllerComponent(const
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
+void UInvSys_InventoryControllerComponent::SetDraggingItemInstance(UInvSys_InventoryItemInstance* NewDragItemInstance)
+{
+	auto LastDragItemInstance = DraggingItemInstance;
+	DraggingItemInstance = NewDragItemInstance;
+	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
+	{
+		OnRep_DraggingItemInstance(LastDragItemInstance);
+	}
+}
+
 void UInvSys_InventoryControllerComponent::Server_DragAndRemoveItemInstance_Implementation(
 	UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance)
 {
@@ -26,7 +36,10 @@ void UInvSys_InventoryControllerComponent::Server_DragAndRemoveItemInstance_Impl
 	if (InvComp && InItemInstance)
 	{
 		bIsSuccessDragItem = InvComp->DragAndRemoveItemInstance(InItemInstance);
-		DraggingItemInstance = bIsSuccessDragItem ? InItemInstance : nullptr;
+		if (bIsSuccessDragItem)
+		{
+			SetDraggingItemInstance(InItemInstance);
+		}
 	}
 	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG && bIsSuccessDragItem == false, LogInventorySystem, Warning,
 		TEXT("尝试拽起物品实例失败！！"))
@@ -42,7 +55,7 @@ void UInvSys_InventoryControllerComponent::Server_CancelDragItemInstance_Impleme
 		if (InvComp)
 		{
 			InvComp->CancelDragItemInstance(InItemInstance);
-			DraggingItemInstance = nullptr;
+			SetDraggingItemInstance(nullptr);
 		}
 	}
 }
@@ -53,11 +66,17 @@ void UInvSys_InventoryControllerComponent::GetLifetimeReplicatedProps(TArray<FLi
 	DOREPLIFETIME_CONDITION(UInvSys_InventoryControllerComponent, DraggingItemInstance, COND_OwnerOnly);
 }
 
-void UInvSys_InventoryControllerComponent::OnRep_DraggingItemInstance()
+void UInvSys_InventoryControllerComponent::OnRep_DraggingItemInstance(const TWeakObjectPtr<UInvSys_InventoryItemInstance>& OldDraggingItemInstance)
 {
 	FInvSys_DragItemInstanceMessage DragItemInstanceMessage;
 	DragItemInstanceMessage.ItemInstance = DraggingItemInstance.Get();
-	DragItemInstanceMessage.bIsDraggingItem = DraggingItemInstance.IsValid();
+	DragItemInstanceMessage.bIsDraggingItem = true;
+	if (DragItemInstanceMessage.ItemInstance == nullptr)
+	{
+		DragItemInstanceMessage.ItemInstance = OldDraggingItemInstance.Get();
+		DragItemInstanceMessage.bIsDraggingItem = false;
+		check(DragItemInstanceMessage.ItemInstance)
+	}
 
 	UGameplayMessageSubsystem& GameplayMessageSubsystem = UGameplayMessageSubsystem::Get(GetWorld());
 	GameplayMessageSubsystem.BroadcastMessage(Inventory_Message_DragItem, DragItemInstanceMessage);
@@ -184,7 +203,9 @@ void UInvSys_InventoryControllerComponent::Server_DragItemInstance_Implementatio
 		UE_LOG(LogInventorySystem, Error, TEXT("%hs Failed, ItemInstance is nullptr."), __FUNCTION__)
 		return;
 	}
-	bool bDragItemInstance = InvComp->DragItemInstance(InItemInstance);
-	DraggingItemInstance = bDragItemInstance ? InItemInstance : nullptr;
+	if (InvComp->DragItemInstance(InItemInstance))
+	{
+		SetDraggingItemInstance(InItemInstance);
+	}
 }
 

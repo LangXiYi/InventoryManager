@@ -41,11 +41,11 @@ public:
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	void InitItemInstanceProps(const FGridInvSys_ItemPosition& NewItemPosition);
+	void InitItemInstanceProps(const FGridInvSys_ItemPosition& NewItemPosition, bool bIsBroadcast);
 
 	virtual void RemoveFromInventory() override;
 	
-	void SetItemPosition(const FGridInvSys_ItemPosition& NewItemPosition);
+	void SetItemPosition(const FGridInvSys_ItemPosition& NewItemPosition, bool bIsBroadcast = true);
 
 	FGridInvSys_ItemPosition GetItemPosition() const
 	{

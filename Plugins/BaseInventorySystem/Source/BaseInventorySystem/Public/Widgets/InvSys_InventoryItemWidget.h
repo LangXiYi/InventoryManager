@@ -48,8 +48,6 @@ protected:
 	TWeakObjectPtr<UInvSys_InventoryItemInstance> ItemInstance;
 
 private:
-	bool bIsWaitingServerResponse = false;
-
 	bool bIsEnableDragItem = true;
 
 	FTimerHandle ServerTimeoutHandle;

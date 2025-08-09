@@ -31,6 +31,8 @@ public:
 	// Sets default values for this component's properties
 	UInvSys_InventoryComponent(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
 	/** 构建库存对象列表，推荐在BeginPlay阶段就调用该函数 */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
 	virtual void ConstructInventoryObjects();
@@ -80,7 +82,7 @@ public:
 		return nullptr;
 	}
 
-	bool RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
+	bool RemoveItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
 	bool RestoreItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
 
 	template<class T, class... Arg>
@@ -125,7 +127,7 @@ public:
 			{
 				UpdateItemInstanceDragState(InItemInstance, SlotTag, false); 
 				bIsSuccess = UpdateItemInstance<T>(InItemInstance, SlotTag, Args...);
-				UE_CLOG(bIsSuccess == false, LogInventorySystem, Error, TEXT("%hs Falied, 更新物品属性失败")， __FUNCTION__)
+				UE_CLOG(bIsSuccess == false, LogInventorySystem, Error, TEXT("DropItemInstance Falied, 更新物品属性失败"))
 			}
 			else
 			{
@@ -134,11 +136,11 @@ public:
 					// InItemInstance->SetIsDraggingItem(false);
 					T* NewItemInstance = AddItemInstance<T>(InItemInstance, SlotTag, Args...);
 					bIsSuccess = NewItemInstance != nullptr;
-					UE_CLOG(bIsSuccess == false, LogInventorySystem, Error, TEXT("%hs Falied, 移除重新添加物品失败")， __FUNCTION__)
+					UE_CLOG(bIsSuccess == false, LogInventorySystem, Error, TEXT("DropItemInstance Falied, 移除重新添加物品失败"))
 				}
 			}
 		}
-		UE_CLOG(bIsSuccess == false, LogInventorySystem, Error, TEXT("%hs Falied, 物品实例为空")， __FUNCTION__)
+		UE_CLOG(bIsSuccess == false, LogInventorySystem, Error, TEXT("DropItemInstance Falied, 物品实例为空"))
 		return bIsSuccess;
 	}
 

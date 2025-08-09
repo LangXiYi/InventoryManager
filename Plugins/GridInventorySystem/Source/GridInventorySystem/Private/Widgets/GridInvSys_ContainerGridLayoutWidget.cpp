@@ -32,7 +32,8 @@ void UGridInvSys_ContainerGridLayoutWidget::RefreshInventoryWidget(UInvSys_BaseI
 	if (ContainerFragment)
 	{
 		RemoveAllItemInstance();
-		TArray<UInvSys_InventoryItemInstance*> AllItemInstances = ContainerFragment->GetAllItemInstance();
+		TArray<UInvSys_InventoryItemInstance*> AllItemInstances;
+		ContainerFragment->GetAllItemInstance(AllItemInstances);
 
 		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
 			TEXT("刷新容器布局控件 --- { 容器标签 = %s, 当前物品数量 = %d }"),
@@ -65,12 +66,12 @@ void UGridInvSys_ContainerGridLayoutWidget::NativeConstruct()
 {
 	auto WarpItemPreRemoveFunc = [this](FGameplayTag Tag, const FInvSys_InventoryItemChangedMessage& Message)
 	{
-		// 属性复制发生在PreRemove之前！！！？？？
 		if (Message.InvComp == GetInventoryComponent() && Message.InventoryObjectTag == GetSlotTag())
 		{
-			UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(Message.ItemInstance);
-			// UE_LOG(LogInventorySystem, Warning, TEXT("%s:PreRemove -- Remove[%s] --> %s"),
+			// UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(Message.ItemInstance);
+			// UE_LOG(LogInventorySystem, Warning, TEXT("%s:%s PreRemove -- Remove[%s] --> %s"),
 			// 	GetOwningPlayer()->HasAuthority() ? TEXT("Server"):TEXT("Client"),
+			// 	*Message.InvComp->GetOwner()->GetName(),
 			// 	*Message.ItemInstance->GetItemDisplayName().ToString(),
 			// 	*GridItemInstance->GetItemPosition().ToString())
 			RemoveItemInstance(Message.ItemInstance);
@@ -81,9 +82,10 @@ void UGridInvSys_ContainerGridLayoutWidget::NativeConstruct()
 	{
 		if (Message.InvComp == GetInventoryComponent() && Message.InventoryObjectTag == GetSlotTag())
 		{
-			UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(Message.ItemInstance);
-			// UE_LOG(LogInventorySystem, Warning, TEXT("%s:PostAdd -- Added[%s] --> %s"),
-			// 	GetOwningPlayer()->HasAuthority() ? TEXT("Server"):TEXT("Client"),
+			// UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(Message.ItemInstance);
+			// UE_LOG(LogInventorySystem, Warning, TEXT("%s:%s PostAdd -- Added[%s] --> %s"),
+			// 	*GPlayInEditorContextString,
+			// 	*Message.ItemInstance->GetName(),
 			// 	*Message.ItemInstance->GetItemDisplayName().ToString(),
 			// 	*GridItemInstance->GetItemPosition().ToString())
 			AddItemInstance(Message.ItemInstance);
@@ -96,12 +98,18 @@ void UGridInvSys_ContainerGridLayoutWidget::NativeConstruct()
 		{
 			if (Message.OldPosition.IsValid() && Message.OldPosition.EquipSlotTag == GetSlotTag())
 			{
-				// UE_LOG(LogInventorySystem, Warning, TEXT("Changed -- Remove --> %s"), *Message.OldPosition.ToString())
+				// UE_LOG(LogInventorySystem, Warning, TEXT("%s:%s Changed -- Remove --> %s"),
+				// GetOwningPlayer()->HasAuthority() ? TEXT("Server"):TEXT("Client"),
+				// *Message.InventoryComponent->GetOwner()->GetName(),
+				// *Message.OldPosition.ToString())
 				RemoveItemInstanceFrom(Message.ItemInstance, Message.OldPosition);
 			}
 			if (Message.NewPosition.IsValid() && Message.NewPosition.EquipSlotTag == GetSlotTag())
 			{
-				// UE_LOG(LogInventorySystem, Warning, TEXT("Changed -- Added --> %s"), *Message.NewPosition.ToString())
+				// UE_LOG(LogInventorySystem, Warning, TEXT("%s:%s Changed -- Added --> %s"),
+				// 	GetOwningPlayer()->HasAuthority() ? TEXT("Server"):TEXT("Client"),
+				// 	*Message.InventoryComponent->GetOwner()->GetName(),
+				// 	*Message.NewPosition.ToString())
 				AddItemInstanceTo(Message.ItemInstance, Message.NewPosition);
 			}
 		}
@@ -117,7 +125,6 @@ void UGridInvSys_ContainerGridLayoutWidget::NativeConstruct()
 	
 	OnItemPositionChangedHandle = MessageSubsystem.RegisterListener<FGridInvSys_ItemPositionChangeMessage>(
 		Inventory_Message_ItemPositionChanged, MoveTemp(WarpItemPositionChangedFunc));
-
 
 	Super::NativeConstruct();
 }
@@ -174,7 +181,8 @@ void UGridInvSys_ContainerGridLayoutWidget::Debug_PrintContainerAllItems()
 	auto ContainerFragment = InventoryObject->FindInventoryFragment<UInvSys_InventoryFragment_Container>();
 	if (ContainerFragment)
 	{
-		TArray<UInvSys_InventoryItemInstance*> AllItemInstances = ContainerFragment->GetAllItemInstance();
+		TArray<UInvSys_InventoryItemInstance*> AllItemInstances;
+		ContainerFragment->GetAllItemInstance(AllItemInstances);
 		if (AllItemInstances.Num() > 0)
 		{
 			UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,

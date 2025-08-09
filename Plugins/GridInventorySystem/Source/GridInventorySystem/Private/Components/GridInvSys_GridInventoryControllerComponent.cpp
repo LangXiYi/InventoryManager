@@ -64,22 +64,23 @@ void UGridInvSys_GridInventoryControllerComponent::Server_SwapItemInstances_Impl
 	const TArray<UGridInvSys_InventoryItemInstance*>& TargetItemInstances,
 	const TArray<FGridInvSys_ItemPosition>& TargetPositions)
 {
-	check(TargetItemInstances.Num() == TargetPositions.Num())
+	if (TargetItemInstances.Num() != TargetPositions.Num())
+	{
+		checkf(false, TEXT("物品实例与位置信息数量不匹配，存在无效索引"))
+		return;
+	}
 	bool bIsSuccess = true;
 	UGridInvSys_InventoryComponent* LastInvComp = ItemInstance->GetInventoryComponent<UGridInvSys_InventoryComponent>();
 	check(LastInvComp)
 	if (LastInvComp)
 	{
-		UE_LOG(LogInventorySystem, Warning, TEXT("Server Remove Item %s"), *ItemInstance->GetItemPosition().ToString())
 		if (LastInvComp->RemoveItemInstance(ItemInstance))
 		{
 			for (int i = 0; i < TargetItemInstances.Num(); ++i)
 			{
-				if (TargetPositions.IsValidIndex(i) == false)
-				{
-					continue;
-				}
 				UInvSys_InventoryComponent* TempInvComp = TargetItemInstances[i]->GetInventoryComponent();
+				UE_LOG(LogInventorySystem, Log, TEXT("目标物品 %s 的所有者为--%s") ,
+					*TargetItemInstances[i]->GetItemDisplayName().ToString() ,*TempInvComp->GetOwner()->GetName());
 				if (LastInvComp->CheckItemPosition(TargetItemInstances[i], TargetPositions[i]))
 				{
 					// todo::是否需要添加额外的权限验证？
@@ -89,17 +90,8 @@ void UGridInvSys_GridInventoryControllerComponent::Server_SwapItemInstances_Impl
 						LastInvComp->AddItemInstance<UGridInvSys_InventoryItemInstance>(TargetItemInstances[i],
 							TargetPositions[i].EquipSlotTag, TargetPositions[i]);
 					}
-					else
-					{
-						UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, 无法移除 %s。"), __FUNCTION__, *TargetItemInstances[i]->GetItemDisplayName().ToString())
-					}
 				}
 			}
-		}
-		else
-		{
-			bIsSuccess = false;
-			UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, 无法移除 %s。"), __FUNCTION__, *ItemInstance->GetItemDisplayName().ToString())
 		}
 	}
 
@@ -204,13 +196,19 @@ void UGridInvSys_GridInventoryControllerComponent::Server_TryDropItemInstance_Im
 		return;
 	}
 
-	UGridInvSys_InventoryComponent* FromInvComp = InItemInstance->GetInventoryComponent<UGridInvSys_InventoryComponent>();
-	if (FromInvComp == GridInvComp && GridItemInstance->GetItemPosition() == InPos)
-	{
-		InvComp->CancelDragItemInstance(InItemInstance);
-	}
-	else if(GridInvComp->CheckItemPosition(InItemInstance, InPos))
+	// UGridInvSys_InventoryComponent* FromInvComp = InItemInstance->GetInventoryComponent<UGridInvSys_InventoryComponent>();
+	// if (FromInvComp == GridInvComp && GridItemInstance->GetItemPosition() == InPos)
+	// {
+	// 	SetDraggingItemInstance(nullptr);
+	// 	InvComp->CancelDragItemInstance(InItemInstance);
+	// }
+	if(GridInvComp->CheckItemPosition(InItemInstance, InPos))
 	{
 		DropItemInstance<UGridInvSys_InventoryItemInstance>(InvComp, InItemInstance, InPos.EquipSlotTag, InPos);
+	}
+	else
+	{
+		SetDraggingItemInstance(nullptr);
+		InvComp->CancelDragItemInstance(InItemInstance);
 	}
 }

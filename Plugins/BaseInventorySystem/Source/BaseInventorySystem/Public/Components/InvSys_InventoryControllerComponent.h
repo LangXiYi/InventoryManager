@@ -19,6 +19,8 @@ class BASEINVENTORYSYSTEM_API UInvSys_InventoryControllerComponent : public UCon
 public:
 	UInvSys_InventoryControllerComponent(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
+	void SetDraggingItemInstance(UInvSys_InventoryItemInstance* NewDragItemInstance);
+	
 	/**
 	 * RPC Functions
 	 **/
@@ -55,7 +57,7 @@ public:
 			return false;
 		}
 
-		DraggingItemInstance = nullptr;
+		SetDraggingItemInstance(nullptr);
 		return InvComp->DropItemInstance<T>(InItemInstance, SlotTag, Args...);
 	}
 
@@ -68,7 +70,7 @@ public:
 	{
 		if (DraggingItemInstance.IsValid() && DraggingItemInstance == InItemInstance && InvComp)
 		{
-			DraggingItemInstance = nullptr;
+			SetDraggingItemInstance(nullptr);
 			return InvComp->AddItemInstance<T>(InItemInstance, SlotTag, Args...);
 		}
 		return nullptr;
@@ -94,5 +96,5 @@ protected:
 	UPROPERTY(ReplicatedUsing = OnRep_DraggingItemInstance)
 	TWeakObjectPtr<UInvSys_InventoryItemInstance> DraggingItemInstance = nullptr;
 	UFUNCTION()
-	void OnRep_DraggingItemInstance();
+	void OnRep_DraggingItemInstance(const TWeakObjectPtr<UInvSys_InventoryItemInstance>& OldDraggingItemInstance);
 };

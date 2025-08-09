@@ -18,7 +18,7 @@ UGridInvSys_InventoryComponent::UGridInvSys_InventoryComponent()
 {
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
-	PrimaryComponentTick.bCanEverTick = false;
+	PrimaryComponentTick.bCanEverTick = true;
 	DefaultContainerPriority.Add(FGameplayTag::RequestGameplayTag("Inventory.Container.Backpack"));
 	DefaultContainerPriority.Add(FGameplayTag::RequestGameplayTag("Inventory.Container.ChestRig"));
 	DefaultContainerPriority.Add(FGameplayTag::RequestGameplayTag("Inventory.Container.Pocket"));
@@ -145,14 +145,23 @@ void UGridInvSys_InventoryComponent::UpdateItemInstancePosition(UInvSys_Inventor
 bool UGridInvSys_InventoryComponent::CheckItemPosition(UInvSys_InventoryItemInstance* ItemInstance,
 	const FGridInvSys_ItemPosition& NewPosition) const
 {
-	if (NewPosition.IsValid() && ItemInstance && ItemInstance->IsA<UGridInvSys_InventoryItemInstance>())
+	if (NewPosition.IsValid() == false)
+	{
+		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, 传入的位置信息无效."), __FUNCTION__)
+		return false;
+	}
+	if (ItemInstance && ItemInstance->IsA<UGridInvSys_InventoryItemInstance>())
 	{
 		auto ContainerFragment = FindInventoryObjectFragment<UGridInvSys_InventoryFragment_Container>(NewPosition.EquipSlotTag);
 		if (ContainerFragment)
 		{
 			return ContainerFragment->CheckItemPosition(ItemInstance, NewPosition);
 		}
+		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, 在 %s 的库存组件中不存在片段 %s."),
+			__FUNCTION__, *GetOwner()->GetName(), *NewPosition.EquipSlotTag.ToString())
+		return false;
 	}
+	UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, 物品实例为空或类型不为 UGridInvSys_InventoryItemInstance."), __FUNCTION__)
 	return false;
 }
 

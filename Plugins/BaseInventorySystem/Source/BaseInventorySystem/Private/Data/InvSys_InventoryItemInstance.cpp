@@ -33,7 +33,7 @@ void UInvSys_InventoryItemInstance::PostDuplicate(bool bDuplicateForPIE)
 			LastInventoryComponent = InventoryComponent;
 			InventoryComponent = Cast<UInvSys_InventoryComponent>(MyOuter);
 			Owner = InventoryComponent->GetOwner();
-			UE_LOG(LogInventorySystem, Error, TEXT("PostDuplicate 库存物品实例的 Outer[%s]！！！"), *InventoryComponent->GetOwner()->GetName())
+			UE_LOG(LogInventorySystem, Log, TEXT("PostDuplicate 库存物品实例的 Outer[%s]！！！"), *InventoryComponent->GetOwner()->GetName())
 		}
 	}
 }
@@ -41,16 +41,17 @@ void UInvSys_InventoryItemInstance::PostDuplicate(bool bDuplicateForPIE)
 void UInvSys_InventoryItemInstance::PostRepNotifies()
 {
 	UObject::PostRepNotifies();
-
 	switch (ReplicateState)
 	{
 	// case EInvSys_ReplicateState::PreRemove:
 	// 	PreReplicatedRemove();
 	// 	break;
 	case EInvSys_ReplicateState::PostAdd:
+		UE_LOG(LogInventorySystem, Log, TEXT("PostRepNotifies:%s"), *GetName())
 		PostReplicatedAdd();
 		break;
 	case EInvSys_ReplicateState::PostChange:
+		UE_LOG(LogInventorySystem, Log, TEXT("PostRepNotifies:%s"), *GetName())
 		PostReplicatedChange();
 		break;
 	default: ;
@@ -159,9 +160,6 @@ void UInvSys_InventoryItemInstance::ReplicatedProperties()
 
 void UInvSys_InventoryItemInstance::RemoveFromInventory()
 {
-	// SlotTag = FGameplayTag(); //不要移除这些属性
-	// InvComp = nullptr;
-	Entry_Private = nullptr;
 	// SetSlotTag(FGameplayTag());
 }
 
