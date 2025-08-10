@@ -204,8 +204,8 @@ void UGridInvSys_ContainerGridItemWidget::NativeConstruct()
 
 	auto WarpDragItemFunc = [this](FGameplayTag Tag, const FInvSys_DragItemInstanceMessage& Message)
 	{
-		check(Message.ItemInstance)
-		if (Message.ItemInstance == ItemInstance)
+		// check(Message.ItemInstance)
+		if (Message.ItemInstance && Message.ItemInstance == ItemInstance)
 		{
 			bIsOccupied = !Message.bIsDraggingItem;
 		}

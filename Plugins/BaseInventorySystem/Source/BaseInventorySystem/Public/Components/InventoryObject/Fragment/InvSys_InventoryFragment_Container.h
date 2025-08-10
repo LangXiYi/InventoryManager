@@ -61,6 +61,8 @@ public:
 		}
 	}
 
+	void UpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance, int32 NewStackCount);
+
 	/** 更新物品的拖拽状态 */
 	FORCEINLINE void UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance, bool NewState);
 

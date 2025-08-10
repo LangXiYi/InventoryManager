@@ -8,7 +8,6 @@
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Components/InvSys_InventoryControllerComponent.h"
 #include "Components/InventoryObject/Fragment/InvSys_InventoryFragment_Equipment.h"
-#include "Data/GridInvSys_ItemFragment_ItemType.h"
 #include "Data/InvSys_ItemFragment_DragDrop.h"
 #include "Data/InvSys_InventoryItemInstance.h"
 #include "Data/InvSys_ItemFragment_EquipItem.h"

@@ -32,7 +32,7 @@ void UInvSys_InventoryFragment_Equipment::RefreshInventoryFragment()
 void UInvSys_InventoryFragment_Equipment::InitInventoryFragment(UObject* PreEditFragment)
 {
 	Super::InitInventoryFragment(PreEditFragment);
-	COPY_INVENTORY_FRAGMENT_PROPERTY(UInvSys_InventoryFragment_Equipment, SupportEquipTag);
+	// COPY_INVENTORY_FRAGMENT_PROPERTY(UInvSys_InventoryFragment_Equipment, SupportEquipTag);
 }
 
 UInvSys_InventoryItemInstance* UInvSys_InventoryFragment_Equipment::EquipItemDefinition(

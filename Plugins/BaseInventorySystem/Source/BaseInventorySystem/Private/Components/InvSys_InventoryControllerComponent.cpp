@@ -5,13 +5,35 @@
 
 #include "Components/InvSys_InventoryComponent.h"
 #include "Data/InvSys_ItemFragment_EquipItem.h"
+#include "Items/InvSys_PickableItems.h"
 #include "Net/UnrealNetwork.h"
+#include "Widgets/InvSys_InventoryHUD.h"
 
 
 UInvSys_InventoryControllerComponent::UInvSys_InventoryControllerComponent(const FObjectInitializer& ObjectInitializer)
 	:Super(ObjectInitializer)
 {
 	PrimaryComponentTick.bCanEverTick = false;
+}
+
+UInvSys_InventoryHUD* UInvSys_InventoryControllerComponent::ConstructInventoryHUD()
+{
+	check(InventoryHUDClass)
+	if (InventoryHUDClass)
+	{
+		if (InventoryHUD == nullptr)
+		{
+			InventoryHUD = CreateWidget<UInvSys_InventoryHUD>(GetOwner<APlayerController>(), InventoryHUDClass);
+			InventoryHUD->SetVisibility(ESlateVisibility::Hidden);
+		}
+	}
+	return InventoryHUD;
+}
+
+UInvSys_InventoryHUD* UInvSys_InventoryControllerComponent::GetInventoryHUD() const
+{
+	check(InventoryHUD);
+	return InventoryHUD;
 }
 
 void UInvSys_InventoryControllerComponent::Server_DragAndRemoveItemInstance_Implementation(
@@ -38,8 +60,8 @@ void UInvSys_InventoryControllerComponent::Server_CancelDragItemInstance_Impleme
 	if (InItemInstance)
 	{
 		UInvSys_InventoryComponent* InvComp = InItemInstance->GetInventoryComponent();
-		check(InvComp)
-		if (InvComp)
+		check(InvComp && IsValid(InvComp))
+		if (InvComp && IsValid(InvComp))
 		{
 			InvComp->CancelDragItemInstance(InItemInstance);
 			SetDraggingItemInstance(nullptr);
@@ -130,7 +152,10 @@ void UInvSys_InventoryControllerComponent::Server_DropItemInstanceToWorld_Implem
 		UInvSys_InventoryComponent* InvComp = InItemInstance->GetInventoryComponent();
 		if (InvComp)
 		{
-			InvComp->DropItemInstanceToWorld(InItemInstance);
+			APlayerController* PlayerController = GetOwner<APlayerController>();
+			APawn* Pawn = PlayerController->GetPawn();
+			FTransform Transform = Pawn->GetTransform();
+			InvComp->DropItemInstanceToWorld(InItemInstance, Transform);
 		}
 	}
 }
@@ -161,6 +186,12 @@ void UInvSys_InventoryControllerComponent::GetLifetimeReplicatedProps(TArray<FLi
 	DOREPLIFETIME_CONDITION(UInvSys_InventoryControllerComponent, DraggingItemInstance, COND_OwnerOnly);
 }
 
+bool UInvSys_InventoryControllerComponent::HasAuthority() const
+{
+	ensure(GetOwner());
+	return GetOwner() ? GetOwner()->HasAuthority() : false;
+}
+
 void UInvSys_InventoryControllerComponent::SetDraggingItemInstance(UInvSys_InventoryItemInstance* NewDragItemInstance)
 {
 	auto LastDragItemInstance = DraggingItemInstance;
@@ -180,7 +211,6 @@ void UInvSys_InventoryControllerComponent::OnRep_DraggingItemInstance(const TWea
 	{
 		DragItemInstanceMessage.ItemInstance = OldDraggingItemInstance.Get();
 		DragItemInstanceMessage.bIsDraggingItem = false;
-		check(DragItemInstanceMessage.ItemInstance)
 	}
 
 	UGameplayMessageSubsystem& GameplayMessageSubsystem = UGameplayMessageSubsystem::Get(GetWorld());

@@ -128,6 +128,10 @@ public:
 
 	/** 获取物品的库存对象标签 */
 	FORCEINLINE const FGameplayTag& GetInventoryObjectTag() const;
+
+	FORCEINLINE int32 GetItemStackCount() const;
+
+	FORCEINLINE void SetItemStackCount(int32 NewStackCount);
 	
 	FORCEINLINE bool HasAuthority() const;
 
@@ -153,6 +157,9 @@ public:
 	TArray<UInvSys_InventoryItemInstance*> MyInstances;
 
 protected:
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory Item Instance")
+	int32 StackCount = 0;
+
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory Item Instance")
 	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDefinition = nullptr;
 

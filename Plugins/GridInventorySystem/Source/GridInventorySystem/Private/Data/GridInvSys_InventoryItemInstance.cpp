@@ -12,7 +12,7 @@ void UGridInvSys_InventoryItemInstance::PostReplicatedChange()
 {
 	Super::PostReplicatedChange();
 
-	UE_LOG(LogInventorySystem, Error, TEXT("Post Replicated Change %s"), bWaitPostRepNotify_ItemPosition ? TEXT("TRUE"):TEXT("FALSE"))
+	// UE_LOG(LogInventorySystem, Error, TEXT("Post Replicated Change %s"), bWaitPostRepNotify_ItemPosition ? TEXT("TRUE"):TEXT("FALSE"))
 	if (bWaitPostRepNotify_ItemPosition)
 	{
 		bWaitPostRepNotify_ItemPosition = false;
@@ -44,8 +44,8 @@ void UGridInvSys_InventoryItemInstance::SetItemPosition(const FGridInvSys_ItemPo
 {
 	LastItemPosition = ItemPosition;
 	ItemPosition = NewItemPosition;
-	UE_LOG(LogInventorySystem, Warning, TEXT("%s::%hs: %s %s ---> %s"),
-		*GPlayInEditorContextString, __FUNCTION__, *GetName(), *LastItemPosition.ToString(), *ItemPosition.ToString())
+	// UE_LOG(LogInventorySystem, Warning, TEXT("%s::%hs: %s %s ---> %s"),
+	// 	*GPlayInEditorContextString, __FUNCTION__, *GetName(), *LastItemPosition.ToString(), *ItemPosition.ToString())
 
 	if (bIsBroadcast)
 	{
@@ -114,7 +114,7 @@ void UGridInvSys_InventoryItemInstance::OnRep_ItemPosition(const FGridInvSys_Ite
 	LastItemPosition = OldItemPosition;
 	// UE_LOG(LogInventorySystem, Warning, TEXT("%s::%hs: %s %s ---> %s"),
 	// 	*GPlayInEditorContextString, __FUNCTION__, *GetItemDisplayName().ToString(), *LastItemPosition.ToString(), *ItemPosition.ToString())
-	UE_LOG(LogInventorySystem, Error, TEXT("OnRep--->%s"), *GetName())
+	// UE_LOG(LogInventorySystem, Error, TEXT("OnRep--->%s"), *GetName())
 	if (ReplicateState == EInvSys_ReplicateState::PostChange)
 	{
 		bWaitPostRepNotify_ItemPosition = true;

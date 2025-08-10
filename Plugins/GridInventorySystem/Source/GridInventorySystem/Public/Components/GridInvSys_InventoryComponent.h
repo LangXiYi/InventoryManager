@@ -37,8 +37,11 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
 	void RestoreItemInstanceToPos(UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos);
 
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
+	// UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
 	bool FindEmptyPosition(UInvSys_InventoryItemInstance* InItemInstance, FGridInvSys_ItemPosition& OutPosition);
+
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
+	bool FindEmptyPosition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDefinition, FGridInvSys_ItemPosition& OutPosition);
 
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
 	void UpdateItemInstancePosition(UInvSys_InventoryItemInstance* ItemInstance, FGridInvSys_ItemPosition NewPosition);

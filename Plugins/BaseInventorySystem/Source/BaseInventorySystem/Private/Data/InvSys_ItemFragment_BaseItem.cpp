@@ -1,4 +1,4 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Data/GridInvSys_ItemFragment_EquippedIcon.h"
+#include "Data/InvSys_ItemFragment_BaseItem.h"

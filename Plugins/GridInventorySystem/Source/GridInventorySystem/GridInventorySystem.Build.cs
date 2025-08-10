@@ -44,7 +44,6 @@ public class GridInventorySystem : ModuleRules
 				"DeveloperSettings",
 				"GameplayMessageRuntime",
 				"GameplayTags",
-				"ModularGameplay",
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

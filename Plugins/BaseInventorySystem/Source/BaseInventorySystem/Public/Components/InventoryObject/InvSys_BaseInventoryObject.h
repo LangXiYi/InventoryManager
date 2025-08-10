@@ -9,6 +9,7 @@
 #include "Fragment/InvSys_BaseInventoryFragment.h"
 #include "InvSys_BaseInventoryObject.generated.h"
 
+class UInvSys_InventoryObjectContent;
 class UInvSys_InventoryItemDefinition;
 class UInvSys_InventoryItemInstance;
 class UInvSys_EquipSlotWidget;
@@ -20,6 +21,7 @@ class BASEINVENTORYSYSTEM_API UInvSys_BaseInventoryObject : public UObject
 
 	friend class UInvSys_InventoryComponent;
 	friend class UInvSys_PreEditInventoryObject;
+	friend class UInvSys_InventoryObjectContent;
 
 public:
 	UInvSys_BaseInventoryObject();
@@ -32,7 +34,7 @@ public:
 	virtual void ConstructInventoryFragment(const TArray<UInvSys_BaseInventoryFragment*>& Fragments);
 
 	// [Server & Client] 在服务器创建库存对象后由库存组件的 OnRep_InventoryObjectList 调用
-	virtual void InitInventoryObject(UInvSys_PreEditInventoryObject* PreEditPayLoad);
+	virtual void InitInventoryObject(UInvSys_InventoryObjectContent* InventoryObjectContent);
 
 	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "Inventory Object")
 	void RefreshInventoryObject();
@@ -104,35 +106,3 @@ private:
 	AActor* Owner_Private;
 };
 
-/**
- * Pre Edit Inventory Object
- */
-
-UCLASS(EditInlineNew, DefaultToInstanced, Blueprintable)
-class BASEINVENTORYSYSTEM_API UInvSys_PreEditInventoryObject : public UObject
-{
-	GENERATED_BODY()
-
-	friend class UInvSys_BaseInventoryObject;
-
-public:
-	template<class InventoryObjectType = UInvSys_BaseInventoryObject>
-	InventoryObjectType* NewInventoryObject(UInvSys_InventoryComponent* InvComp)
-	{
-		if (InvComp)
-		{
-			InventoryObjectType* InvObj = NewObject<InventoryObjectType>(InvComp);
-			InvObj->InventoryObjectTag = InventoryObjectTag;
-			InvObj->ConstructInventoryFragment(Fragments);
-			return InvObj;
-		}
-		return nullptr;
-	}
-
-protected:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory Object")
-	FGameplayTag InventoryObjectTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "Inventory Object")
-	TArray<UInvSys_BaseInventoryFragment*> Fragments;
-};

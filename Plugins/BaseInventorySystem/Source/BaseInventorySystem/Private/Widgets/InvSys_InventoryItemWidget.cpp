@@ -5,13 +5,12 @@
 
 #include "BaseInventorySystem.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
-#include "Components/InvSys_InventoryComponent.h"
 #include "Widgets/InvSys_DraggingItemWidget.h"
 #include "Components/InvSys_InventoryControllerComponent.h"
 #include "Data/InvSys_ItemFragment_DragDrop.h"
 #include "Data/InvSys_InventoryItemInstance.h"
 #include "Library/InvSys_InventorySystemLibrary.h"
-#include "Widgets/Components/InvSys_DragDropOperation.h"
+#include "Widgets/InvSys_InventoryHUD.h"
 
 void UInvSys_InventoryItemWidget::SetItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)
 {
@@ -22,8 +21,26 @@ FReply UInvSys_InventoryItemWidget::NativeOnMouseButtonDown(const FGeometry& InG
 {
 	FReply bIsHandled = Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 	if (bIsHandled.IsEventHandled()) return bIsHandled; // 如果蓝图实现了处理，则不会继续执行 C++ 定义的逻辑
+	if (ItemInstance.IsValid() == false)
+	{
+		return FReply::Unhandled();
+	}
+	
+	// 创建右键菜单
+	if (InMouseEvent.IsMouseButtonDown(EKeys::RightMouseButton))
+	{
+		auto PlayerInvComp = UInvSys_InventorySystemLibrary::GetPlayerInventoryComponent(GetWorld());
+		if (PlayerInvComp)
+		{
+			UInvSys_InventoryHUD* InventoryHUD = PlayerInvComp->GetInventoryHUD();
+			check(InventoryHUD);
+			InventoryHUD->DisplayInventoryItemActionList(ItemInstance.Get());
+			return FReply::Handled();
+		}
+	}
 
-	if (ItemInstance.Get())
+	// 创建拖拽监听
+	if (InMouseEvent.IsMouseButtonDown(EKeys::LeftMouseButton))
 	{
 		FEventReply EventReply = UWidgetBlueprintLibrary::DetectDragIfPressed(InMouseEvent, this, EKeys::LeftMouseButton);
 		return EventReply.NativeReply;
@@ -31,8 +48,20 @@ FReply UInvSys_InventoryItemWidget::NativeOnMouseButtonDown(const FGeometry& InG
 	return FReply::Unhandled();
 }
 
+void UInvSys_InventoryItemWidget::NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	Super::NativeOnMouseEnter(InGeometry, InMouseEvent);
+	// todo::显示物品信息
+}
+
+void UInvSys_InventoryItemWidget::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
+{
+	Super::NativeOnMouseLeave(InMouseEvent);
+	// todo::隐藏物品信息
+}
+
 void UInvSys_InventoryItemWidget::NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent,
-	UDragDropOperation*& OutOperation)
+                                                       UDragDropOperation*& OutOperation)
 {
 	if (bIsEnableDragItem == false) return;
 

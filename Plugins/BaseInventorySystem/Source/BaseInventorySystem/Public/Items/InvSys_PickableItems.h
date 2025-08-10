@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Object.h"
+class UInvSys_InventoryItemFragment;
 #include "InvSys_PickableItems.generated.h"
 
 class UInvSys_InventoryItemInstance;
@@ -38,9 +39,23 @@ class BASEINVENTORYSYSTEM_API AInvSys_PickableItems : public AActor
 public:
 	AInvSys_PickableItems();
 
+	virtual void BeginPlay() override;
+
 	void InitItemInstance(UInvSys_InventoryItemInstance* NewItemInstance);
 
-	virtual bool ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags) override;
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Pickable Items")
+	void InitPickableItems(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 NewStackCount);
+
+	/** 根据 ItemDefinition 的 CDO 获取指定类型的片段信息 */
+	UFUNCTION(BlueprintCallable, BlueprintPure=false, meta=(DeterminesOutputType=FragmentClass))
+	const UInvSys_InventoryItemFragment* FindFragmentByClass(TSubclassOf<UInvSys_InventoryItemFragment> FragmentClass) const;
+
+	/** 根据 ItemDefinition 的 CDO 获取指定类型的片段信息 */
+	template <typename ResultClass>
+	const ResultClass* FindFragmentByClass() const
+	{
+		return (ResultClass*)FindFragmentByClass(ResultClass::StaticClass());
+	}
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -55,9 +70,9 @@ protected:
 	TObjectPtr<USphereComponent> SphereCollision;
 
 private:
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRepItemInstance, Category = "Pickable Items", meta = (ExposeOnSpawn, AllowPrivateAccess))
-	TObjectPtr<UInvSys_InventoryItemInstance> ItemInstance;
+	UPROPERTY(BlueprintReadOnly, Replicated, Category = "Pickable Items", meta = (ExposeOnSpawn, AllowPrivateAccess))
+	int32 ItemStackCount;
 
-	UFUNCTION()
-	void OnRepItemInstance();
+	UPROPERTY(BlueprintReadOnly, Replicated, Category = "Pickable Items", meta = (ExposeOnSpawn, AllowPrivateAccess))
+	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDefinition;
 };

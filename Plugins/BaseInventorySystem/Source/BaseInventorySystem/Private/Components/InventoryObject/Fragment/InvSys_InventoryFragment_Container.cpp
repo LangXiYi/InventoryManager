@@ -73,8 +73,18 @@ void UInvSys_InventoryFragment_Container::RefreshInventoryFragment()
 	}
 }
 
+void UInvSys_InventoryFragment_Container::UpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance,
+	int32 NewStackCount)
+{
+	if (ContainsItem(ItemInstance))
+	{
+		ItemInstance->SetItemStackCount(NewStackCount);
+		MarkItemInstanceDirty(ItemInstance);		
+	}
+}
+
 void UInvSys_InventoryFragment_Container::UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance,
-	bool NewState)
+                                                                      bool NewState)
 {
 	if (ContainsItem(ItemInstance))
 	{

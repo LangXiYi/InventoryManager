@@ -79,8 +79,8 @@ void UGridInvSys_GridInventoryControllerComponent::Server_SwapItemInstances_Impl
 			for (int i = 0; i < TargetItemInstances.Num(); ++i)
 			{
 				UInvSys_InventoryComponent* TempInvComp = TargetItemInstances[i]->GetInventoryComponent();
-				UE_LOG(LogInventorySystem, Log, TEXT("目标物品 %s 的所有者为--%s") ,
-					*TargetItemInstances[i]->GetItemDisplayName().ToString() ,*TempInvComp->GetOwner()->GetName());
+				// UE_LOG(LogInventorySystem, Log, TEXT("目标物品 %s 的所有者为--%s") ,
+				// 	*TargetItemInstances[i]->GetItemDisplayName().ToString() ,*TempInvComp->GetOwner()->GetName());
 				if (LastInvComp->CheckItemPosition(TargetItemInstances[i], TargetPositions[i]))
 				{
 					// todo::是否需要添加额外的权限验证？
@@ -103,25 +103,13 @@ void UGridInvSys_GridInventoryControllerComponent::Server_SwapItemInstances_Impl
 }
 
 void UGridInvSys_GridInventoryControllerComponent::Server_AddItemInstancesToContainerPos_Implementation(
-	UInvSys_InventoryComponent* InvComp, const TArray<UInvSys_InventoryItemInstance*>& InItemInstances,
-	const TArray<FGridInvSys_ItemPosition>& InPosArray)
+	UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance, FGridInvSys_ItemPosition InPos)
 {
 	check(InvComp)
 	if (InvComp && InvComp->IsA<UGridInvSys_InventoryComponent>())
 	{
 		UGridInvSys_InventoryComponent* GridInvComp = Cast<UGridInvSys_InventoryComponent>(InvComp);
-		int32 ItemNum = InItemInstances.Num();
-		int32 PosNum = InPosArray.Num();
-
-		check(GridInvComp)
-		check(ItemNum == PosNum)
-		if (GridInvComp && ItemNum == PosNum)
-		{
-			for (int i = 0; i < ItemNum; ++i)
-			{
-				GridInvComp->AddItemInstanceToContainerPos(InItemInstances[i], InPosArray[i]);
-			}
-		}
+		GridInvComp->AddItemInstanceToContainerPos(InItemInstance, InPos);
 	}
 }
 
@@ -159,28 +147,66 @@ void UGridInvSys_GridInventoryControllerComponent::Server_UpdateItemInstancePosi
 void UGridInvSys_GridInventoryControllerComponent::Server_SwapItemInstance_Implementation(
 	UGridInvSys_InventoryItemInstance* FromItemInstance, UGridInvSys_InventoryItemInstance* ToItemInstance)
 {
-	check(FromItemInstance)
-	check(ToItemInstance)
-	// 两物品实例大小相同
-	if (FromItemInstance != ToItemInstance && FromItemInstance->GetItemSize() == ToItemInstance->GetItemSize())
+	if (FromItemInstance == nullptr || ToItemInstance == nullptr)
 	{
-		UInvSys_InventoryComponent* FromInvComp = FromItemInstance->GetInventoryComponent();
-		UInvSys_InventoryComponent* ToInvComp = ToItemInstance->GetInventoryComponent();
-		if (FromInvComp && ToInvComp)
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstance is nullptr."), __FUNCTION__)
+		return;
+	}
+
+	if (FromItemInstance == ToItemInstance)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, FromItemInstance == ToItemInstance."), __FUNCTION__)
+		return;
+	}
+
+	UInvSys_InventoryComponent* FromInvComp = FromItemInstance->GetInventoryComponent();
+	UInvSys_InventoryComponent* ToInvComp = ToItemInstance->GetInventoryComponent();
+	if (FromInvComp == nullptr || ToInvComp == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, InventoryComponent is nullptr."), __FUNCTION__)
+		return;
+	}
+
+	// 两物品定义一致，且允许堆叠
+	if (FromItemInstance->GetItemDefinition() == ToItemInstance->GetItemDefinition())
+	{
+		if (auto PickupItemFragment = FromItemInstance->FindFragmentByClass<UInvSys_ItemFragment_PickUpItem>())
 		{
-			// 这里需要提前缓存ToItem的位置信息，避免在第一次添加执行完成后修改FromItem到To位置时的数据被污染。
-			FGameplayTag FromItemTag = FromItemInstance->GetInventoryObjectTag();
-			FGridInvSys_ItemPosition FromItemPosition = FromItemInstance->GetItemPosition();
-			
-			FGameplayTag ToItemTag = ToItemInstance->GetInventoryObjectTag();
-			FGridInvSys_ItemPosition ToItemPosition = ToItemInstance->GetItemPosition();
-
-			FromInvComp->RemoveItemInstance(FromItemInstance);
-			ToInvComp->RemoveItemInstance(ToItemInstance);
-
-			FromInvComp->AddItemInstance<UGridInvSys_InventoryItemInstance>(ToItemInstance, FromItemTag, FromItemPosition);
-			ToInvComp->AddItemInstance<UGridInvSys_InventoryItemInstance>(FromItemInstance, ToItemTag, ToItemPosition);
+			if (PickupItemFragment->bAllowStack)
+			{
+				const int32 MaxStackCount = PickupItemFragment->MaxStackCount;
+				const int32 FromItemStackCount = FromItemInstance->GetItemStackCount();
+				const int32 ToItemStackCount = ToItemInstance->GetItemStackCount();
+				const int32 NewItemStackCount = FromItemStackCount + ToItemStackCount;
+				if (NewItemStackCount <= MaxStackCount)
+				{
+					ToInvComp->UpdateItemStackCount(ToItemInstance, NewItemStackCount);
+					FromInvComp->RemoveItemInstance(FromItemInstance);
+				}
+				else
+				{
+					ToInvComp->UpdateItemStackCount(ToItemInstance, MaxStackCount);
+					FromInvComp->UpdateItemStackCount(FromItemInstance, NewItemStackCount - MaxStackCount);
+				}
+				return;
+			}
 		}
+	}
+	// 两物品实例大小相同
+	if (FromItemInstance->GetItemSize() == ToItemInstance->GetItemSize())
+	{
+		// 这里需要提前缓存ToItem的位置信息，避免在第一次添加执行完成后修改FromItem到To位置时的数据被污染。
+		FGameplayTag FromItemTag = FromItemInstance->GetInventoryObjectTag();
+		FGridInvSys_ItemPosition FromItemPosition = FromItemInstance->GetItemPosition();
+		
+		FGameplayTag ToItemTag = ToItemInstance->GetInventoryObjectTag();
+		FGridInvSys_ItemPosition ToItemPosition = ToItemInstance->GetItemPosition();
+
+		FromInvComp->RemoveItemInstance(FromItemInstance);
+		ToInvComp->RemoveItemInstance(ToItemInstance);
+
+		FromInvComp->AddItemInstance<UGridInvSys_InventoryItemInstance>(ToItemInstance, FromItemTag, FromItemPosition);
+		ToInvComp->AddItemInstance<UGridInvSys_InventoryItemInstance>(FromItemInstance, ToItemTag, ToItemPosition);
 	}
 }
 

@@ -89,6 +89,8 @@ public:
 		}
 	}
 
+	void UpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance, int32 NewStackCount);
+
 	void UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance, const FGameplayTag& InventoryTag, bool NewState);
 
 	// Begin Drag Drop ====================
@@ -111,7 +113,7 @@ public:
 	template<class T, class... Arg>
 	bool DropItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args);
 
-	void DropItemInstanceToWorld(UInvSys_InventoryItemInstance* InItemInstance);
+	AInvSys_PickableItems* DropItemInstanceToWorld(UInvSys_InventoryItemInstance* InItemInstance, const FTransform& Transform);
 	// End Drag Drop ====================
 
 protected:
@@ -153,7 +155,7 @@ public:
 
 	virtual bool IsContainsInventoryItem(const FName ItemUniqueID);
 	
-	UInvSys_PreEditInventoryObject* GetPreEditInventoryObject(int32 Index) const;
+	UInvSys_InventoryObjectContent* GetInventoryObjectContent(int32 Index) const;
 
 protected:
 	//~UObject interface

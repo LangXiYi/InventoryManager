@@ -303,9 +303,10 @@ void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeLessThan(
 		// 计算 To 物品在From容器下的位置
 		FGridInvSys_ItemPosition TempItemData = ToGridItemInstance->GetItemPosition();
 		TempItemData.Position = ValidPosition;
+		// todo::合并这三个请求未一个RPC
 		PlayerInvComp->Server_RemoveItemInstance(ItemInstance);
 		PlayerInvComp->Server_UpdateItemInstancePosition(GetInventoryComponent(), ToGridItemInstance, TempItemData);
-		PlayerInvComp->Server_TryDropItemInstance(GetInventoryComponent(), ItemInstance, DropPosition);
+		PlayerInvComp->Server_AddItemInstancesToContainerPos(GetInventoryComponent(), ItemInstance, DropPosition);
 	}
 }
 
@@ -452,7 +453,7 @@ EGridInvSys_DropType UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer
 		// UE_LOG(LogInventorySystem, Log, TEXT("可以放置 Item "))
 		return EGridInvSys_DropType::SizeGreaterThan_ComponentEqual;
 	}
-	else
+	if (TargetItemSize.X <= ToTargetItemSize.X && TargetItemSize.Y <= ToTargetItemSize.Y)
 	{
 		// 如果拖拽物品的大小 < 目标位置的物品大小
 		// 需要判断拖拽物品与目标位置的物品是否再同一容器布局内，若不在同一容器则返回False
@@ -471,6 +472,7 @@ EGridInvSys_DropType UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer
 		bool bIsFind =  FindValidPosition(ToTargetItemSize, Position, Ignores);
 		return bIsFind ? EGridInvSys_DropType::SizeLessThan : EGridInvSys_DropType::None;
 	}
+	// UE_LOG(LogInventorySystem, Log, TEXT("From Size = %s <====> To Size %s"), *TargetItemSize.ToString(), *ToTargetItemSize.ToString())
 	return EGridInvSys_DropType::None;
 }
 
@@ -659,6 +661,7 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(UInvSys_Inventory
 		UE_LOG(LogInventorySystem, Warning, TEXT("没有对应的处理方案"));
 		UGridInvSys_GridInventoryControllerComponent* PlayerInvComp =
 			UInvSys_InventorySystemLibrary::GetPlayerInventoryComponent<UGridInvSys_GridInventoryControllerComponent>(GetWorld());
+		check(PlayerInvComp)
 		PlayerInvComp->Server_CancelDragItemInstance(ItemInstance);
 		return false;
 	}

@@ -36,3 +36,18 @@ UInvSys_InventoryControllerComponent* UInvSys_InventorySystemLibrary::GetPlayerI
 	}
 	return nullptr;
 }
+
+UInvSys_InventoryHUD* UInvSys_InventorySystemLibrary::GetInventoryHUD(const UObject* WorldContextObject)
+{
+	if (UInvSys_InventoryControllerComponent* PlayerInvComp = GetPlayerInventoryComponent(WorldContextObject))
+	{
+		return PlayerInvComp->GetInventoryHUD();
+	}
+	return nullptr;
+}
+
+UInvSys_InventoryHUD* UInvSys_InventorySystemLibrary::GetInventoryHUDBy(const UObject* WorldContextObject,
+	TSubclassOf<UInvSys_InventoryHUD> OutClass)
+{
+	return GetInventoryHUD(WorldContextObject);
+}

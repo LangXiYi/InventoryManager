@@ -5,8 +5,6 @@
 #include "CoreMinimal.h"
 #include "BaseInventorySystem.h"
 #include "GridInvSys_EquipmentSlotWidget.h"
-#include "Data/GridInvSys_ItemFragment_ItemType.h"
-#include "Data/InvSys_ContainerList.h"
 #include "Components/NamedSlot.h"
 #include "GameFramework/GameplayMessageSubsystem.h"
 #include "GridInvSys_EquipContainerSlotWidget.generated.h"

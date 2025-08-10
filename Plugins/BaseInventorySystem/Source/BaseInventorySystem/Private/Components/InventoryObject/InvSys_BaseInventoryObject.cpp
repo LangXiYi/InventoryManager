@@ -6,6 +6,7 @@
 #include "BaseInventorySystem.h"
 #include "Components/InvSys_InventoryComponent.h"
 #include "Components/InventoryObject/Fragment/InvSys_BaseInventoryFragment.h"
+#include "Data/InvSys_InventoryContentMapping.h"
 #include "Engine/ActorChannel.h"
 #include "Net/UnrealNetwork.h"
 
@@ -54,19 +55,19 @@ void UInvSys_BaseInventoryObject::ConstructInventoryFragment(const TArray<UInvSy
 	}
 }
 
-void UInvSys_BaseInventoryObject::InitInventoryObject(UInvSys_PreEditInventoryObject* PreEditPayLoad)
+void UInvSys_BaseInventoryObject::InitInventoryObject(UInvSys_InventoryObjectContent* InventoryObjectContent)
 {
-	check(PreEditPayLoad)
-	if (PreEditPayLoad)
+	check(InventoryObjectContent)
+	if (InventoryObjectContent)
 	{
 		// 对数组进行排序，确定内部片段的执行顺序
-		InventoryObjectFragments.Sort();
-		PreEditPayLoad->Fragments.Sort();
-		for (int i = 0; i < PreEditPayLoad->Fragments.Num(); ++i)
+		// InventoryObjectFragments.Sort();
+		// InventoryObjectContent->Fragments.Sort();
+		for (int i = 0; i < InventoryObjectContent->Fragments.Num(); ++i)
 		{
 			if (InventoryObjectFragments[i] != nullptr)
 			{
-				InventoryObjectFragments[i]->InitInventoryFragment(PreEditPayLoad->Fragments[i]);
+				InventoryObjectFragments[i]->InitInventoryFragment(InventoryObjectContent->Fragments[i]);
 			}
 		}
 	}

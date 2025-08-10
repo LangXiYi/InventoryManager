@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Data/GridInvSys_ItemFragment_ItemType.h"
 #include "GameFramework/GameplayMessageSubsystem.h"
 #include "Widgets/InvSys_InventoryWidget.h"
 #include "GridInvSys_EquipmentSlotWidget.generated.h"

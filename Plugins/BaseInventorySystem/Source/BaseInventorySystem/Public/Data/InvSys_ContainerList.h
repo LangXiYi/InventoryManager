@@ -6,6 +6,7 @@
 #include "BaseInventorySystem.h"
 #include "InvSys_InventoryItemInstance.h"
 #include "InvSys_InventoryItemDefinition.h"
+#include "InvSys_ItemFragment_PickUpItem.h"
 #include "Net/Serialization/FastArraySerializer.h"
 #include "Components/InventoryObject/Fragment/InvSys_BaseInventoryFragment.h"
 #include "InvSys_ContainerList.generated.h"
@@ -189,6 +190,9 @@ public:
 	/** 根据物品的唯一ID查找物品 */
 	UInvSys_InventoryItemInstance* FindItemInstance(FGuid ItemUniqueID) const;
 
+	/** 根据物品的唯一ID查找物品 */
+	UInvSys_InventoryItemInstance* FindItemInstance(const TSubclassOf<UInvSys_InventoryItemDefinition>& ItemDefinition) const;
+
 	/** 获取物品实例在当前容器内的索引 */
 	int32 FindEntryIndex(UInvSys_InventoryItemInstance* ItemInstance);
 
@@ -263,6 +267,7 @@ T* FInvSys_ContainerList::AddDefinition(TSubclassOf<UInvSys_InventoryItemDefinit
 	Result->SetItemDefinition(ItemDef);
 	Result->SetItemUniqueID(FGuid::NewGuid());
 	Result->SetSlotTag(InventoryFragment->GetInventoryObjectTag());
+	Result->SetItemStackCount(StackCount);
 
 	for (const UInvSys_InventoryItemFragment* Fragment : GetDefault<UInvSys_InventoryItemDefinition>(ItemDef)->GetFragments())
 	{
@@ -328,3 +333,34 @@ struct TStructOpsTypeTraits< FInvSys_ContainerList > : public TStructOpsTypeTrai
 {
 	enum { WithNetDeltaSerializer = true };
 };
+
+/*
+	自动堆叠物品！！
+	int32 ItemStackCount = ItemInstance->StackCount;
+	if (auto PickupItemFragment = ItemInstance->FindFragmentByClass<UInvSys_ItemFragment_PickUpItem>())
+	{
+		if (PickupItemFragment->bAllowStack)
+		{
+			int32 AddItemStackCount = ItemInstance->GetItemStackCount();
+			//在容器内查找具有相同物品定义的物品实例
+			UInvSys_InventoryItemInstance* StackItemInstance = FindItemInstance(ItemInstance->GetItemDefinition());
+			if (StackItemInstance)
+			{
+				int32 NewItemStackCount = StackItemInstance->GetItemStackCount() + AddItemStackCount;
+				if (NewItemStackCount <= PickupItemFragment->MaxStackCount)
+				{
+					StackItemInstance->SetItemStackCount(NewItemStackCount);
+					return StackItemInstance;
+				}
+				else
+				{
+					StackItemInstance->SetItemStackCount(PickupItemFragment->MaxStackCount);
+					ItemStackCount = NewItemStackCount - PickupItemFragment->MaxStackCount;
+				}
+			}
+		}
+	}
+	达到最大堆叠上限，需要创建新的物品实例
+	TargetItemInstance->SetItemStackCount(ItemStackCount);
+
+ */

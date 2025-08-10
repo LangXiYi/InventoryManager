@@ -17,6 +17,12 @@ class BASEINVENTORYSYSTEM_API UInvSys_ItemFragment_EquipItem : public UInvSys_In
 
 public:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment")
+	TObjectPtr<USkeletalMesh> SkeletalMesh;
+
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment")
+	TObjectPtr<UStaticMesh> StaticMesh;
+
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment")
 	FGameplayTagContainer SupportEquipSlot;
 
 	// 是否允许玩家更改

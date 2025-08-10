@@ -75,6 +75,23 @@ UInvSys_InventoryItemInstance* FInvSys_ContainerList::FindItemInstance(FGuid Ite
 	return nullptr;
 }
 
+UInvSys_InventoryItemInstance* FInvSys_ContainerList::FindItemInstance(
+	const TSubclassOf<UInvSys_InventoryItemDefinition>& ItemDefinition) const
+{
+	for (FInvSys_ContainerEntry Entry : Entries)
+	{
+		UInvSys_InventoryItemInstance* ItemInstance = Entry.Instance;
+		if (ItemInstance != nullptr)
+		{
+			if (ItemDefinition == ItemInstance->GetItemDefinition())
+			{
+				return ItemInstance;
+			}
+		}
+	}
+	return nullptr;
+}
+
 int32 FInvSys_ContainerList::FindEntryIndex(UInvSys_InventoryItemInstance* ItemInstance)
 {
 	if (ItemInstance)

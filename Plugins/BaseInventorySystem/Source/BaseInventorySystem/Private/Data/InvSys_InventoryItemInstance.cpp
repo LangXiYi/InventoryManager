@@ -46,11 +46,11 @@ void UInvSys_InventoryItemInstance::PostRepNotifies()
 	// 	PreReplicatedRemove();
 	// 	break;
 	case EInvSys_ReplicateState::PostAdd:
-		UE_LOG(LogInventorySystem, Log, TEXT("PostRepNotifies:%s"), *GetName())
+		// UE_LOG(LogInventorySystem, Log, TEXT("PostRepNotifies:%s"), *GetName())
 		PostReplicatedAdd();
 		break;
 	case EInvSys_ReplicateState::PostChange:
-		UE_LOG(LogInventorySystem, Log, TEXT("PostRepNotifies:%s"), *GetName())
+		// UE_LOG(LogInventorySystem, Log, TEXT("PostRepNotifies:%s"), *GetName())
 		PostReplicatedChange();
 		break;
 	default: ;
@@ -95,10 +95,11 @@ void UInvSys_InventoryItemInstance::GetLifetimeReplicatedProps(TArray<FLifetimeP
 {
 	UObject::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UInvSys_InventoryItemInstance, ItemDefinition);
-	DOREPLIFETIME(UInvSys_InventoryItemInstance, ItemUniqueID);
-	DOREPLIFETIME(UInvSys_InventoryItemInstance, InventoryObjectTag);
+	DOREPLIFETIME(UInvSys_InventoryItemInstance, StackCount);
 	DOREPLIFETIME(UInvSys_InventoryItemInstance, bIsDragging);
+	DOREPLIFETIME(UInvSys_InventoryItemInstance, ItemUniqueID);
+	DOREPLIFETIME(UInvSys_InventoryItemInstance, ItemDefinition);
+	DOREPLIFETIME(UInvSys_InventoryItemInstance, InventoryObjectTag);
 }
 
 void UInvSys_InventoryItemInstance::OnRep_IsDragging()
@@ -158,6 +159,16 @@ const FGameplayTag& UInvSys_InventoryItemInstance::GetInventoryObjectTag() const
 {
 	check(InventoryObjectTag.IsValid())
 	return InventoryObjectTag;
+}
+
+int32 UInvSys_InventoryItemInstance::GetItemStackCount() const
+{
+	return StackCount;
+}
+
+void UInvSys_InventoryItemInstance::SetItemStackCount(int32 NewStackCount)
+{
+	StackCount = NewStackCount;
 }
 
 void UInvSys_InventoryItemInstance::BroadcastAddItemInstanceMessage()

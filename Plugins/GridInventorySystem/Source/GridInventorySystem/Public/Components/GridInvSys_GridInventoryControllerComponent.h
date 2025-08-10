@@ -31,8 +31,7 @@ public:
 	 **/
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_AddItemInstancesToContainerPos(UInvSys_InventoryComponent* InvComp,
-		const TArray<UInvSys_InventoryItemInstance*>& InItemInstances, const TArray<FGridInvSys_ItemPosition>& InPosArray);
+	void Server_AddItemInstancesToContainerPos(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance, FGridInvSys_ItemPosition InPos);
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_RemoveItemInstance(UInvSys_InventoryItemInstance* ItemInstance);

@@ -5,19 +5,24 @@
 #include "CoreMinimal.h"
 #include "BaseInventorySystem.h"
 #include "InvSys_InventoryComponent.h"
-#include "Components/ControllerComponent.h"
 #include "InvSys_InventoryControllerComponent.generated.h"
 
+class UInvSys_InventoryHUD;
 class UInvSys_InventoryItemInstance;
-class UInvSys_InventoryComponent;
 
 UCLASS(Blueprintable, meta=(BlueprintSpawnableComponent))
-class BASEINVENTORYSYSTEM_API UInvSys_InventoryControllerComponent : public UControllerComponent
+class BASEINVENTORYSYSTEM_API UInvSys_InventoryControllerComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
 public:
 	UInvSys_InventoryControllerComponent(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+
+	// todo::如果自定义 HUD，请重载该函数并添加自己的处理逻辑
+	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "Player Inventory Component")
+	virtual UInvSys_InventoryHUD* ConstructInventoryHUD();
+
+	UInvSys_InventoryHUD* GetInventoryHUD() const;
 
 	/**
 	 * 由于放置逻辑可能存在其他不确定的属性，所以这里没有办法提前定义 RPC 函数，需要子类实现自定义的 Server RPC
@@ -38,37 +43,45 @@ public:
 	 * RPC Functions
 	 **/
 
-	UFUNCTION(BlueprintCallable, Server, Reliable)
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
 	void Server_EquipItemDefinition(UInvSys_InventoryComponent* InvComp,TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, FGameplayTag SlotTag);
 	
-	UFUNCTION(BlueprintCallable, Server, Reliable)
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
 	void Server_EquipItemInstance(UInvSys_InventoryComponent* InvComp,UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag);
 
-	UFUNCTION(BlueprintCallable, Server, Reliable)
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
 	void Server_RestoreItemInstance(UInvSys_InventoryComponent* InvComp,UInvSys_InventoryItemInstance* InItemInstance);
 
-	UFUNCTION(BlueprintCallable, Server, Reliable)
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
 	void Server_DragItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance);
 
-	UFUNCTION(BlueprintCallable, Server, Reliable)
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
 	void Server_CancelDragItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
 
-	UFUNCTION(BlueprintCallable, Server, Reliable)
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
 	void Server_DragAndRemoveItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance);
 
-	UFUNCTION(BlueprintCallable, Server, Reliable)
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
 	void Server_DropItemInstanceToWorld(UInvSys_InventoryItemInstance* InItemInstance);
 
 protected:
+	FORCEINLINE bool HasAuthority() const;
+
 	void SetDraggingItemInstance(UInvSys_InventoryItemInstance* NewDragItemInstance);
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 protected:
-	UPROPERTY(ReplicatedUsing = OnRep_DraggingItemInstance)
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_DraggingItemInstance, Category = "Player Inventory Component")
 	TWeakObjectPtr<UInvSys_InventoryItemInstance> DraggingItemInstance = nullptr;
 	UFUNCTION()
 	void OnRep_DraggingItemInstance(const TWeakObjectPtr<UInvSys_InventoryItemInstance>& OldDraggingItemInstance);
+
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Player Inventory Component")
+	TSubclassOf<UInvSys_InventoryHUD> InventoryHUDClass;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Player Inventory Component")
+	UInvSys_InventoryHUD* InventoryHUD = nullptr;
 };
 
 template <class T, class ... Arg>

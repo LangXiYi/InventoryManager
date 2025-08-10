@@ -31,48 +31,12 @@ AInvSys_PickableItems::AInvSys_PickableItems()
 	bReplicates = true;
 }
 
-void AInvSys_PickableItems::InitItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)
+void AInvSys_PickableItems::BeginPlay()
 {
-	/*if (NewItemInstance->GetOuter() != this)
+	Super::BeginPlay();
+	if (ItemDefinition != nullptr)
 	{
-		NewItemInstance = DuplicateObject(NewItemInstance, this);
-	}*/
-	ItemInstance = DuplicateObject(NewItemInstance, this);
-	NewItemInstance->ConditionalBeginDestroy();
-	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
-	{
-		OnRepItemInstance();
-	}
-}
-
-bool AInvSys_PickableItems::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags)
-{
-	bool WroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
-	if (ItemInstance && IsValid(ItemInstance))
-	{
-		UActorChannel::SetCurrentSubObjectOwner(this);
-		for (UInvSys_InventoryItemInstance* MyInstance : ItemInstance->MyInstances)
-		{
-			WroteSomething |= Channel->ReplicateSubobject(MyInstance, *Bunch, *RepFlags);
-		}
-		WroteSomething |= Channel->ReplicateSubobject(ItemInstance, *Bunch, *RepFlags);
-	}
-	return WroteSomething;
-}
-
-void AInvSys_PickableItems::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME(AInvSys_PickableItems, ItemInstance);
-}
-
-void AInvSys_PickableItems::OnRepItemInstance()
-{
-	check(ItemInstance)
-	if (ItemInstance)
-	{
-		auto DropItemFragment = ItemInstance->FindFragmentByClass<UInvSys_ItemFragment_DragDrop>();
+		auto DropItemFragment = FindFragmentByClass<UInvSys_ItemFragment_DragDrop>();
 		if (DropItemFragment)
 		{
 			UStaticMesh* StaticMesh = DropItemFragment->DropDisplayMesh.LoadSynchronous();
@@ -82,12 +46,52 @@ void AInvSys_PickableItems::OnRepItemInstance()
 			}
 			ItemMesh->SetRelativeLocation(DropItemFragment->DropLocationOffset);
 		}
-		FDropItemMessage DropItemMessage;
-		DropItemMessage.DropItem = this;
-		DropItemMessage.ItemInstance = ItemInstance;
-		DropItemMessage.FromActor = GetOwner();
-		
-		UGameplayMessageSubsystem& MessageSystem = UGameplayMessageSubsystem::Get(GetWorld());
-		MessageSystem.BroadcastMessage(Inventory_Message_DropItem, DropItemMessage);
 	}
+}
+
+void AInvSys_PickableItems::InitItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)
+{
+	if (NewItemInstance== nullptr)
+	{
+		checkNoEntry();
+		return;
+	}
+	ItemDefinition = NewItemInstance->GetItemDefinition();
+	ItemStackCount = NewItemInstance->GetItemStackCount();
+}
+
+void AInvSys_PickableItems::InitPickableItems(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 NewStackCount)
+{
+	check(HasAuthority())
+	ItemDefinition = ItemDef;
+	ItemStackCount = NewStackCount;
+
+	auto DropItemFragment = FindFragmentByClass<UInvSys_ItemFragment_DragDrop>();
+	if (DropItemFragment)
+	{
+		UStaticMesh* StaticMesh = DropItemFragment->DropDisplayMesh.LoadSynchronous();
+		if (StaticMesh)
+		{
+			ItemMesh->SetStaticMesh(StaticMesh);
+		}
+		ItemMesh->SetRelativeLocation(DropItemFragment->DropLocationOffset);
+	}
+}
+
+const UInvSys_InventoryItemFragment* AInvSys_PickableItems::FindFragmentByClass(
+	TSubclassOf<UInvSys_InventoryItemFragment> FragmentClass) const
+{
+	if ((ItemDefinition != nullptr) && (FragmentClass != nullptr))
+	{
+		return GetDefault<UInvSys_InventoryItemDefinition>(ItemDefinition)->FindFragmentByClass(FragmentClass);
+	}
+	return nullptr;
+}
+
+void AInvSys_PickableItems::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AInvSys_PickableItems, ItemDefinition);
+	DOREPLIFETIME(AInvSys_PickableItems, ItemStackCount);
 }

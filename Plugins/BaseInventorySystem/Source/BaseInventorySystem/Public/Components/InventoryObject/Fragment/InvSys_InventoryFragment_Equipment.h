@@ -52,12 +52,13 @@ protected:
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+	// todo:: UFUNCTION(Broadcast) BroadCast_XXX
 	void BroadcastEquipItemInstance(UInvSys_InventoryItemInstance* NewItemInstance);
 	void BroadcastUnEquipItemInstance();
 
 protected:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Fragment")
-	FGameplayTag SupportEquipTag;
+	// UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Fragment")
+	// FGameplayTag SupportEquipTag;
 
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_ItemInstance, Category = "Inventory Fragment")
 	TObjectPtr<UInvSys_InventoryItemInstance> ItemInstance;

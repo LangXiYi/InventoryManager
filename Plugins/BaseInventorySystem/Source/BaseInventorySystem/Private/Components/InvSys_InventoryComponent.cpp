@@ -33,51 +33,43 @@ void UInvSys_InventoryComponent::ConstructInventoryObjects()
 		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Error, TEXT("The InventoryObjectsContent is nullptr."));
 		return;
 	}
-	
-	if (HasAuthority())
+	check(HasAuthority())
+	auto PostLoadInventoryObjectContent = [this]()
 	{
-		auto PostLoadInventoryObjectContent = [&]()
-		{
-			UInvSys_InventoryContentMapping* CDO_InventoryObjectContent =
-				InventoryObjectContent->GetDefaultObject<UInvSys_InventoryContentMapping>();
-			
-			InventoryObjectList.Empty();
-			InventoryObjectList.Reserve(CDO_InventoryObjectContent->InventoryContentList.Num());
-			for (UInvSys_PreEditInventoryObject* PreEditInventoryObject : CDO_InventoryObjectContent->InventoryContentList)
-			{
-				if (PreEditInventoryObject == nullptr)
-				{
-					UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("库存对象内容映射 [InventoryContentMapping] 中存在空值."));
-					continue;
-				}
-				UInvSys_BaseInventoryObject* InventoryObject = PreEditInventoryObject->NewInventoryObject(this);
-				if (InventoryObject == nullptr)
-				{
-					UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("预设 [%s] 构建的库存对象为空."), *PreEditInventoryObject->GetName());
-					continue;
-				}
-				InventoryObjectList.Emplace(InventoryObject);
-			}
-			if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
-			{
-				OnRep_InventoryObjectList();
-			}
-			// todo::读取数据库资源初始化库存数据？
-			OnConstructInventoryObjects();
-		};
+		UInvSys_InventoryContentMapping* CDO_InventoryObjectContent =
+			InventoryObjectContent->GetDefaultObject<UInvSys_InventoryContentMapping>();
 
-		// 异步加载资产
-		if (InventoryObjectContent.IsValid() == false)
+		InventoryObjectList.Empty();
+		InventoryObjectList.Reserve(CDO_InventoryObjectContent->InventoryContentMapping.Num());
+		for (const FInvSys_InventoryObjectHelper& InventoryObjectHelper : CDO_InventoryObjectContent->InventoryContentMapping)
 		{
-			FStreamableManager& StreamableManager = UAssetManager::GetStreamableManager();
-			StreamableManager.RequestSyncLoad(InventoryObjectContent.ToSoftObjectPath()); // 可根据需要决定是否使用异步节点
-			// StreamableManager.RequestSyncLoad(InventoryObjectContent.ToSoftObjectPath(), FStreamableDelegate::CreateLambda(PostLoadInventoryObjectContent));
-			PostLoadInventoryObjectContent();
+			UInvSys_BaseInventoryObject* InventoryObject = InventoryObjectHelper.ConstructInventoryObject(this);
+			if (InventoryObject == nullptr)
+			{
+				UE_LOG(LogInventorySystem, Error, TEXT("预设构建的库存对象为空 -- %s."), *InventoryObjectHelper.InventoryObjectTag.ToString());
+				continue;
+			}
+			InventoryObjectList.Emplace(InventoryObject);
 		}
-		else
+		if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
 		{
-			PostLoadInventoryObjectContent();
+			OnRep_InventoryObjectList();
 		}
+		// todo::读取数据库资源初始化库存数据？
+		OnConstructInventoryObjects();
+	};
+
+	// 异步加载资产
+	if (InventoryObjectContent.IsValid() == false)
+	{
+		FStreamableManager& StreamableManager = UAssetManager::GetStreamableManager();
+		StreamableManager.RequestSyncLoad(InventoryObjectContent.ToSoftObjectPath()); // 可根据需要决定是否使用异步节点
+		// StreamableManager.RequestSyncLoad(InventoryObjectContent.ToSoftObjectPath(), FStreamableDelegate::CreateLambda(PostLoadInventoryObjectContent));
+		PostLoadInventoryObjectContent();
+	}
+	else
+	{
+		PostLoadInventoryObjectContent();
 	}
 }
 
@@ -154,8 +146,24 @@ bool UInvSys_InventoryComponent::RestoreItemInstance(UInvSys_InventoryItemInstan
 	return false;
 }
 
+void UInvSys_InventoryComponent::UpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance, int32 NewStackCount)
+{
+	if (ItemInstance == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstance is nullptr."), __FUNCTION__)
+		return;
+	}
+	auto ContainerFragment = FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(ItemInstance->GetInventoryObjectTag());
+	if (ContainerFragment == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ContainerFragment is nullptr."), __FUNCTION__)
+		return;
+	}
+	ContainerFragment->UpdateItemStackCount(ItemInstance, NewStackCount);
+}
+
 void UInvSys_InventoryComponent::UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance,
-	const FGameplayTag& InventoryTag, bool NewState)
+                                                             const FGameplayTag& InventoryTag, bool NewState)
 {
 	auto ContainerFragment = FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(InventoryTag);
 	check(ContainerFragment)
@@ -226,7 +234,8 @@ void UInvSys_InventoryComponent::CancelDragItemInstance(UInvSys_InventoryItemIns
 	}
 }
 
-void UInvSys_InventoryComponent::DropItemInstanceToWorld(UInvSys_InventoryItemInstance* InItemInstance)
+AInvSys_PickableItems* UInvSys_InventoryComponent::DropItemInstanceToWorld(
+	UInvSys_InventoryItemInstance* InItemInstance, const FTransform& Transform)
 {
 	check(InItemInstance)
 	if (InItemInstance)
@@ -235,20 +244,23 @@ void UInvSys_InventoryComponent::DropItemInstanceToWorld(UInvSys_InventoryItemIn
 		auto DropItemFragment = InItemInstance->FindFragmentByClass<UInvSys_ItemFragment_DragDrop>();
 		if (DropItemFragment && DropItemFragment->DropItemClass)
 		{
+			RemoveItemInstance(InItemInstance);
+
 			FActorSpawnParameters SpawnParameters;
 			SpawnParameters.Owner = GetOwner();
 
-			AInvSys_PickableItems* PickableItems = GetWorld()->SpawnActor<AInvSys_PickableItems>(DropItemFragment->DropItemClass, SpawnParameters);
-			PickableItems->InitItemInstance(InItemInstance);
-			
-			// bug::在拖拽宝箱内的物品时，无法正确获取到玩家角色！！！所以丢弃的位置会出现错误。
-			OnDropItemInstanceToWorld.Broadcast(PickableItems);
+			AInvSys_PickableItems* PickableItems = GetWorld()->SpawnActor<AInvSys_PickableItems>(DropItemFragment->DropItemClass, Transform, SpawnParameters);
+			PickableItems->InitPickableItems(InItemInstance->GetItemDefinition(), InItemInstance->GetItemStackCount());
+			// bug::客户端无法正确获取到当前的位置
+			// OnDropItemInstanceToWorld.Broadcast(PickableItems);
+			return PickableItems;
 		}
 		else
 		{
 			UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("丢弃的物品可能不存在 DragDrop 片段！需要在物品定义中添加并定义属性。"))
 		}
 	}
+	return nullptr;
 }
 
 void UInvSys_InventoryComponent::EquipItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, FGameplayTag SlotTag)
@@ -417,15 +429,15 @@ bool UInvSys_InventoryComponent::IsLocalController() const
 	return OwningPlayer ? OwningPlayer->IsLocalController() : false;
 }
 
-UInvSys_PreEditInventoryObject* UInvSys_InventoryComponent::GetPreEditInventoryObject(int32 Index) const
+UInvSys_InventoryObjectContent* UInvSys_InventoryComponent::GetInventoryObjectContent(int32 Index) const
 {
 	if (InventoryObjectContent.IsValid())
 	{
 		UInvSys_InventoryContentMapping* CDO_InventoryObjectContent =
 			InventoryObjectContent->GetDefaultObject<UInvSys_InventoryContentMapping>();
-		if (CDO_InventoryObjectContent->InventoryContentList.IsValidIndex(Index))
+		if (CDO_InventoryObjectContent->InventoryContentMapping.IsValidIndex(Index))
 		{
-			return CDO_InventoryObjectContent->InventoryContentList[Index];
+			return CDO_InventoryObjectContent->InventoryContentMapping[Index].InventoryObjectContent;
 		}
 		checkf(false, TEXT("传入的 Index 无效"));
 	}
@@ -433,7 +445,7 @@ UInvSys_PreEditInventoryObject* UInvSys_InventoryComponent::GetPreEditInventoryO
 }
 
 bool UInvSys_InventoryComponent::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch,
-	FReplicationFlags* RepFlags)
+                                                     FReplicationFlags* RepFlags)
 {
 	bool WroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
 	for (UInvSys_BaseInventoryObject* InventoryObject : InventoryObjectList)
@@ -496,12 +508,9 @@ void UInvSys_InventoryComponent::OnRep_InventoryObjectList()
 	for (int i = 0; i < InventoryObjectList.Num(); ++i)
 	{
 		check(InventoryObjectList[i]);
-		UInvSys_PreEditInventoryObject* PreEditInventoryObject = GetPreEditInventoryObject(i);
-		if (InventoryObjectList[i] && PreEditInventoryObject)
-		{
-			InventoryObjectList[i]->InitInventoryObject(GetPreEditInventoryObject(i));
-			InventoryObjectMap.Add(InventoryObjectList[i]->GetInventoryObjectTag(), InventoryObjectList[i]);
-		}
+		// InventoryObjectList[i]->InitInventoryObject(GetPreEditInventoryObject(i));
+		InventoryObjectList[i]->InitInventoryObject(GetInventoryObjectContent(i));
+		InventoryObjectMap.Add(InventoryObjectList[i]->GetInventoryObjectTag(), InventoryObjectList[i]);
 	}
 	OnConstructInventoryObjects();
 	// 卸载库存数据的资源
