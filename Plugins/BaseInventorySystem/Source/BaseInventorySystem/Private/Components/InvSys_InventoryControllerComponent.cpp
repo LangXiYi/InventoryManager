@@ -101,46 +101,75 @@ void UInvSys_InventoryControllerComponent::Server_EquipItemDefinition_Implementa
 }
 
 void UInvSys_InventoryControllerComponent::Server_EquipItemInstance_Implementation(UInvSys_InventoryComponent* InvComp,
-	UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag)
+	UInvSys_InventoryItemInstance* ItemInstance, FGameplayTag InventoryTag)
 {
-	check(InvComp);
 	if (InvComp == nullptr)
 	{
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("传入的库存组件不存在。"))
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, InventoryComponent is nullptr."), __FUNCTION__)
 		return;
 	}
-	if (InItemInstance == nullptr)
+	if (ItemInstance == nullptr)
 	{
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("传入的物品实例不存在。"))
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstance is nullptr."), __FUNCTION__)
 		return;
 	}
-	auto EquipItemFragment = InItemInstance->FindFragmentByClass<UInvSys_ItemFragment_EquipItem>();
-	if (EquipItemFragment == nullptr)
+	UInvSys_InventoryComponent* OldInvComp = ItemInstance->GetInventoryComponent();
+	FGameplayTag OldInventoryTag = ItemInstance->GetInventoryObjectTag();
+	check(InventoryTag.IsValid())
+	check(OldInventoryTag.IsValid())
+	if (InvComp == OldInvComp && InventoryTag == OldInventoryTag)
 	{
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("物品[%s]未添加装备片段。"),
-			*InItemInstance->GetItemDisplayName().ToString())
+		// 装备未发生任何改变
 		return;
 	}
-	if (EquipItemFragment->SupportEquipSlot.HasTagExact(SlotTag) == false)
-	{
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("物品[%s]不支持装备到目标槽位[%s]"),
-			*InItemInstance->GetItemDisplayName().ToString(), *SlotTag.ToString())
-		return;
-	} 
-	InvComp->EquipItemInstance(InItemInstance, SlotTag);
-}
 
-void UInvSys_InventoryControllerComponent::Server_RestoreItemInstance_Implementation(
-	UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance)
-{
-	check(InvComp)
-	if (InvComp)
+	bool bHasEquipItemInstance = false;
+	bool bIsPayloadItems = false;
+	if (OldInvComp != nullptr)
 	{
-		bool bIsSuccess = InvComp->RestoreItemInstance(InItemInstance);
-		if (bIsSuccess == false)
+		bHasEquipItemInstance = OldInvComp->HasEquipItemInstance(ItemInstance);
+	}
+	if (bHasEquipItemInstance)
+	{
+		/**
+		 * 若 ItemInstance 是在其他位置被装备的物品
+		 * 且存在容器模块那么就将容器模块内所有物品暂存至 ItemInstance 中
+		 */
+		auto ContainerFragment = OldInvComp->FindInventoryFragment<UInvSys_InventoryFragment_Container>(OldInventoryTag);
+		if (ContainerFragment)
 		{
-			check(false);
-			//todo::丢弃至世界？
+			ContainerFragment->GetAllItemInstance(ItemInstance->PayloadItems);
+			bIsPayloadItems = true;
+		}
+	}
+
+	UInvSys_InventoryItemInstance* NewItemInstance = InvComp->EquipItemInstance(ItemInstance, InventoryTag);
+	if (NewItemInstance == nullptr)
+	{
+		if (bIsPayloadItems == true)
+		{
+			// 装备物品失败，清空暂存的物品
+			ItemInstance->PayloadItems.Empty();
+		}
+		return;
+	}
+	if (NewItemInstance != nullptr)
+	{
+		if (bHasEquipItemInstance)
+		{
+			/**
+			 * 如果这个物品是正在装备中的物品？
+			 * 装备成功后需要将物品取消装备！！！
+			 */
+			OldInvComp->UnEquipItemInstance(OldInventoryTag);
+		}
+		else
+		{
+			/**
+			 * 如果这个物品是在容器内的一个物品？
+			 * 装备成功后需要将物品从它原有的容器中删除！！！
+			 */
+			OldInvComp->RemoveItemInstance(ItemInstance, OldInventoryTag);
 		}
 	}
 }
@@ -155,7 +184,9 @@ void UInvSys_InventoryControllerComponent::Server_DropItemInstanceToWorld_Implem
 			APlayerController* PlayerController = GetOwner<APlayerController>();
 			APawn* Pawn = PlayerController->GetPawn();
 			FTransform Transform = Pawn->GetTransform();
-			InvComp->DropItemInstanceToWorld(InItemInstance, Transform);
+
+			// Multi_DropItemInstanceToWorld(InItemInstance, Transform);
+			InvComp->DiscardItemInstance(InItemInstance, Transform);
 		}
 	}
 }
@@ -184,6 +215,12 @@ void UInvSys_InventoryControllerComponent::GetLifetimeReplicatedProps(TArray<FLi
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	// 限制仅拥有者同步数据
 	DOREPLIFETIME_CONDITION(UInvSys_InventoryControllerComponent, DraggingItemInstance, COND_OwnerOnly);
+}
+
+void UInvSys_InventoryControllerComponent::Multi_DropItemInstanceToWorld_Implementation(
+	UInvSys_InventoryItemInstance* InItemInstance, const FTransform& Transform)
+{
+	
 }
 
 bool UInvSys_InventoryControllerComponent::HasAuthority() const

@@ -6,6 +6,7 @@
 #include "BaseInventorySystem.h"
 #include "Components/InvSys_InventoryComponent.h"
 #include "Data/InvSys_InventoryItemDefinition.h"
+#include "Data/InvSys_ItemFragment_BaseItem.h"
 #include "Net/UnrealNetwork.h"
 
 UInvSys_InventoryItemInstance::UInvSys_InventoryItemInstance()
@@ -161,6 +162,18 @@ const FGameplayTag& UInvSys_InventoryItemInstance::GetInventoryObjectTag() const
 	return InventoryObjectTag;
 }
 
+int32 UInvSys_InventoryItemInstance::GetItemRemainStackCount() const
+{
+	auto BaseItemFragment = FindFragmentByClass<UInvSys_ItemFragment_BaseItem>();
+	return BaseItemFragment ? BaseItemFragment->MaxStackCount - StackCount : 0;
+}
+
+int32 UInvSys_InventoryItemInstance::GetItemMaxStackCount() const
+{
+	auto BaseItemFragment = FindFragmentByClass<UInvSys_ItemFragment_BaseItem>();
+	return BaseItemFragment ? BaseItemFragment->MaxStackCount : 1;
+}
+
 int32 UInvSys_InventoryItemInstance::GetItemStackCount() const
 {
 	return StackCount;
@@ -168,6 +181,7 @@ int32 UInvSys_InventoryItemInstance::GetItemStackCount() const
 
 void UInvSys_InventoryItemInstance::SetItemStackCount(int32 NewStackCount)
 {
+	check(NewStackCount <= GetItemMaxStackCount())
 	StackCount = NewStackCount;
 }
 

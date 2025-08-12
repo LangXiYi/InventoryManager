@@ -8,6 +8,7 @@
 #include "Data/InvSys_InventoryItemInstance.h"
 #include "Engine/ActorChannel.h"
 #include "Components/InvSys_InventoryComponent.h"
+#include "Data/InvSys_ItemFragment_EquipItem.h"
 #include "GameFramework/GameplayMessageSubsystem.h"
 #include "Net/UnrealNetwork.h"
 
@@ -19,9 +20,9 @@ UInvSys_InventoryFragment_Equipment::UInvSys_InventoryFragment_Equipment()
 void UInvSys_InventoryFragment_Equipment::RefreshInventoryFragment()
 {
 	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("正在刷新装备片段[%s]"), *GetInventoryObjectTag().ToString())
-	if (ItemInstance)
+	if (EquipmentInstance)
 	{
-		BroadcastEquipItemInstance(ItemInstance);
+		BroadcastEquipItemInstance(EquipmentInstance);
 	}
 	else
 	{
@@ -39,36 +40,120 @@ UInvSys_InventoryItemInstance* UInvSys_InventoryFragment_Equipment::EquipItemDef
 	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef)
 {
 	check(HasAuthority())
-	UInvSys_InventoryItemInstance* TempItemInstance = NewObject<UInvSys_InventoryItemInstance>(GetInventoryComponent());
-	if (TempItemInstance)
+	if (HasEquipmentItems())
 	{
-		TempItemInstance->SetItemDefinition(ItemDef);
-		TempItemInstance->SetItemUniqueID(FGuid::NewGuid());
-		EquipItemInstance(TempItemInstance);
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, Has equip other items."), __FUNCTION__)
+		return nullptr;
 	}
-	return TempItemInstance;
+	if (ItemDef == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemDefinition is nullptr."), __FUNCTION__)
+		return nullptr;
+	}
+
+	/**
+	 * 物品的定义中必须包含装备片段
+	 */
+	auto CDO_ItemDefinition = ItemDef->GetDefaultObject<UInvSys_InventoryItemDefinition>();
+	if (CDO_ItemDefinition == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, CDO_ItemDefinition is nullptr."), __FUNCTION__)
+		return nullptr;
+	}
+	auto EquipmentFragment = CDO_ItemDefinition->FindFragmentByClass<UInvSys_ItemFragment_EquipItem>();
+	if (EquipmentFragment == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, EquipmentFragment is nullptr."), __FUNCTION__)
+		return nullptr;
+	}
+	if (EquipmentFragment->SupportEquipSlot.HasTagExact(InventoryObjectTag) == false)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, 物品支持的装备槽中不包括 %s ."), __FUNCTION__, *InventoryObjectTag.ToString())
+		return nullptr;
+	}
+
+	UInvSys_InventoryItemInstance* TempItemInstance = NewObject<UInvSys_InventoryItemInstance>(GetInventoryComponent());
+	if (TempItemInstance == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstance is nullptr, %s is not valid."), __FUNCTION__, *ItemDef->GetName())
+		return nullptr;
+	}
+	EquipmentInstance = TempItemInstance;
+	EquipmentInstance->SetItemDefinition(ItemDef);
+	EquipmentInstance->SetItemUniqueID(FGuid::NewGuid());
+	EquipmentInstance->SetSlotTag(GetInventoryObjectTag());
+	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
+	{
+		OnRep_ItemInstance();
+	}
+	return EquipmentInstance;
 }
 
-void UInvSys_InventoryFragment_Equipment::EquipItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)
+UInvSys_InventoryItemInstance* UInvSys_InventoryFragment_Equipment::EquipItemInstance(UInvSys_InventoryItemInstance* ItemInstance)
 {
 	check(HasAuthority())
-	if (NewItemInstance)
+	if (HasEquipmentItems())
 	{
-		ItemInstance = NewItemInstance;
-		ItemInstance->SetSlotTag(GetInventoryObjectTag());
-		if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
-		{
-			OnRep_ItemInstance();
-		}
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, Has equip other items."), __FUNCTION__)
+		return nullptr;
 	}
+	if (ItemInstance == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstance is nullptr."), __FUNCTION__)
+		return nullptr;
+	}
+
+	/**
+	 * 物品的定义中必须包含装备片段
+	 */
+	auto EquipItemFragment = ItemInstance->FindFragmentByClass<UInvSys_ItemFragment_EquipItem>();
+	if (EquipItemFragment == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, EquipmentFragment is nullptr."), __FUNCTION__)
+		return nullptr;
+	}
+	if (EquipItemFragment->SupportEquipSlot.HasTagExact(InventoryObjectTag) == false)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, 物品支持的装备槽中不包括 %s ."), __FUNCTION__, *InventoryObjectTag.ToString())
+		return nullptr;
+	}
+
+	/**
+	 * 更新物品的库存组件
+	 * todo::直接使用 SetInventoryComponent 是否会导致客户端同步失效？
+	 */
+	UInvSys_InventoryItemInstance* TargetItemInstance = ItemInstance;
+	if (ItemInstance->GetInventoryComponent() != GetInventoryComponent())
+	{
+		TargetItemInstance = DuplicateObject(ItemInstance, GetInventoryComponent());
+		ItemInstance->ConditionalBeginDestroy(); // 通知 GC 清理对象
+	}
+	if (TargetItemInstance == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, Duplicate ItemInstance is nullptr."), __FUNCTION__)
+		return nullptr;
+	}
+
+	EquipmentInstance = TargetItemInstance;
+	EquipmentInstance->SetSlotTag(GetInventoryObjectTag());
+	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
+	{
+		OnRep_ItemInstance();
+	}
+	return EquipmentInstance;
 }
 
 bool UInvSys_InventoryFragment_Equipment::UnEquipItemInstance()
 {
 	check(HasAuthority())
+	if (HasEquipmentItems() == false)
+	{
+		UE_LOG(LogInventorySystem, Warning, TEXT("当前装备模块 %s 未装备任何物品。"), *InventoryObjectTag.ToString())
+		return false;
+	}
 
-	ItemInstance->RemoveFromInventory();
-	ItemInstance = nullptr;
+	EquipmentInstance->RemoveFromInventory();
+	EquipmentInstance = nullptr;
 	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
 	{
 		OnRep_ItemInstance();
@@ -78,21 +163,21 @@ bool UInvSys_InventoryFragment_Equipment::UnEquipItemInstance()
 
 bool UInvSys_InventoryFragment_Equipment::HasEquipmentItems() const
 {
-	return ItemInstance != nullptr;
+	return EquipmentInstance != nullptr;
 }
 
 UInvSys_InventoryItemInstance* UInvSys_InventoryFragment_Equipment::GetEquipItemInstance() const
 {
-	return ItemInstance;
+	return EquipmentInstance;
 }
 
 bool UInvSys_InventoryFragment_Equipment::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch,
                                                               FReplicationFlags* RepFlags)
 {
 	bool bWroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
-	if (ItemInstance && IsValid(ItemInstance))
+	if (EquipmentInstance && IsValid(EquipmentInstance))
 	{
-		bWroteSomething |= Channel->ReplicateSubobject(ItemInstance, *Bunch, *RepFlags);
+		bWroteSomething |= Channel->ReplicateSubobject(EquipmentInstance, *Bunch, *RepFlags);
 	}
 	return bWroteSomething;
 }
@@ -101,7 +186,7 @@ void UInvSys_InventoryFragment_Equipment::GetLifetimeReplicatedProps(TArray<FLif
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME_CONDITION(UInvSys_InventoryFragment_Equipment, ItemInstance, COND_None);
+	DOREPLIFETIME_CONDITION(UInvSys_InventoryFragment_Equipment, EquipmentInstance, COND_None);
 }
 
 void UInvSys_InventoryFragment_Equipment::BroadcastEquipItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)
@@ -137,13 +222,13 @@ void UInvSys_InventoryFragment_Equipment::BroadcastUnEquipItemInstance()
 void UInvSys_InventoryFragment_Equipment::OnRep_ItemInstance()
 {
 	// UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Error, TEXT("[%s] OnRep Equip ItemInstance"), HasAuthority() ? TEXT("Server"):TEXT("Client"));
-	if (ItemInstance)
+	if (EquipmentInstance)
 	{
-		BroadcastEquipItemInstance(ItemInstance);
+		BroadcastEquipItemInstance(EquipmentInstance);
 	}
 	else
 	{
 		BroadcastUnEquipItemInstance();
 	}
-	LastItemInstance = ItemInstance;
+	LastItemInstance = EquipmentInstance;
 }

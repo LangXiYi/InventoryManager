@@ -27,5 +27,5 @@ public:
 
 	// 是否允许玩家更改
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment")
-	bool bIsAllowPlayerChange = true;
+	bool bBinding = false;
 };

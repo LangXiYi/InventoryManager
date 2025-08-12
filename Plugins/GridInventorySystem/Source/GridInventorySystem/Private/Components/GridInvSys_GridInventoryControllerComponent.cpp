@@ -6,6 +6,7 @@
 #include "Components/GridInvSys_InventoryComponent.h"
 #include "Components/InventoryObject/Fragment/GridInvSys_InventoryFragment_Container.h"
 #include "Data/GridInvSys_InventoryItemInstance.h"
+#include "Data/InvSys_ItemFragment_BaseItem.h"
 #include "Library/GridInvSys_CommonFunctionLibrary.h"
 
 
@@ -113,18 +114,6 @@ void UGridInvSys_GridInventoryControllerComponent::Server_AddItemInstancesToCont
 	}
 }
 
-void UGridInvSys_GridInventoryControllerComponent::Server_RestoreItemInstanceToPos_Implementation(
-	UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance,
-	const FGridInvSys_ItemPosition& InPos)
-{
-	check(InvComp)
-	if (InvComp && InvComp->IsA<UGridInvSys_InventoryComponent>())
-	{
-		UGridInvSys_InventoryComponent* GridInvComp = Cast<UGridInvSys_InventoryComponent>(InvComp);
-		GridInvComp->RestoreItemInstanceToPos(InItemInstance, InPos);
-	}
-}
-
 void UGridInvSys_GridInventoryControllerComponent::Server_UpdateItemInstancePosition_Implementation(
 	UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* ItemInstance,
 	FGridInvSys_ItemPosition NewPosition)
@@ -170,26 +159,23 @@ void UGridInvSys_GridInventoryControllerComponent::Server_SwapItemInstance_Imple
 	// 两物品定义一致，且允许堆叠
 	if (FromItemInstance->GetItemDefinition() == ToItemInstance->GetItemDefinition())
 	{
-		if (auto PickupItemFragment = FromItemInstance->FindFragmentByClass<UInvSys_ItemFragment_PickUpItem>())
+		if (auto PickupItemFragment = FromItemInstance->FindFragmentByClass<UInvSys_ItemFragment_BaseItem>())
 		{
-			if (PickupItemFragment->bAllowStack)
+			const int32 MaxStackCount = PickupItemFragment->MaxStackCount;
+			const int32 FromItemStackCount = FromItemInstance->GetItemStackCount();
+			const int32 ToItemStackCount = ToItemInstance->GetItemStackCount();
+			const int32 NewItemStackCount = FromItemStackCount + ToItemStackCount;
+			if (NewItemStackCount <= MaxStackCount)
 			{
-				const int32 MaxStackCount = PickupItemFragment->MaxStackCount;
-				const int32 FromItemStackCount = FromItemInstance->GetItemStackCount();
-				const int32 ToItemStackCount = ToItemInstance->GetItemStackCount();
-				const int32 NewItemStackCount = FromItemStackCount + ToItemStackCount;
-				if (NewItemStackCount <= MaxStackCount)
-				{
-					ToInvComp->UpdateItemStackCount(ToItemInstance, NewItemStackCount);
-					FromInvComp->RemoveItemInstance(FromItemInstance);
-				}
-				else
-				{
-					ToInvComp->UpdateItemStackCount(ToItemInstance, MaxStackCount);
-					FromInvComp->UpdateItemStackCount(FromItemInstance, NewItemStackCount - MaxStackCount);
-				}
-				return;
+				ToInvComp->UpdateItemStackCount(ToItemInstance, NewItemStackCount);
+				FromInvComp->RemoveItemInstance(FromItemInstance);
 			}
+			else
+			{
+				ToInvComp->UpdateItemStackCount(ToItemInstance, MaxStackCount);
+				FromInvComp->UpdateItemStackCount(FromItemInstance, NewItemStackCount - MaxStackCount);
+			}
+			return;
 		}
 	}
 	// 两物品实例大小相同

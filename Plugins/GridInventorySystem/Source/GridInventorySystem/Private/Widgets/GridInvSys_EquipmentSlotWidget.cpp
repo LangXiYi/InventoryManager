@@ -105,7 +105,7 @@ bool UGridInvSys_EquipmentSlotWidget::NativeOnDrop(const FGeometry& InGeometry, 
 		if (EquipItemFragment)
 		{
 			// 判断目标物品是否支持在该槽位装备
-			if (EquipItemFragment->SupportEquipSlot.HasTagExact(SlotTag) && EquipItemFragment->bIsAllowPlayerChange == true)
+			if (EquipItemFragment->SupportEquipSlot.HasTagExact(SlotTag) && EquipItemFragment->bBinding == false)
 			{
 				ICC->Server_EquipItemInstance(InventoryComponent.Get(), PayLoadItemInstance, SlotTag);
 				return true;

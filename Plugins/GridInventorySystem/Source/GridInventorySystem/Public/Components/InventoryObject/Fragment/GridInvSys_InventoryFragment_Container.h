@@ -36,9 +36,15 @@ public:
 
 	TArray<int32> GetItemGridOccupiedIndexes(UGridInvSys_InventoryItemInstance* ItemInstance) const;
 
-	bool CheckItemPosition(UInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& NewPosition);
+	/**
+	 * 检查目标位置是否能够容纳指定的物品，若该物品在当前容器内存在则该物品所在位置视为未被占据。
+	 */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Container Fragment", meta = (AdvancedDisplay = bIsIgnoreInItemInstance))
+	bool CheckItemPosition(UInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& NewPosition, bool bIsIgnoreInItemInstance = true);
 
-	void UpdateContainerGridItemState(UGridInvSys_InventoryItemInstance* GridItemInstance, const FGridInvSys_ItemPosition& ItemPosition, bool IsOccupy);
+	void UpdateContainerGridItemState(UInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& ItemPosition, bool IsOccupy);
+
+	void UpdateContainerGridOccupyState(FIntPoint ItemSize, const FGridInvSys_ItemPosition& ItemPosition, bool IsOccupy);
 
 	bool FindEmptyPosition(FIntPoint ItemSize, FGridInvSys_ItemPosition& OutPosition);
 

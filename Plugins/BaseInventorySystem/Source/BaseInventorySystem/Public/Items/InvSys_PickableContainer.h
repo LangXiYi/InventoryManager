@@ -18,7 +18,8 @@ public:
 	AInvSys_PickableContainer();
 
 	virtual void OnConstruction(const FTransform& Transform) override;
-	
+
+protected:
 	virtual void SetupInventoryComponent();
 
 protected:

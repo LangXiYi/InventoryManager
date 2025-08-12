@@ -7,9 +7,11 @@
 
 #include "BaseInventorySystem.h"
 #include "NativeGameplayTags.h"
+#include "Components/InvSys_InventoryComponent.h"
 #include "Components/SphereComponent.h"
 #include "Data/InvSys_InventoryItemInstance.h"
 #include "Data/InvSys_ItemFragment_DragDrop.h"
+#include "Data/InvSys_ItemFragment_PickUpItem.h"
 #include "GameFramework/GameplayMessageSubsystem.h"
 #include "Net/UnrealNetwork.h"
 
@@ -58,6 +60,12 @@ void AInvSys_PickableItems::InitItemInstance(UInvSys_InventoryItemInstance* NewI
 	}
 	ItemDefinition = NewItemInstance->GetItemDefinition();
 	ItemStackCount = NewItemInstance->GetItemStackCount();
+}
+
+bool AInvSys_PickableItems::PickupItem(UInvSys_InventoryComponent* InvComp)
+{
+	checkNoEntry();
+	return false; 
 }
 
 void AInvSys_PickableItems::InitPickableItems(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 NewStackCount)

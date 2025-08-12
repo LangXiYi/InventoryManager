@@ -22,10 +22,4 @@ public:
 	/** 拾取的物品禁止放置的容器 */
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment")
 	FGameplayTagContainer BlockContainer;
-
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment")
-	bool bAllowStack = false;
-
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment")
-	int32 MaxStackCount = 1;
 };

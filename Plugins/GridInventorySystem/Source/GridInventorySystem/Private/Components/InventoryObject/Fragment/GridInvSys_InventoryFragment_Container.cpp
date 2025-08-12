@@ -107,7 +107,7 @@ bool UGridInvSys_InventoryFragment_Container::HasEnoughFreeSpace(
 			{
 #if WITH_EDITOR || !BUILD_SHIPPING
 				PrintDebugOccupiedGrid(GetInventoryObjectTag().ToString() + "_" + FString::FromInt(ToGridID) + "--{"
-					+ ToPosition.ToString() + "}:::无法容纳大小为 [" + ItemSize.ToString() +"] 的物品");
+					+ ToPosition.ToString() + "}:::Can't Contains Item For Size [" + ItemSize.ToString() +"]");
 #endif
 				return false;
 			}
@@ -161,33 +161,11 @@ TArray<int32> UGridInvSys_InventoryFragment_Container::GetItemGridOccupiedIndexe
 			}
 		}
 	}
-#if 0
-	int32 Width = ContainerGridSize[ItemPosition.GridID].Y;
-	bool bIsFirst = true;
-	FString PrintStr = "";
-	for (int j = 0; j < OccupiedGrid[ItemPosition.GridID].Num(); ++j)
-	{
-		bool bIsNewLine = j % Width == 0; //是否为新一行
-		if (bIsNewLine && bIsFirst == false)
-		{
-			UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("%s"), *PrintStr);
-			PrintStr = "";
-			PrintStr.Append(OutArray.Contains(j) ? TEXT("\tT") : TEXT("\tF"));
-		}
-		else
-		{
-			bIsFirst = false;
-			PrintStr.Append(OutArray.Contains(j) ? TEXT("\tT") : TEXT("\tF"));
-		}
-	}
-	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("%s"), *PrintStr);
-	PrintStr = "";
-#endif
 	return OutArray;
 }
 
-bool UGridInvSys_InventoryFragment_Container::CheckItemPosition(UInvSys_InventoryItemInstance* ItemInstance,
-                                                                const FGridInvSys_ItemPosition& NewPosition)
+bool UGridInvSys_InventoryFragment_Container::CheckItemPosition(
+	UInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& NewPosition, bool bIsIgnoreInItemInstance)
 {
 	if (ItemInstance == nullptr || ItemInstance->IsA<UGridInvSys_InventoryItemInstance>() == false)
 	{
@@ -196,11 +174,16 @@ bool UGridInvSys_InventoryFragment_Container::CheckItemPosition(UInvSys_Inventor
 	}
 	UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(ItemInstance);
 	check(GridItemInstance)
-	const TArray<int32>& ItemGridOccupiedIndexes = GetItemGridOccupiedIndexes(GridItemInstance);
+	TArray<int32> ItemGridOccupiedIndexes = {};
+	if (bIsIgnoreInItemInstance)
+	{
+		ItemGridOccupiedIndexes = GetItemGridOccupiedIndexes(GridItemInstance);
+	}
 
 	FIntPoint ItemSize = GridItemInstance->GetItemSize(NewPosition.Direction);
 	int32 StartIndex = NewPosition.Position.X * ContainerGridSize[NewPosition.GridID].Y + NewPosition.Position.Y;
 	FIntPoint ContainerSize = ContainerGridSize[NewPosition.GridID];
+	// 循环最大执行数量 = ItemSize.X * ItemSize.Y
 	for (int X = 0; X < ItemSize.X; ++X)
 	{
 		for (int Y = 0; Y < ItemSize.Y; ++Y)
@@ -216,7 +199,13 @@ bool UGridInvSys_InventoryFragment_Container::CheckItemPosition(UInvSys_Inventor
 			if (OccupiedGrid[NewPosition.GridID].IsValidIndex(Index) == false ||
 				OccupiedGrid[NewPosition.GridID][Index] == true)
 			{
-				if (ItemGridOccupiedIndexes.Contains(Index) == false) // 判断位置是否在 ItemInstance 下
+				// 范围内存在其他被占据的物品，直接返回 false
+				if (bIsIgnoreInItemInstance == false)
+				{
+					return false;
+				}
+				// 判断位置是否在 ItemInstance 下
+				if (ItemGridOccupiedIndexes.Contains(Index) == false)
 				{
 					PrintDebugOccupiedGrid(GetInventoryObjectTag().ToString() + "_" + FString::FromInt(NewPosition.GridID) + "--{"
 						+ NewPosition.Position.ToString() + "}:::Can't Contains Item For Size [" + ItemSize.ToString() +"] ");
@@ -229,16 +218,17 @@ bool UGridInvSys_InventoryFragment_Container::CheckItemPosition(UInvSys_Inventor
 }
 
 void UGridInvSys_InventoryFragment_Container::UpdateContainerGridItemState(
-	UGridInvSys_InventoryItemInstance* GridItemInstance, const FGridInvSys_ItemPosition& ItemPosition, bool IsOccupy)
+	UInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& ItemPosition, bool IsOccupy)
 {
-	if (GridItemInstance == nullptr)
+	if (ItemInstance == nullptr || ItemInstance->IsA<UGridInvSys_InventoryItemInstance>() == false)
 	{
+		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, ItemInstance is nullptr"), __FUNCTION__)
 		return;
 	}
-	auto ItemSizeFragment = GridItemInstance->FindFragmentByClass<UGridInvSys_ItemFragment_GridItemSize>();
-	if (GridItemInstance && ItemSizeFragment)
+	auto ItemSizeFragment = ItemInstance->FindFragmentByClass<UGridInvSys_ItemFragment_GridItemSize>();
+	if (ItemInstance && ItemSizeFragment)
 	{
-		FIntPoint ItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSizeFrom(GridItemInstance, ItemPosition.Direction);
+		FIntPoint ItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSizeFrom(ItemInstance, ItemPosition.Direction);
 		if (OccupiedGrid.IsValidIndex(ItemPosition.GridID) && ContainerGridSize.IsValidIndex(ItemPosition.GridID))
 		{
 			FIntPoint GridSize = ContainerGridSize[ItemPosition.GridID];
@@ -261,8 +251,48 @@ void UGridInvSys_InventoryFragment_Container::UpdateContainerGridItemState(
 	// PrintDebugOccupiedGrid();
 }
 
+void UGridInvSys_InventoryFragment_Container::UpdateContainerGridOccupyState(FIntPoint ItemSize,
+	const FGridInvSys_ItemPosition& ItemPosition, bool IsOccupy)
+{
+	if (ItemPosition.IsValid() == false)
+	{
+		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, ItemPosition is not valid."), __FUNCTION__)
+		return;
+	}
+	if (!OccupiedGrid.IsValidIndex(ItemPosition.GridID) || !ContainerGridSize.IsValidIndex(ItemPosition.GridID))
+	{
+		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, GridID[%d] is not valid index."), __FUNCTION__, ItemPosition.GridID)
+		return;
+	}
+
+	FIntPoint GridSize = ContainerGridSize[ItemPosition.GridID];
+	int32 ItemMax_X = ItemPosition.Position.X + ItemSize.X;
+	int32 ItemMax_Y = ItemPosition.Position.Y + ItemSize.Y;
+	if (GridSize.X < ItemMax_X || GridSize.Y < ItemMax_Y)
+	{
+		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, 物品大小超出范围."), __FUNCTION__)
+		return;
+	}
+
+	for (int X = ItemPosition.Position.X; X < ItemMax_X; ++X)
+	{
+		for (int Y = ItemPosition.Position.Y; Y < ItemMax_Y; ++Y)
+		{
+			int32 Index = X * GridSize.Y + Y;
+			if (OccupiedGrid[ItemPosition.GridID].IsValidIndex(Index))
+			{
+				OccupiedGrid[ItemPosition.GridID][Index] = IsOccupy;
+			}
+			else
+			{
+				UE_LOG(LogInventorySystem, Warning, TEXT("[%d:%d] is not valid index."), ItemPosition.GridID, Index);
+			}
+		}
+	}
+}
+
 bool UGridInvSys_InventoryFragment_Container::FindEmptyPosition(FIntPoint ItemSize,
-	FGridInvSys_ItemPosition& OutPosition)
+                                                                FGridInvSys_ItemPosition& OutPosition)
 {
 	// 循环容器内所有的网格
 	for (int GridID = 0; GridID < OccupiedGrid.Num(); ++GridID)
@@ -434,7 +464,7 @@ void UGridInvSys_InventoryFragment_Container::PrintDebugOccupiedGrid(const FStri
 		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
 			TEXT("[%s:%s]::%s_%d === { Size = %s }"), *GPlayInEditorContextString,
 			*GetOwner()->GetName(), *GetInventoryObjectTag().ToString(), i, *ContainerGridSize[i].ToString());
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("PRINT_REASON::%s"), *PrintReason);
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Error, TEXT("PRINT_REASON::%s"), *PrintReason);
 		FString PrintStr = "";
 		for (int j = 0; j < OccupiedGrid[i].Num(); ++j)
 		{

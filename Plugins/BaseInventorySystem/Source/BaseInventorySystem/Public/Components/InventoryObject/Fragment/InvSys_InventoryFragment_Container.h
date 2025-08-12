@@ -45,6 +45,21 @@ public:
 		return NewItemInstance;
 	}
 
+	/** 堆叠物品 */
+	void StackItemInstance(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 Delta)
+	{
+		
+	}
+
+	/**
+	 * 查找所有可堆叠的物品实例
+	 * @param ItemDef 物品类型
+	 * @param StackableItems 输出物品实例 
+	 * @return 所有物品实例可用的堆叠数量
+	 */
+	int32 FindStackableItemInstances(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
+	                                 TArray<UInvSys_InventoryItemInstance*>& StackableItems);
+
 	/**
 	 * 更新容器内物品的属性
 	 * 注意：可变参数列表要求目标类型必须实现 InitItemInstanceProps 函数，且参数类型一致。

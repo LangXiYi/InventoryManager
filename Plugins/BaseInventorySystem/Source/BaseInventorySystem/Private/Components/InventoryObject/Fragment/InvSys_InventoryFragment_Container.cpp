@@ -5,6 +5,7 @@
 
 #include "BaseInventorySystem.h"
 #include "NativeGameplayTags.h"
+#include "Data/InvSys_ItemFragment_BaseItem.h"
 #include "Engine/ActorChannel.h"
 #include "GameFramework/GameplayMessageSubsystem.h"
 #include "Net/UnrealNetwork.h"
@@ -73,8 +74,47 @@ void UInvSys_InventoryFragment_Container::RefreshInventoryFragment()
 	}
 }
 
+int32 UInvSys_InventoryFragment_Container::FindStackableItemInstances(
+	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, TArray<UInvSys_InventoryItemInstance*>& StackableItems)
+{
+	if (ItemDef == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falid, ItemDefinition is nullptr"), __FUNCTION__)
+		return 0;
+	}
+	auto CDO_ItemDefinition = ItemDef->GetDefaultObject<UInvSys_InventoryItemDefinition>();
+	check(CDO_ItemDefinition)
+	auto BaseItemFragment = CDO_ItemDefinition->FindFragmentByClass<UInvSys_ItemFragment_BaseItem>();
+	if (BaseItemFragment == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falid, BaseItemFragment is nullptr"), __FUNCTION__)
+		return 0;
+	}
+
+	int32 RemainCount = 0;
+	for (int i = 0; i < ContainerList.Num(); ++i)
+	{
+		if (ContainerList[i].Instance == nullptr)
+		{
+			UE_LOG(LogInventorySystem, Warning, TEXT("ContainerList[%d].Instance is nullptr"), i);
+			continue;
+		}
+		// 物品类型相同，且当前堆叠数量未达到最大值
+		if (ItemDef == ContainerList[i].Instance->GetItemDefinition())
+		{
+			int32 StackCount = ContainerList[i].Instance->GetItemStackCount();
+		    if (StackCount < BaseItemFragment->MaxStackCount)
+		    {
+			    StackableItems.Add(ContainerList[i].Instance);
+		    	RemainCount += BaseItemFragment->MaxStackCount - StackCount;
+		    }
+		}
+	}
+	return RemainCount;
+}
+
 void UInvSys_InventoryFragment_Container::UpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance,
-	int32 NewStackCount)
+                                                               int32 NewStackCount)
 {
 	if (ContainsItem(ItemInstance))
 	{
@@ -169,27 +209,25 @@ bool UInvSys_InventoryFragment_Container::ReplicateSubobjects(UActorChannel* Cha
 	FReplicationFlags* RepFlags)
 {
 	bool bWroteSomething =  Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
-	// 优化执行流程，只在 ContainerList 被标记为脏时，才会触发循环执行复制！
-	// 是否会影响 RepNotify？ 答案：会影响
 	/*
 	 * 注意：
 	 * 1、服务器执行ReplicateSubobject的顺序只在初始化时有效
-	 * 2、若移除子对象时未销毁这个子对象，那么在下次加入该对象时，客户端的复制顺序会按照初始化对象时的顺序执行
+	 * 2、若移除子对象时未销毁这个子对象，那么在下次加入该对象时，客户端的复制顺序任会按照初始化对象时的顺序执行
 	 * 如何确保客户端顺序与服务器顺序一致？
 	 * 等待深入研究来解决该问题！！！
 	 */
 	if (KeyNeedsToReplicate(0, ContainerList.ArrayReplicationKey)) // 容器内成员从下标 1 开始标记，所以数组本身可以直接使用 0 
 	{
-		UE_LOG(LogInventorySystem, Log, TEXT("%s::%s --> Container Size = %d"),
-			*GetOwner()->GetName(), *InventoryObjectTag.ToString(), ContainerList.Num())
+		// UE_LOG(LogInventorySystem, Log, TEXT("%s::%s --> Container Size = %d"),
+		// 	*GetOwner()->GetName(), *InventoryObjectTag.ToString(), ContainerList.Num())
 		for (int Index = 0; Index < ContainerList.Num(); ++Index)
 		{
 			const FInvSys_ContainerEntry& Entry = ContainerList[Index];
 			if (KeyNeedsToReplicate(Entry.ReplicationID, Entry.ReplicationKey))
 			{
-				UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
-					TEXT("[%s:%s] %s:%s 的属性发生变化，正在同步至客户端。"), *GetOwner()->GetName(),
-					*InventoryObjectTag.ToString(), *Entry.Instance->GetItemDisplayName().ToString(), *Entry.Instance.GetName())
+				// UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
+				// 	TEXT("[%s:%s] %s:%s 的属性发生变化，正在同步至客户端。"), *GetOwner()->GetName(),
+				// 	*InventoryObjectTag.ToString(), *Entry.Instance->GetItemDisplayName().ToString(), *Entry.Instance.GetName())
 				if (Entry.IsValid())
 				{
 					// 同步所有需要同步的数据

@@ -38,10 +38,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_CancelOccupied(UInvSys_InventoryItemInstance* ItemInstance);
-
-	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_RestoreItemInstanceToPos(UInvSys_InventoryComponent* InvComp,
-		UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos);
 	
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_TryDropItemInstance(UInvSys_InventoryComponent* InvComp,

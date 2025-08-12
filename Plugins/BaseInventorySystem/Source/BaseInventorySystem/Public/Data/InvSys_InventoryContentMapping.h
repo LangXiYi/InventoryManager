@@ -45,7 +45,7 @@ struct FInvSys_InventoryObjectHelper
 	FGameplayTag InventoryObjectTag;
 
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "InventoryObjectHelper")
-	UInvSys_InventoryObjectContent* InventoryObjectContent;
+	TObjectPtr<UInvSys_InventoryObjectContent> InventoryObjectContent;
 
 	template<class InventoryObjectType = UInvSys_BaseInventoryObject>
 	InventoryObjectType* ConstructInventoryObject(UInvSys_InventoryComponent* InvComp) const

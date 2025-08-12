@@ -116,8 +116,8 @@ bool FInvSys_ContainerList::Contains(UInvSys_InventoryItemInstance* ItemInstance
 			return true;
 		}
 	}
-	UE_LOG(LogInventorySystem, Warning, TEXT("传入的物品实例 [%s] 在当前容器 [%s] 内不存在"),
-		*ItemInstance->GetItemDisplayName().ToString(), *GetInventoryObjectTag().ToString())
+	// UE_LOG(LogInventorySystem, Warning, TEXT("传入的物品实例 [%s] 在当前容器 [%s] 内不存在"),
+	// 	*ItemInstance->GetItemDisplayName().ToString(), *GetInventoryObjectTag().ToString())
 	return false;
 }
 

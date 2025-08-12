@@ -129,6 +129,8 @@ public:
 	/** 获取物品的库存对象标签 */
 	FORCEINLINE const FGameplayTag& GetInventoryObjectTag() const;
 
+	FORCEINLINE int32 GetItemRemainStackCount() const;
+	FORCEINLINE int32 GetItemMaxStackCount() const;
 	FORCEINLINE int32 GetItemStackCount() const;
 
 	FORCEINLINE void SetItemStackCount(int32 NewStackCount);
@@ -154,7 +156,7 @@ public:
 	 */
 	// 这个是否会有问题？比如对象被删除？或是内存泄漏旧对象未卸载？
 	UPROPERTY()
-	TArray<UInvSys_InventoryItemInstance*> MyInstances;
+	TArray<UInvSys_InventoryItemInstance*> PayloadItems;
 
 protected:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory Item Instance")

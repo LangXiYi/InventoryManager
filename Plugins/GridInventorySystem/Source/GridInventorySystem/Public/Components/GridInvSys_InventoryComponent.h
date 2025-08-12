@@ -34,9 +34,6 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
 	void AddItemInstanceToContainerPos(UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos);
 
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
-	void RestoreItemInstanceToPos(UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos);
-
 	// UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
 	bool FindEmptyPosition(UInvSys_InventoryItemInstance* InItemInstance, FGridInvSys_ItemPosition& OutPosition);
 
@@ -46,10 +43,10 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
 	void UpdateItemInstancePosition(UInvSys_InventoryItemInstance* ItemInstance, FGridInvSys_ItemPosition NewPosition);
 
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
-	bool CheckItemPosition(UInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& NewPosition) const;
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component", meta = (AdvancedDisplay = bIsIgnoreInItemInstance))
+	bool CheckItemPosition(UInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& NewPosition, bool bIsIgnoreInItemInstance = true) const;
 
-	bool CancelOccupied(UGridInvSys_InventoryItemInstance* ItemInstance);
+	bool CancelOccupied(UInvSys_InventoryItemInstance* ItemInstance);
 public:
 	/**
 	 * Getter Or Setter

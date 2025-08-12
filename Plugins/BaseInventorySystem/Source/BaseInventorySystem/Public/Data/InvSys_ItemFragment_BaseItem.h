@@ -20,4 +20,7 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment")
 	FText DescriptionText;
+
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment")
+	int32 MaxStackCount = 1;
 };

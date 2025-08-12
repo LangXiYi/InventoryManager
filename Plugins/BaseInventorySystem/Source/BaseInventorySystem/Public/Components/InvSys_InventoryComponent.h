@@ -11,6 +11,7 @@
 #include "InventoryObject/Fragment/InvSys_InventoryFragment_Equipment.h"
 #include "InvSys_InventoryComponent.generated.h"
 
+class UInvSys_InventoryContentMapping;
 class AInvSys_PickableItems;
 class UInvSys_BaseInventoryObject;
 class UInvSys_InventoryLayoutWidget;
@@ -39,68 +40,90 @@ public:
 	virtual UInvSys_InventoryLayoutWidget* CreateDisplayWidget(APlayerController* NewPlayerController);
 
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
-	void EquipItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, FGameplayTag SlotTag);
+	UInvSys_InventoryItemInstance* EquipItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, FGameplayTag SlotTag);
 
+	/**
+	 * 装备物品实例，当 PayloadItems 不为空且存在容器模块时，自动将 PayloadItems 的所有成员添加到该容器模块内。
+	 */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
-	bool EquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag);
+	UInvSys_InventoryItemInstance* EquipItemInstance(UInvSys_InventoryItemInstance* ItemInstance, FGameplayTag SlotTag);
 
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
 	bool UnEquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
 
+	bool UnEquipItemInstance(const FGameplayTag& InventoryTag);
+
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
+	bool HasEquipItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
+
 	/**
-	 * 支持自定义参数传入物品实例，支持在不同库存组件下转移物品，在转移时需要注意将旧物品的实例删除。
-	 * 注意：该函数消耗较大会创建新的物品实例，故只推荐在不同库存组件交换物品时使用。
-	 *		对于相同库存组件下的物品交换，只需要更改物品实例内的信息即可。
+	 * 根据物品定义创建物品并添加至当前容器内
+	 * 注意：可变参数列表要求目标类型必须实现 InitItemInstanceProps 函数，且参数类型一致。
 	 */
 	template<class T, class... ArgList>
 	T* AddItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
 		FGameplayTag InventoryObjectTag,	int32 StackCount, const ArgList&... Args)
 	{
-		auto ContainerFragment = FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(InventoryObjectTag);
-		check(ContainerFragment)
-		if (ContainerFragment)
+		auto ContainerFragment = FindInventoryFragment<UInvSys_InventoryFragment_Container>(InventoryObjectTag);
+		if (ContainerFragment != nullptr)
 		{
 			return ContainerFragment->AddItemDefinition<T>(ItemDef, StackCount, Args...);
 		}
 		return nullptr;
 	}
 
+	/**
+	 * 添加物品至当前容器
+	 * 注意：可变参数列表要求目标类型必须实现 InitItemInstanceProps 函数，且参数类型一致。
+	 */
 	template<class T, class... ArgList>
 	T* AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const ArgList&... Args)
 	{
-		auto ContainerFragment = FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(SlotTag);
-		if (InItemInstance != nullptr && ContainerFragment != nullptr)
+		auto ContainerFragment = FindInventoryFragment<UInvSys_InventoryFragment_Container>(SlotTag);
+		if (ContainerFragment != nullptr)
 		{
 			return ContainerFragment->AddItemInstance<T>(InItemInstance, Args...);
 		}
 		return nullptr;
 	}
 
+	/** 移除指定物品 */
 	bool RemoveItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
-	bool RestoreItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
+	bool RemoveItemInstance(UInvSys_InventoryItemInstance* ItemInstance, FGameplayTag InventoryTag);
 
-	template<class T, class... Arg>
-	void UpdateItemInstance(UInvSys_InventoryItemInstance* ItemInstance, FGameplayTag SlotTag, const Arg&... Args)
+	/**
+	 * 更新容器内物品的属性
+	 * 注意：可变参数列表要求目标类型必须实现 InitItemInstanceProps 函数，且参数类型一致。
+	 */
+	template<class T, class... ArgList>
+	void UpdateItemInstance(UInvSys_InventoryItemInstance* ItemInstance, FGameplayTag SlotTag, const ArgList&... Args)
 	{
-		auto ContainerFragment = FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(SlotTag);
-		if (ItemInstance && ContainerFragment)
+		auto ContainerFragment = FindInventoryFragment<UInvSys_InventoryFragment_Container>(SlotTag);
+		if (ContainerFragment != nullptr)
 		{
 			ContainerFragment->UpdateItemInstance<T>(ItemInstance, Args...);
 		}
 	}
 
+	/** 修改物品堆叠数量 */
 	void UpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance, int32 NewStackCount);
 
-	void UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance, const FGameplayTag& InventoryTag, bool NewState);
+	/** 修改物品拖拽状态 */
+	void UpdateItemDragState(UInvSys_InventoryItemInstance* ItemInstance, const FGameplayTag& InventoryTag, bool NewState);
 
-	// Begin Drag Drop ====================
-	bool DragAndRemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
+	/**
+	 * 拖拽并在容器中删除该物品
+	 * 注意：从容器内移除后，需要在其他位置手动同步该物品实例，否则属性修改不会同步值客户端。
+	 */
+	bool DragAndRemoveItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
+
 	/**
 	 * 拖拽物品会将背包内的该物品锁住，必须在放下或取消拖拽后取消该锁定！！
 	 * 可以通过 UInvSys_InventoryItemInstance::SetIsDraggingItem 修改锁定状态。
 	 */
 	bool DragItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
 
+	/** 取消拖拽物品 */
 	void CancelDragItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
 
 	/**
@@ -113,8 +136,8 @@ public:
 	template<class T, class... Arg>
 	bool DropItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args);
 
-	AInvSys_PickableItems* DropItemInstanceToWorld(UInvSys_InventoryItemInstance* InItemInstance, const FTransform& Transform);
-	// End Drag Drop ====================
+	/**  丢弃物品到世界 */
+	AInvSys_PickableItems* DiscardItemInstance(UInvSys_InventoryItemInstance* InItemInstance, const FTransform& Transform);
 
 protected:
 	/** 创建所有库存对象后被调用 */
@@ -132,20 +155,23 @@ public:
 	 * Getter Or Setter
 	 **/
 	template<class T>
-	T* FindInventoryObjectFragment(FGameplayTag Tag) const
+	T* FindInventoryFragment(FGameplayTag Tag) const
 	{
 		if (InventoryObjectMap.Contains(Tag))
 		{
 			return InventoryObjectMap[Tag]->FindInventoryFragment<T>();
 		}
+		UE_LOG(LogInventorySystem, Error, TEXT("GameplayTag[%s] is not valid."), *Tag.ToString())
 		return nullptr;
 	}
 
 	UFUNCTION(BlueprintCallable, BlueprintPure = false, meta = (DeterminesOutputType = OutClass))
-	UInvSys_BaseInventoryFragment* FindInventoryObjectFragment(FGameplayTag Tag, TSubclassOf<UInvSys_BaseInventoryFragment> OutClass) const;
+	UInvSys_BaseInventoryFragment* FindInventoryFragment(FGameplayTag Tag, TSubclassOf<UInvSys_BaseInventoryFragment> OutClass) const;
 
-	// UInvSys_EquipSlotWidget* GetInventorySlotWidget(FGameplayTag SlotTag);
-	
+	void RegisterInventoryComponent(
+		const TSoftClassPtr<UInvSys_InventoryContentMapping>& InInventoryContent,
+		const TSubclassOf<UInvSys_InventoryLayoutWidget>& InLayoutWidget);
+
 	/** Returns true if the owner's role is ROLE_Authority */
 	FORCEINLINE bool HasAuthority() const;
 
@@ -153,16 +179,11 @@ public:
 
 	FORCEINLINE APlayerController* GetPlayerController() const;
 
-	virtual bool IsContainsInventoryItem(const FName ItemUniqueID);
-	
 	UInvSys_InventoryObjectContent* GetInventoryObjectContent(int32 Index) const;
 
 protected:
-	//~UObject interface
-	virtual void ReadyForReplication() override;
-
 	/**
-	 * 复制到客户端的对象的顺序为
+	 * 该顺序会影响 RepNotify 以及对象在客户端的生成顺序
 	 * 1、Inventory Fragments SubObjects
 	 * 2、Inventory Fragments
 	 * 3、Inventory Object
@@ -170,7 +191,6 @@ protected:
 	virtual bool ReplicateSubobjects(class UActorChannel* Channel, class FOutBunch* Bunch, FReplicationFlags* RepFlags) override;
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-	//~End of UObject interface
 	
 protected:
 	/** [Replication] 库存对象列表，由 InventoryContentMapping 管理，支持配置背包、装备槽或其他类型 */
@@ -213,7 +233,7 @@ bool UInvSys_InventoryComponent::DropItemInstance(UInvSys_InventoryItemInstance*
 	UInvSys_InventoryComponent* FromInvComp = InItemInstance->GetInventoryComponent();
 	if (SlotTag == InItemInstance->GetInventoryObjectTag() && this == FromInvComp)
 	{
-		UpdateItemInstanceDragState(InItemInstance, SlotTag, false); 
+		UpdateItemDragState(InItemInstance, SlotTag, false); 
 		UpdateItemInstance<T>(InItemInstance, SlotTag, Args...);
 		return true;
 	}

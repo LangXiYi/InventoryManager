@@ -47,10 +47,7 @@ public:
 	void Server_EquipItemDefinition(UInvSys_InventoryComponent* InvComp,TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, FGameplayTag SlotTag);
 	
 	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
-	void Server_EquipItemInstance(UInvSys_InventoryComponent* InvComp,UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag);
-
-	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
-	void Server_RestoreItemInstance(UInvSys_InventoryComponent* InvComp,UInvSys_InventoryItemInstance* InItemInstance);
+	void Server_EquipItemInstance(UInvSys_InventoryComponent* InvComp,UInvSys_InventoryItemInstance* ItemInstance, FGameplayTag InventoryTag);
 
 	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
 	void Server_DragItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance);
@@ -63,6 +60,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
 	void Server_DropItemInstanceToWorld(UInvSys_InventoryItemInstance* InItemInstance);
+
+	UFUNCTION(BlueprintCallable, NetMulticast, Reliable, Category = "Player Inventory Component")
+	void Multi_DropItemInstanceToWorld(UInvSys_InventoryItemInstance* InItemInstance, const FTransform& Transform);
 
 protected:
 	FORCEINLINE bool HasAuthority() const;

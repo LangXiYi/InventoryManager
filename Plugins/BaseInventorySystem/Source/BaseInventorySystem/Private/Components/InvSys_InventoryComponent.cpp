@@ -73,6 +73,15 @@ void UInvSys_InventoryComponent::ConstructInventoryObjects()
 	}
 }
 
+void UInvSys_InventoryComponent::RegisterInventoryComponent(
+	const TSoftClassPtr<UInvSys_InventoryContentMapping>& InInventoryContent,
+	const TSubclassOf<UInvSys_InventoryLayoutWidget>& InLayoutWidgetClass)
+{
+	InventoryObjectContent = InInventoryContent;
+	LayoutWidgetClass = InLayoutWidgetClass;
+	RegisterComponent();
+}
+
 UInvSys_InventoryLayoutWidget* UInvSys_InventoryComponent::CreateDisplayWidget(APlayerController* NewPlayerController)
 {
 	if (bDisplayWidgetIsValid)
@@ -87,8 +96,6 @@ UInvSys_InventoryLayoutWidget* UInvSys_InventoryComponent::CreateDisplayWidget(A
 		// 创建布局控件后，收集所有的 TagSlot 供后续控件插入正确位置。
 		LayoutWidget = CreateWidget<UInvSys_InventoryLayoutWidget>(NewPlayerController, LayoutWidgetClass);
 		check(LayoutWidget)
-		// LayoutWidget->CollectAllTagSlots();
-		// LayoutWidget->SetInventoryComponent(this);
 		
 		for (int Index = 0; Index < InventoryObjectList.Num(); ++Index)
 		{
@@ -105,45 +112,9 @@ UInvSys_InventoryLayoutWidget* UInvSys_InventoryComponent::CreateDisplayWidget(A
 				UUserWidget* DisplayWidget = DisplayWidgetFragment->CreateDisplayWidget(NewPlayerController);
 				LayoutWidget->AddWidget(DisplayWidget, InvObj->GetInventoryObjectTag());
 			}
-			// 延迟下一帧执行刷新函数，确保控件创建流程执行完毕。
-			// GetWorld()->GetTimerManager().SetTimerForNextTick([InvObj]()
-			// {
-			// 	// 创建控件完成后刷新一次显示效果
-			// 	InvObj->RefreshInventoryFragment(UInvSys_InventoryFragment_DisplayWidget::StaticClass());
-			// });
 		}
 	}
 	return LayoutWidget;
-}
-
-bool UInvSys_InventoryComponent::RestoreItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
-{
-	if (InItemInstance)
-	{
-		FGameplayTag EquipSlotTag = InItemInstance->GetInventoryObjectTag();
-		UInvSys_InventoryFragment_Equipment* EquipmentFragment =
-			FindInventoryObjectFragment<UInvSys_InventoryFragment_Equipment>(EquipSlotTag);
-
-		UInvSys_InventoryFragment_Container* ContainerFragment =
-			FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(EquipSlotTag);
-
-		if (EquipmentFragment && EquipmentFragment->HasEquipmentItems() == false)
-		{
-			EquipmentFragment->EquipItemInstance(InItemInstance);
-			// todo::如果ItemInstance类型不符合是否会装备失败？装备失败该如何处理?
-		}
-		else if (ContainerFragment) // todo:: Has enough space to save
-		{
-			// todo:: set Item instance position
-			ContainerFragment->AddItemInstance<UInvSys_InventoryItemInstance>(InItemInstance);
-		}
-		else
-		{
-			//todo::Drop item to world;
-		}
-		return true;
-	}
-	return false;
 }
 
 void UInvSys_InventoryComponent::UpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance, int32 NewStackCount)
@@ -153,7 +124,7 @@ void UInvSys_InventoryComponent::UpdateItemStackCount(UInvSys_InventoryItemInsta
 		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstance is nullptr."), __FUNCTION__)
 		return;
 	}
-	auto ContainerFragment = FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(ItemInstance->GetInventoryObjectTag());
+	auto ContainerFragment = FindInventoryFragment<UInvSys_InventoryFragment_Container>(ItemInstance->GetInventoryObjectTag());
 	if (ContainerFragment == nullptr)
 	{
 		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ContainerFragment is nullptr."), __FUNCTION__)
@@ -162,10 +133,10 @@ void UInvSys_InventoryComponent::UpdateItemStackCount(UInvSys_InventoryItemInsta
 	ContainerFragment->UpdateItemStackCount(ItemInstance, NewStackCount);
 }
 
-void UInvSys_InventoryComponent::UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance,
+void UInvSys_InventoryComponent::UpdateItemDragState(UInvSys_InventoryItemInstance* ItemInstance,
                                                              const FGameplayTag& InventoryTag, bool NewState)
 {
-	auto ContainerFragment = FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(InventoryTag);
+	auto ContainerFragment = FindInventoryFragment<UInvSys_InventoryFragment_Container>(InventoryTag);
 	check(ContainerFragment)
 	if (ContainerFragment)
 	{
@@ -173,32 +144,45 @@ void UInvSys_InventoryComponent::UpdateItemInstanceDragState(UInvSys_InventoryIt
 	}
 }
 
-bool UInvSys_InventoryComponent::DragAndRemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
+bool UInvSys_InventoryComponent::DragAndRemoveItemInstance(UInvSys_InventoryItemInstance* ItemInstance)
 {
-	if (InItemInstance == nullptr) return false;
+	if (ItemInstance == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, ItemInstance is nullptr.."), __FUNCTION__);
+		return false;
+	}
 
-	auto DragDropFragment = InItemInstance->FindFragmentByClass<UInvSys_ItemFragment_DragDrop>();
+	if (ItemInstance->IsDraggingItemInstance() == true)
+	{
+		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, 物品实例已经被其他玩家拖拽."), __FUNCTION__);
+		return false;
+	}
+
+	auto DragDropFragment = ItemInstance->FindFragmentByClass<UInvSys_ItemFragment_DragDrop>();
 	if (DragDropFragment == nullptr)
 	{
 		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("目标物品不支持拖拽功能"))
 		return false;
 	}
 
-	FGameplayTag ItemTag = InItemInstance->GetInventoryObjectTag();
+	FGameplayTag InventoryTag = ItemInstance->GetInventoryObjectTag();
 	//判断拖拽的物品是不是装备槽正在装备的物品
-	auto EquipmentFragment = FindInventoryObjectFragment<UInvSys_InventoryFragment_Equipment>(ItemTag);
-	if (EquipmentFragment && EquipmentFragment->GetEquipItemInstance() == InItemInstance)
+	auto EquipmentFragment = FindInventoryFragment<UInvSys_InventoryFragment_Equipment>(InventoryTag);
+	if (EquipmentFragment && EquipmentFragment->GetEquipItemInstance() == ItemInstance)
 	{
-		return UnEquipItemInstance(InItemInstance);
+		UpdateItemDragState(ItemInstance, InventoryTag, true);
+		return UnEquipItemInstance(ItemInstance);
 	}
 
 	//判断拖拽这个物品之前判断物品在它容器中是否存在
 	UInvSys_InventoryFragment_Container* ContainerFragment =
-		FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(ItemTag);
+		FindInventoryFragment<UInvSys_InventoryFragment_Container>(InventoryTag);
 	if (ContainerFragment)
 	{
-		return RemoveItemInstance(InItemInstance);
+		UpdateItemDragState(ItemInstance, InventoryTag, true);
+		return RemoveItemInstance(ItemInstance);
 	}
+	UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, %s is not valid."), __FUNCTION__, *InventoryTag.ToString());
 	return false;
 }
 
@@ -217,7 +201,7 @@ bool UInvSys_InventoryComponent::DragItemInstance(UInvSys_InventoryItemInstance*
 		 */
 		if (ItemInstance->IsDraggingItemInstance() == false)
 		{
-			UpdateItemInstanceDragState(ItemInstance, ItemInstance->GetInventoryObjectTag(), true);
+			UpdateItemDragState(ItemInstance, ItemInstance->GetInventoryObjectTag(), true);
 			return true;
 		}
 		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, 物品实例已经被其他玩家拖拽."), __FUNCTION__);
@@ -230,11 +214,11 @@ void UInvSys_InventoryComponent::CancelDragItemInstance(UInvSys_InventoryItemIns
 	check(ItemInstance)
 	if (ItemInstance != nullptr && IsValid(ItemInstance))
 	{
-		UpdateItemInstanceDragState(ItemInstance, ItemInstance->GetInventoryObjectTag(), false);
+		UpdateItemDragState(ItemInstance, ItemInstance->GetInventoryObjectTag(), false);
 	}
 }
 
-AInvSys_PickableItems* UInvSys_InventoryComponent::DropItemInstanceToWorld(
+AInvSys_PickableItems* UInvSys_InventoryComponent::DiscardItemInstance(
 	UInvSys_InventoryItemInstance* InItemInstance, const FTransform& Transform)
 {
 	check(InItemInstance)
@@ -263,141 +247,160 @@ AInvSys_PickableItems* UInvSys_InventoryComponent::DropItemInstanceToWorld(
 	return nullptr;
 }
 
-void UInvSys_InventoryComponent::EquipItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, FGameplayTag SlotTag)
+UInvSys_InventoryItemInstance* UInvSys_InventoryComponent::EquipItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, FGameplayTag SlotTag)
 {
-	auto EquipmentFragment = FindInventoryObjectFragment<UInvSys_InventoryFragment_Equipment>(SlotTag);
-	if (EquipmentFragment != nullptr)
-	{
-		UInvSys_InventoryItemInstance* TargetItemInstance = EquipmentFragment->EquipItemDefinition(ItemDef);
-		OnEquipItemInstance(TargetItemInstance);
-	}
-	else
+	auto EquipmentFragment = FindInventoryFragment<UInvSys_InventoryFragment_Equipment>(SlotTag);
+	if (EquipmentFragment == nullptr)
 	{
 		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("对应标记 %s 的库存对象没有设置装备片段，故执行装备物品失败。"), *SlotTag.ToString());
+		return nullptr;
 	}
+
+	UInvSys_InventoryItemInstance* TargetItemInstance = EquipmentFragment->EquipItemDefinition(ItemDef);
+	if (TargetItemInstance == nullptr)
+	{
+		return nullptr;
+	}
+	OnEquipItemInstance(TargetItemInstance);
+	return TargetItemInstance;
 }
 
-bool UInvSys_InventoryComponent::EquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag)
+UInvSys_InventoryItemInstance* UInvSys_InventoryComponent::EquipItemInstance(
+	UInvSys_InventoryItemInstance* ItemInstance, FGameplayTag SlotTag)
 {
-	if (InItemInstance == nullptr)
+	auto EquipmentFragment = FindInventoryFragment<UInvSys_InventoryFragment_Equipment>(SlotTag);
+	if (EquipmentFragment == nullptr)
 	{
-		return false;
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, EquipmentFragment is nullptr."), __FUNCTION__)
+		return nullptr;
 	}
-	// 如果装备的物品如果是来自其他对象或组件，则需要将物品及其内部所有对象拷贝并重设为当前的库存组件
-	UInvSys_InventoryItemInstance* TargetItemInstance = InItemInstance;
-	if (this != TargetItemInstance->GetInventoryComponent())
+	UInvSys_InventoryItemInstance* TargetItemInstance = EquipmentFragment->EquipItemInstance(ItemInstance);
+	if (TargetItemInstance == nullptr)
 	{
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("物品是从其他库存组件中转移至当前组件中的，现在正在进行所有权的转移。"))
-		// 复制新的目标对象，并重设他的 Outer 为当前组件的所有者
-		TargetItemInstance = DuplicateObject(InItemInstance, this);
-		if (TargetItemInstance->MyInstances.Num() > 0)
-		{
-			// 内部包含了其他物品，这些物品的 Outer 同样不是该组件的 Owner 所以也需要重设它们的 Outer
-			UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("\t物品内部还包含了其他物品，正在一起转移。"))
-			TargetItemInstance->MyInstances.Empty();
-			TargetItemInstance->MyInstances.Reserve(InItemInstance->MyInstances.Num());
-			for (UInvSys_InventoryItemInstance* ContainerEntry : InItemInstance->MyInstances)
-			{
-				UInvSys_InventoryItemInstance* TempEntry = DuplicateObject(ContainerEntry, this);
-				TargetItemInstance->MyInstances.Add(TempEntry);
-				ContainerEntry->ConditionalBeginDestroy(); // 通知 GC 清理对象
-			}
-		}
-		InItemInstance->MyInstances.Empty();
-		InItemInstance->ConditionalBeginDestroy(); // 通知 GC 清理对象
+		return nullptr;
 	}
 
-	UInvSys_InventoryFragment_Equipment* EquipmentFragment =
-		FindInventoryObjectFragment<UInvSys_InventoryFragment_Equipment>(SlotTag);
-		
-	if (EquipmentFragment != nullptr && EquipmentFragment->HasEquipmentItems() == false)
+	if (TargetItemInstance->PayloadItems.IsEmpty() == false)
 	{
-		EquipmentFragment->EquipItemInstance(TargetItemInstance);
-		if (TargetItemInstance->MyInstances.Num() > 0)
-		{
-			UInvSys_InventoryFragment_Container* ContainerFragment =
-				FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(SlotTag);
-			if (ContainerFragment) // 转移装备内部包含的所有物品
-			{
-				UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("物品内部包含了[%d]个其他物品，现在正在对其内部物品进行转移。"),
-					TargetItemInstance->MyInstances.Num())
+		/**
+		 * 将 PayloadItems 的所有成员添加到该容器模块内。
+		 */
+		auto ContainerFragment = FindInventoryFragment<UInvSys_InventoryFragment_Container>(SlotTag);
+		checkf(ContainerFragment, TEXT("ContainerFragment 不应该为空。当 PayloadItems 不为空时，则说明该物品应该是一个带有容器的物品."))
+		ContainerFragment->RemoveAllItemInstance();
 
-				for (UInvSys_InventoryItemInstance* TempItem : TargetItemInstance->MyInstances)
-				{
-					ContainerFragment->AddItemInstance<UInvSys_InventoryItemInstance>(TempItem);
-				}
-				TargetItemInstance->MyInstances.Empty();
-			}
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
+			TEXT("物品内部包含了[%d]个其他物品，现在正在对其内部物品进行转移。"), TargetItemInstance->PayloadItems.Num())
+		for (UInvSys_InventoryItemInstance* TempItem : TargetItemInstance->PayloadItems)
+		{
+			// todo::这里需要用户自定义逻辑处理这部分转移的物品实例
+			// TempItem->ItemPosition.SlotTag = SlotTag;
+			ContainerFragment->AddItemInstance<UInvSys_InventoryItemInstance>(TempItem);
 		}
-		OnEquipItemInstance(TargetItemInstance);
-		return true;
+		TargetItemInstance->PayloadItems.Empty();
 	}
-	return false;
+	OnEquipItemInstance(TargetItemInstance);
+	return TargetItemInstance;
 }
 
 bool UInvSys_InventoryComponent::UnEquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
 {
 	if (InItemInstance)
 	{
-		UInvSys_InventoryFragment_Equipment* EquipmentFragment =
-			FindInventoryObjectFragment<UInvSys_InventoryFragment_Equipment>(InItemInstance->GetInventoryObjectTag());
-		
-		if (EquipmentFragment)
-		{
-			EquipmentFragment->UnEquipItemInstance();
-		}
+		return UnEquipItemInstance(InItemInstance->GetInventoryObjectTag());
+		// UInvSys_InventoryFragment_Equipment* EquipmentFragment =
+		// 	FindInventoryFragment<UInvSys_InventoryFragment_Equipment>(InItemInstance->GetInventoryObjectTag());
+		//
+		// if (EquipmentFragment)
+		// {
+		// 	EquipmentFragment->UnEquipItemInstance();
+		// }
 
-		UInvSys_InventoryFragment_Container* ContainerFragment =
-			FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(InItemInstance->GetInventoryObjectTag());
-		if (ContainerFragment)
-		{
-			TArray<UInvSys_InventoryItemInstance*> AllItemInstance;
-			ContainerFragment->GetAllItemInstance(AllItemInstance);
-			UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("卸下的装备是一个容器，正在保存其内部物品，数量 = %d"), AllItemInstance.Num())
-			// 将所有物品转移至该物品实例的内部
-			InItemInstance->MyInstances.Empty();
-			InItemInstance->MyInstances.Append(AllItemInstance);
-			ContainerFragment->RemoveAllItemInstance();
-		}
+		// UInvSys_InventoryFragment_Container* ContainerFragment =
+		// 	FindInventoryFragment<UInvSys_InventoryFragment_Container>(InItemInstance->GetInventoryObjectTag());
+		// if (ContainerFragment)
+		// {
+		// 	TArray<UInvSys_InventoryItemInstance*> AllItemInstance;
+		// 	ContainerFragment->GetAllItemInstance(AllItemInstance);
+		// 	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("卸下的装备是一个容器，正在保存其内部物品，数量 = %d"), AllItemInstance.Num())
+		// 	// 将所有物品转移至该物品实例的内部
+		// 	InItemInstance->PayloadItems.Empty();
+		// 	InItemInstance->PayloadItems.Append(AllItemInstance);
+		// 	ContainerFragment->RemoveAllItemInstance();
+		// }
 
-		OnUnEquipItemInstance(InItemInstance);
-		return true;
+		// return true;
 	}
 	return false;
+}
+
+bool UInvSys_InventoryComponent::UnEquipItemInstance(const FGameplayTag& InventoryTag)
+{
+	auto EquipmentFragment = FindInventoryFragment<UInvSys_InventoryFragment_Equipment>(InventoryTag);
+	if (EquipmentFragment)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, EquipmentFragment is nullptr, GameplayTag = %s"), __FUNCTION__, *InventoryTag.ToString())
+		return false;
+	}
+	if (EquipmentFragment->HasEquipmentItems())
+	{
+		// OnEquipItemInstance(TargetItemInstance);
+		return EquipmentFragment->UnEquipItemInstance();
+	}
+	return false;
+}
+
+bool UInvSys_InventoryComponent::HasEquipItemInstance(UInvSys_InventoryItemInstance* ItemInstance)
+{
+	if (ItemInstance == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, ItemInstance is nullptr."), __FUNCTION__)
+		return false;
+	}
+	auto EquipmentFragment = FindInventoryFragment<UInvSys_InventoryFragment_Equipment>(ItemInstance->GetInventoryObjectTag());
+	if (EquipmentFragment == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, EquipmentFragment is nullptr."), __FUNCTION__)
+		return false;
+	}
+
+	return EquipmentFragment->GetEquipItemInstance() == ItemInstance;
 }
 
 bool UInvSys_InventoryComponent::RemoveItemInstance(UInvSys_InventoryItemInstance* ItemInstance)
 {
-	if (ItemInstance)
+	if (ItemInstance == nullptr)
 	{
-		FGameplayTag InventoryFragmentTag = ItemInstance->GetInventoryObjectTag();
-		UInvSys_InventoryFragment_Container* ContainerFragment =
-			FindInventoryObjectFragment<UInvSys_InventoryFragment_Container>(InventoryFragmentTag);
-		check(ContainerFragment)
-		if (ContainerFragment)
-		{
-			return ContainerFragment->RemoveItemInstance(ItemInstance);
-		}
-		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, 在 %s 的库存组件中不存在片段 %s."),
-			__FUNCTION__, *GetOwner()->GetName(), *InventoryFragmentTag.ToString())
+		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, ItemInstance is nullptr."), __FUNCTION__)
 		return false;
 	}
-	UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, ItemInstance is nullptr."), __FUNCTION__)
-	return false;
+	return RemoveItemInstance(ItemInstance, ItemInstance->GetInventoryObjectTag());
 }
 
-UInvSys_BaseInventoryFragment* UInvSys_InventoryComponent::FindInventoryObjectFragment(FGameplayTag Tag,
-	TSubclassOf<UInvSys_BaseInventoryFragment> OutClass) const
+bool UInvSys_InventoryComponent::RemoveItemInstance(UInvSys_InventoryItemInstance* ItemInstance,
+	FGameplayTag InventoryTag)
 {
-	return FindInventoryObjectFragment<UInvSys_BaseInventoryFragment>(Tag);
+	if (ItemInstance == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, ItemInstance is nullptr."), __FUNCTION__)
+		return false;
+	}
+	auto ContainerFragment = FindInventoryFragment<UInvSys_InventoryFragment_Container>(InventoryTag);
+	if (ContainerFragment == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, 在 %s 的库存组件中不存在片段 %s."),
+			__FUNCTION__, *GetOwner()->GetName(), *InventoryTag.ToString())
+		return false;
+	}
+
+	return ContainerFragment->RemoveItemInstance(ItemInstance);
 }
 
-/*UInvSys_EquipSlotWidget* UInvSys_InventoryComponent::GetInventorySlotWidget(FGameplayTag SlotTag)
+UInvSys_BaseInventoryFragment* UInvSys_InventoryComponent::FindInventoryFragment(FGameplayTag Tag,
+                                                                                       TSubclassOf<UInvSys_BaseInventoryFragment> OutClass) const
 {
-	UInvSys_TagSlot* Slot = LayoutWidget->FindTagSlot(SlotTag);
-	check(Slot)
-	return Slot ? Cast<UInvSys_EquipSlotWidget>(Slot->GetChildAt(0)) : nullptr;
-}*/
+	return FindInventoryFragment<UInvSys_BaseInventoryFragment>(Tag);
+}
 
 bool UInvSys_InventoryComponent::HasAuthority() const
 {
@@ -409,18 +412,6 @@ APlayerController* UInvSys_InventoryComponent::GetPlayerController() const
 {
 	ensure(OwningPlayer);
 	return OwningPlayer;
-}
-
-bool UInvSys_InventoryComponent::IsContainsInventoryItem(const FName ItemUniqueID)
-{
-	for (UInvSys_BaseInventoryObject* InventoryObject : InventoryObjectList)
-	{
-		/*if (InventoryObject->ContainsItem(ItemUniqueID))
-		{
-			return true;
-		}*/
-	}
-	return false;
 }
 
 bool UInvSys_InventoryComponent::IsLocalController() const
@@ -458,40 +449,6 @@ bool UInvSys_InventoryComponent::ReplicateSubobjects(UActorChannel* Channel, FOu
 		WroteSomething |= Channel->ReplicateSubobject(InventoryObject, *Bunch, *RepFlags);
 	}
 	return WroteSomething;
-}
-
-void UInvSys_InventoryComponent::ReadyForReplication()
-{
-	Super::ReadyForReplication();
-
-	// Register existing ULyraInventoryItemInstance
-	/*if (IsUsingRegisteredSubObjectList() == false)
-	{
-		return;
-	}
-	
-	for (UInvSys_BaseInventoryObject* InventoryObject : InventoryObjectList)
-	{
-		if (InventoryObject == nullptr || IsValid(InventoryObject) == false)
-		{
-			continue;
-		}
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("初始化复制"))
-		AddReplicatedSubObject(InventoryObject);
-		if (InventoryObject->IsA(UInvSys_BaseEquipContainerObject::StaticClass()))
-		{
-			UInvSys_BaseEquipContainerObject* ContainerObject = Cast<UInvSys_BaseEquipContainerObject>(InventoryObject);
-			for (FInvSys_ContainerEntry& Entry : ContainerObject->ContainerList.Entries)
-			{
-				if (Entry.Instance == nullptr || IsValid(Entry.Instance) == false)
-				{
-					continue;
-				}
-				UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("初始化复制 ===》 容器项"))
-				AddReplicatedSubObject(Entry.Instance);
-			}
-		}
-	}*/
 }
 
 void UInvSys_InventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

@@ -44,6 +44,9 @@ public:
 	void InitItemInstance(UInvSys_InventoryItemInstance* NewItemInstance);
 
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Pickable Items")
+	virtual bool PickupItem(UInvSys_InventoryComponent* InvComp);
+
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Pickable Items")
 	void InitPickableItems(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 NewStackCount);
 
 	/** 根据 ItemDefinition 的 CDO 获取指定类型的片段信息 */
@@ -69,10 +72,9 @@ protected:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Pickable Items")
 	TObjectPtr<USphereComponent> SphereCollision;
 
-private:
-	UPROPERTY(BlueprintReadOnly, Replicated, Category = "Pickable Items", meta = (ExposeOnSpawn, AllowPrivateAccess))
+	UPROPERTY(BlueprintReadOnly, Replicated, Category = "Pickable Items", meta = (ExposeOnSpawn))
 	int32 ItemStackCount;
 
-	UPROPERTY(BlueprintReadOnly, Replicated, Category = "Pickable Items", meta = (ExposeOnSpawn, AllowPrivateAccess))
+	UPROPERTY(BlueprintReadOnly, Replicated, Category = "Pickable Items", meta = (ExposeOnSpawn))
 	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDefinition;
 };

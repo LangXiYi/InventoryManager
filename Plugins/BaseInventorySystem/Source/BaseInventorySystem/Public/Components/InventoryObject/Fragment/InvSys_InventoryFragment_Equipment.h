@@ -38,7 +38,7 @@ public:
 	
 	virtual UInvSys_InventoryItemInstance* EquipItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef);
 
-	virtual void EquipItemInstance(UInvSys_InventoryItemInstance* NewItemInstance);
+	virtual UInvSys_InventoryItemInstance* EquipItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
 
 	virtual bool UnEquipItemInstance();
 
@@ -61,7 +61,7 @@ protected:
 	// FGameplayTag SupportEquipTag;
 
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_ItemInstance, Category = "Inventory Fragment")
-	TObjectPtr<UInvSys_InventoryItemInstance> ItemInstance;
+	TObjectPtr<UInvSys_InventoryItemInstance> EquipmentInstance;
 	UFUNCTION()
 	void OnRep_ItemInstance();
 	
