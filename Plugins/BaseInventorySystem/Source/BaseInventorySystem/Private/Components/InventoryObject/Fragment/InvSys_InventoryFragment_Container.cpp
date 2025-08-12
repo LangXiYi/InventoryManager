@@ -20,7 +20,7 @@ void UInvSys_InventoryFragment_Container::InitInventoryFragment(UObject* PreEdit
 	Super::InitInventoryFragment(PreEditFragment);
 	auto WarpAddItemFunc = [this](FGameplayTag Tag, const FInvSys_InventoryItemChangedMessage& Message)
 	{
-		if (Message.InventoryObjectTag == GetInventoryObjectTag() && Message.InvComp == GetInventoryComponent())
+		if (Message.InventoryObjectTag == GetInventoryTag() && Message.InvComp == GetInventoryComponent())
 		{
 			NativeOnContainerEntryAdded(Message);
 		}
@@ -28,7 +28,7 @@ void UInvSys_InventoryFragment_Container::InitInventoryFragment(UObject* PreEdit
 
 	auto WarpRemoveItemFunc = [this](FGameplayTag Tag, const FInvSys_InventoryItemChangedMessage& Message)
 	{
-		if (Message.InventoryObjectTag == GetInventoryObjectTag() && Message.InvComp == GetInventoryComponent())
+		if (Message.InventoryObjectTag == GetInventoryTag() && Message.InvComp == GetInventoryComponent())
 		{
 			NativeOnContainerEntryRemove(Message);
 		}
@@ -36,7 +36,7 @@ void UInvSys_InventoryFragment_Container::InitInventoryFragment(UObject* PreEdit
 
 	auto WarpItemStackChangedFunc = [this](FGameplayTag Tag, const FInvSys_InventoryStackChangeMessage& Message)
 	{
-		if (Message.InventoryObjectTag == GetInventoryObjectTag() && Message.InvComp == GetInventoryComponent())
+		if (Message.InventoryObjectTag == GetInventoryTag() && Message.InvComp == GetInventoryComponent())
 		{
 			NativeOnItemStackChange(Message);
 		}
@@ -65,7 +65,7 @@ void UInvSys_InventoryFragment_Container::RefreshInventoryFragment()
 		{
 			FInvSys_InventoryItemChangedMessage AddItemMessage;
 			AddItemMessage.InvComp = GetInventoryComponent();
-			AddItemMessage.InventoryObjectTag = GetInventoryObjectTag();
+			AddItemMessage.InventoryObjectTag = GetInventoryTag();
 			AddItemMessage.ItemInstance = ItemInstance;
 
 			UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(GetWorld());
@@ -113,8 +113,19 @@ int32 UInvSys_InventoryFragment_Container::FindStackableItemInstances(
 	return RemainCount;
 }
 
-void UInvSys_InventoryFragment_Container::UpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance,
-                                                               int32 NewStackCount)
+int32 UInvSys_InventoryFragment_Container::FindStackableItemInstances(TObjectPtr<UInvSys_InventoryItemInstance> ItemInstance,
+	TArray<UInvSys_InventoryItemInstance*>& StackableItems)
+{
+	if (ItemInstance == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falid, ItemInstance is nullptr"), __FUNCTION__)
+		return 0;
+	}
+	return FindStackableItemInstances(ItemInstance->GetItemDefinition(), StackableItems);
+}
+
+void UInvSys_InventoryFragment_Container::UpdateItemStackCount(
+	UInvSys_InventoryItemInstance* ItemInstance, int32 NewStackCount)
 {
 	if (ContainsItem(ItemInstance))
 	{
@@ -248,7 +259,7 @@ void UInvSys_InventoryFragment_Container::Debug_PrintContainerAllItems()
 		TEXT("= BEG =========================================================================="))
 	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
 		TEXT("\t Owner: %s \t Tag: %s \t Count: %d"),
-		*GetOwner()->GetName(), *GetInventoryObjectTag().ToString(), AllItems.Num())
+		*GetOwner()->GetName(), *GetInventoryTag().ToString(), AllItems.Num())
 	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
 		TEXT("--------------------------------------------------------------------------------"))
 	for (UInvSys_InventoryItemInstance* ItemInstance : AllItems)

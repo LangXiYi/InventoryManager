@@ -39,11 +39,11 @@ void UGridInvSys_InventoryFragment_Container::InitInventoryFragment(UObject* Pre
 		if (Message.InventoryComponent == GetInventoryComponent() &&
 			Message.ItemInstance && Message.ItemInstance->IsA<UGridInvSys_InventoryItemInstance>())
 		{
-			if (Message.OldPosition.IsValid() && Message.OldPosition.EquipSlotTag == GetInventoryObjectTag())
+			if (Message.OldPosition.IsValid() && Message.OldPosition.EquipSlotTag == GetInventoryTag())
 			{
 				UpdateContainerGridItemState((UGridInvSys_InventoryItemInstance*)Message.ItemInstance, Message.OldPosition, false);
 			}
-			if (Message.NewPosition.IsValid() && Message.NewPosition.EquipSlotTag == GetInventoryObjectTag())
+			if (Message.NewPosition.IsValid() && Message.NewPosition.EquipSlotTag == GetInventoryTag())
 			{
 				UpdateContainerGridItemState((UGridInvSys_InventoryItemInstance*)Message.ItemInstance, Message.NewPosition, true);
 			}
@@ -106,7 +106,7 @@ bool UGridInvSys_InventoryFragment_Container::HasEnoughFreeSpace(
 				OccupiedGrid[ToGridID][Index] == true)
 			{
 #if WITH_EDITOR || !BUILD_SHIPPING
-				PrintDebugOccupiedGrid(GetInventoryObjectTag().ToString() + "_" + FString::FromInt(ToGridID) + "--{"
+				PrintDebugOccupiedGrid(GetInventoryTag().ToString() + "_" + FString::FromInt(ToGridID) + "--{"
 					+ ToPosition.ToString() + "}:::Can't Contains Item For Size [" + ItemSize.ToString() +"]");
 #endif
 				return false;
@@ -131,17 +131,17 @@ TArray<int32> UGridInvSys_InventoryFragment_Container::GetItemGridOccupiedIndexe
 		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, 物品实例的库存组件与当前片段的库存组件不同."), __FUNCTION__)
 		return OutArray;
 	}
-	if (ItemInstance->GetInventoryObjectTag() != InventoryObjectTag)
+	if (ItemInstance->GetInventoryObjectTag() != InventoryTag)
 	{
 		// 容器片段不同
 		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, 物品实例的标签 %s 与当前片段的标签 %s 不同."), __FUNCTION__,
-			*ItemInstance->GetInventoryObjectTag().ToString(), *InventoryObjectTag.ToString())
+			*ItemInstance->GetInventoryObjectTag().ToString(), *InventoryTag.ToString())
 		return OutArray;
 	}
 	if (ContainsItem(ItemInstance) == false)
 	{
 		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, 物品实例在 %s 内不存在."), __FUNCTION__,
-			*InventoryObjectTag.ToString())
+			*InventoryTag.ToString())
 		return OutArray;
 	}
 	FGridInvSys_ItemPosition ItemPosition = ItemInstance->GetItemPosition();
@@ -207,7 +207,7 @@ bool UGridInvSys_InventoryFragment_Container::CheckItemPosition(
 				// 判断位置是否在 ItemInstance 下
 				if (ItemGridOccupiedIndexes.Contains(Index) == false)
 				{
-					PrintDebugOccupiedGrid(GetInventoryObjectTag().ToString() + "_" + FString::FromInt(NewPosition.GridID) + "--{"
+					PrintDebugOccupiedGrid(GetInventoryTag().ToString() + "_" + FString::FromInt(NewPosition.GridID) + "--{"
 						+ NewPosition.Position.ToString() + "}:::Can't Contains Item For Size [" + ItemSize.ToString() +"] ");
 					return false;
 				}
@@ -305,7 +305,7 @@ bool UGridInvSys_InventoryFragment_Container::FindEmptyPosition(FIntPoint ItemSi
 			FIntPoint ToPosition = FIntPoint(i / ContainerGridSize[GridID].Y, i % ContainerGridSize[GridID].Y);
 			if (HasEnoughFreeSpace(ToPosition, GridID, ItemSize))
 			{
-				OutPosition.EquipSlotTag = GetInventoryObjectTag();
+				OutPosition.EquipSlotTag = GetInventoryTag();
 				OutPosition.GridID = GridID;
 				OutPosition.Position = ToPosition;
 				// OutPosition.Direction = EGridInvSys_ItemDirection::Horizontal; // 外部决定方向，因为仅通过Size无法确认它的方向
@@ -362,7 +362,7 @@ void UGridInvSys_InventoryFragment_Container::UpdateContainerData_FromEquip()
 	// 当装备物品时，根据物品定义中的容器布局创建临时控件，初始化容器内部数据
 	auto WarpEquipItemFunc = [this](FGameplayTag Tag, const FInvSys_EquipItemInstanceMessage& Message)
 	{
-		if (Message.InventoryObjectTag == GetInventoryObjectTag() && Message.InvComp == GetInventoryComponent())
+		if (Message.InventoryObjectTag == GetInventoryTag() && Message.InvComp == GetInventoryComponent())
 		{
 			auto ContainerLayoutFragment = Message.ItemInstance->FindFragmentByClass<UInvSys_ItemFragment_ContainerLayout>();
 			if (ContainerLayoutFragment)
@@ -381,7 +381,7 @@ void UGridInvSys_InventoryFragment_Container::UpdateContainerData_FromEquip()
 	};
 	auto WarpUnEquipItemFunc = [this](FGameplayTag Tag, const FInvSys_EquipItemInstanceMessage& Message)
 	{
-		if (Message.InventoryObjectTag == GetInventoryObjectTag() && Message.InvComp == GetInventoryComponent())
+		if (Message.InventoryObjectTag == GetInventoryTag() && Message.InvComp == GetInventoryComponent())
 		{
 			OccupiedGrid.Empty();
 			ContainerGridSize.Empty();
@@ -463,7 +463,7 @@ void UGridInvSys_InventoryFragment_Container::PrintDebugOccupiedGrid(const FStri
 		bool bIsFirst = true;
 		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
 			TEXT("[%s:%s]::%s_%d === { Size = %s }"), *GPlayInEditorContextString,
-			*GetOwner()->GetName(), *GetInventoryObjectTag().ToString(), i, *ContainerGridSize[i].ToString());
+			*GetOwner()->GetName(), *GetInventoryTag().ToString(), i, *ContainerGridSize[i].ToString());
 		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Error, TEXT("PRINT_REASON::%s"), *PrintReason);
 		FString PrintStr = "";
 		for (int j = 0; j < OccupiedGrid[i].Num(); ++j)

@@ -89,6 +89,14 @@ void UGridInvSys_EquipmentSlotWidget::NativeDestruct()
 bool UGridInvSys_EquipmentSlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent,
                                                    UDragDropOperation* InOperation)
 {
+	// 蓝图返回 True 时，后续代码不会继续执行
+	if (Super::NativeOnDrop(InGeometry, InDragDropEvent, InOperation)) return true;
+
+	if (ItemInstance != nullptr)
+	{
+		return false;
+	}
+
 	UInvSys_InventoryControllerComponent* ICC =
 		UInvSys_InventorySystemLibrary::GetPlayerInventoryComponent<UInvSys_InventoryControllerComponent>(GetWorld());
 	check(ICC)
@@ -100,20 +108,18 @@ bool UGridInvSys_EquipmentSlotWidget::NativeOnDrop(const FGeometry& InGeometry, 
 	check(PayLoadItemInstance)
 	if (PayLoadItemInstance)
 	{
+
 		// 这里是客户端的本地检查，在服务器还有一重检查，确保目标物品不会装备到错误的位置。
 		auto EquipItemFragment = PayLoadItemInstance->FindFragmentByClass<UInvSys_ItemFragment_EquipItem>();
 		if (EquipItemFragment)
 		{
 			// 判断目标物品是否支持在该槽位装备
-			if (EquipItemFragment->SupportEquipSlot.HasTagExact(SlotTag) && EquipItemFragment->bBinding == false)
+			if (EquipItemFragment->SupportEquipSlot.HasTagExact(SlotTag))
 			{
 				ICC->Server_EquipItemInstance(InventoryComponent.Get(), PayLoadItemInstance, SlotTag);
 				return true;
 			}
 		}
-		// // 还原目标物品
-		// UInvSys_InventoryComponent* From_InvComp = PayLoadItemInstance->GetInventoryComponent();
-		// ICC->Server_RestoreItemInstance(From_InvComp, PayLoadItemInstance); 
 	}
 	return false;
 }

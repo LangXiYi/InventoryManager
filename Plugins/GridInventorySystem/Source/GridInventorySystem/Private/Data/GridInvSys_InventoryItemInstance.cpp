@@ -20,6 +20,12 @@ void UGridInvSys_InventoryItemInstance::PostReplicatedChange()
 	}
 }
 
+void UGridInvSys_InventoryItemInstance::OnTransferItems(UInvSys_InventoryFragment_Container* ContainerFragment)
+{
+	Super::OnTransferItems(ContainerFragment);
+	ItemPosition.EquipSlotTag = ContainerFragment->GetInventoryTag();
+}
+
 void UGridInvSys_InventoryItemInstance::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);

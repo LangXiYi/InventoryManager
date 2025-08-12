@@ -31,7 +31,7 @@ void UInvSys_BaseInventoryObject::PostRepNotifies()
 		if (InventoryObjectFragments[i] != nullptr)
 		{
 			InventoryObjectFragments[i]->InventoryObject = this;
-			InventoryObjectFragments[i]->InventoryObjectTag = GetInventoryObjectTag();
+			InventoryObjectFragments[i]->InventoryTag = GetInventoryObjectTag();
 		}
 	}
 }
@@ -49,7 +49,7 @@ void UInvSys_BaseInventoryObject::ConstructInventoryFragment(const TArray<UInvSy
 				NewObject<UInvSys_BaseInventoryFragment>(GetInventoryComponent(), Fragment->GetClass());
 
 			TargetFragment->InventoryObject = this;
-			TargetFragment->InventoryObjectTag = GetInventoryObjectTag();
+			TargetFragment->InventoryTag = GetInventoryObjectTag();
 			InventoryObjectFragments.Emplace(TargetFragment);
 		}
 	}
@@ -151,8 +151,8 @@ bool UInvSys_BaseInventoryObject::IsUsingRegisteredSubObjectList() const
 
 FGameplayTag UInvSys_BaseInventoryObject::GetInventoryObjectTag() const
 {
-	check(InventoryObjectTag.IsValid())
-	return InventoryObjectTag;
+	check(InventoryTag.IsValid())
+	return InventoryTag;
 }
 
 UInvSys_InventoryComponent* UInvSys_BaseInventoryObject::GetInventoryComponent() const
@@ -182,6 +182,6 @@ void UInvSys_BaseInventoryObject::GetLifetimeReplicatedProps(TArray<FLifetimePro
 {
 	UObject::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME_CONDITION(UInvSys_BaseInventoryObject, InventoryObjectTag, COND_None);
+	DOREPLIFETIME_CONDITION(UInvSys_BaseInventoryObject, InventoryTag, COND_None);
 	DOREPLIFETIME_CONDITION(UInvSys_BaseInventoryObject, InventoryObjectFragments, COND_None);
 }

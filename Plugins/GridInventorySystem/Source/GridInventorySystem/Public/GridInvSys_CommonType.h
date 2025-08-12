@@ -62,7 +62,7 @@ struct FGridInvSys_ItemPosition
 
 	FORCEINLINE bool IsValid() const
 	{
-		return EquipSlotTag.IsValid() && GridID != INDEX_NONE;
+		return EquipSlotTag.IsValid() && GridID != INDEX_NONE && Direction != EGridInvSys_ItemDirection::None;
 	}
 
 	FORCEINLINE FString ToString() const

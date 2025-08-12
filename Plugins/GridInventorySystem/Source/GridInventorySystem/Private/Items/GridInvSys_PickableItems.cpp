@@ -19,6 +19,12 @@ AGridInvSys_PickableItems::AGridInvSys_PickableItems()
 
 bool AGridInvSys_PickableItems::PickupItem(UInvSys_InventoryComponent* InvComp)
 {
+	if (PickableItemInstance == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, PickableItemInstance is nullptr."), __FUNCTION__)
+		return false;
+	}
+	int32 ItemStackCount = GetItemStackCount();
 	if (ItemStackCount <= 0)
 	{
 		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemStackCount Less zero."), __FUNCTION__)
@@ -52,7 +58,8 @@ bool AGridInvSys_PickableItems::PickupItem(UInvSys_InventoryComponent* InvComp)
 			continue;
 		}
 		TArray<UInvSys_InventoryItemInstance*> StackableItems;
-		Container->FindStackableItemInstances(ItemDefinition, StackableItems);
+		Container->FindStackableItemInstances(PickableItemInstance, StackableItems);
+
 		for (int i = 0; ItemStackCount > 0; ++i)
 		{
 			if (StackableItems.IsValidIndex(i) == false)
@@ -83,19 +90,22 @@ bool AGridInvSys_PickableItems::PickupItem(UInvSys_InventoryComponent* InvComp)
 		 */
 
 		FGridInvSys_ItemPosition NewPosition;
-		if (GridInvComp->FindEmptyPosition(ItemDefinition, NewPosition) == false)
+		if (GridInvComp->FindEmptyPosition(PickableItemInstance, NewPosition) == false)
 		{
+			// todo::是否需要广播该事件？
 			UE_LOG(LogInventorySystem, Warning, TEXT("容器组件已满"))
-			// todo::Broadcast Message?
+			SetItemStackCount(ItemStackCount); // 所有修改操作完成后，更新物品实例的堆叠数量
 			return false;
 		}
 
 		int32 NewStackCount = ItemStackCount > BaseItemFragment->MaxStackCount ? BaseItemFragment->MaxStackCount : ItemStackCount;
-		GridInvComp->AddItemDefinitionToContainerPos(ItemDefinition, NewStackCount, NewPosition);
+		// todo::除了位置你是否还有其他需要添加的属性？
+		GridInvComp->AddItemDefinitionToContainerPos(PickableItemInstance->GetItemDefinition(), NewStackCount, NewPosition);
 
 		// 更新结束条件: 当前值 - 增量
 		ItemStackCount -= NewStackCount;
 	}
+	SetItemStackCount(ItemStackCount); // 所有修改操作完成后，更新物品实例的堆叠数量
 	return true;
 }
 

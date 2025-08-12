@@ -10,6 +10,7 @@
 class UInvSys_InventoryComponent;
 class UInvSys_InventoryItemFragment;
 class UInvSys_InventoryItemDefinition;
+class UInvSys_InventoryFragment_Container;
 
 UENUM()
 enum class EInvSys_ReplicateState : uint8
@@ -50,6 +51,13 @@ public:
 	UInvSys_InventoryItemInstance();
 
 	/**
+	 * 如果在 AddItemDefinition/ItemInstance 时传入了特定类型的属性
+	 * 那么你就必须在你的类中定义一个与该属性类型一致的 InitItemInstanceProps 函数。
+	 * 注意：多个相同类型的该函数，只会调用第一个函数
+	 */
+	// void InitItemInstanceProps(const int32& Data, bool bIsBroadcast) {}
+
+	/**
 	 * 在执行 DuplicateObject 后获取的 InventoryComponent 是拷贝前的值，故需要在拷贝完成后更新为最新值 
 	 * 注意：客户端不会执行该函数，只会重新一遍执行构造函数。
 	 */
@@ -62,13 +70,15 @@ public:
 	virtual void PostRepNotifies() override;
 
 	/**
-	 * 如果在 AddItemDefinition/ItemInstance 时传入了特定类型的属性
-	 * 那么你就必须在你的类中定义一个与该属性类型一致的 InitItemInstanceProps 函数。
-	 * 注意：多个相同类型的该函数，只会调用第一个函数
+	 * 当物品从库存中删除时触发
 	 */
-	// void InitItemInstanceProps(const int32& Data, bool bIsBroadcast) {}
-
 	virtual void RemoveFromInventory() {}
+
+	/**
+	 * 当物品在从某一容器转移至另一容器内时触发
+	 * todo::目前仅在切换装备容器时，内部物品会触发该函数。
+	 */
+	virtual void OnTransferItems(UInvSys_InventoryFragment_Container* ContainerFragment) {}
 
 protected:
 	// Custom FastArrayItem API Begin -----
@@ -159,10 +169,10 @@ public:
 	TArray<UInvSys_InventoryItemInstance*> PayloadItems;
 
 protected:
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory Item Instance")
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory Item Instance", meta = (ExposeOnSpawn))
 	int32 StackCount = 0;
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory Item Instance")
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory Item Instance", meta = (ExposeOnSpawn))
 	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDefinition = nullptr;
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory Item Instance")

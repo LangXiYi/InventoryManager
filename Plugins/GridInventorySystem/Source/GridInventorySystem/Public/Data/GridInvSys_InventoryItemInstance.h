@@ -38,6 +38,8 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_InventoryItemInstance : public UInvSys
 
 public:
 	virtual void PostReplicatedChange() override;
+
+	virtual void OnTransferItems(UInvSys_InventoryFragment_Container* ContainerFragment) override;
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 

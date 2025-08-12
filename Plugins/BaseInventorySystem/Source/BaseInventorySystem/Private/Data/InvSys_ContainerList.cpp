@@ -170,5 +170,5 @@ UInvSys_InventoryComponent* FInvSys_ContainerList::GetInventoryComponent() const
 FGameplayTag FInvSys_ContainerList::GetInventoryObjectTag() const
 {
 	check(InventoryFragment)
-	return InventoryFragment->GetInventoryObjectTag();
+	return InventoryFragment->GetInventoryTag();
 }

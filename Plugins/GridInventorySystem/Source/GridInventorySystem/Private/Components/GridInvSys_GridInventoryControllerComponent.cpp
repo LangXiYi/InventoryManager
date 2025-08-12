@@ -65,6 +65,18 @@ void UGridInvSys_GridInventoryControllerComponent::Server_SwapItemInstances_Impl
 	const TArray<UGridInvSys_InventoryItemInstance*>& TargetItemInstances,
 	const TArray<FGridInvSys_ItemPosition>& TargetPositions)
 {
+	if (ItemInstance == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstance is nullptr."), __FUNCTION__)
+		return;
+	}
+
+	if (ItemInstance->PayloadItems.IsEmpty() == false)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstance->PayloadItems.Num = %d."), __FUNCTION__, ItemInstance->PayloadItems.Num())
+		return;
+	}
+
 	if (TargetItemInstances.Num() != TargetPositions.Num())
 	{
 		checkf(false, TEXT("物品实例与位置信息数量不匹配，存在无效索引"))
@@ -138,46 +150,48 @@ void UGridInvSys_GridInventoryControllerComponent::Server_SwapItemInstance_Imple
 {
 	if (FromItemInstance == nullptr || ToItemInstance == nullptr)
 	{
+		CancelDragItemInstance(FromItemInstance);
 		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstance is nullptr."), __FUNCTION__)
 		return;
 	}
 
 	if (FromItemInstance == ToItemInstance)
 	{
+		CancelDragItemInstance(FromItemInstance);
 		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, FromItemInstance == ToItemInstance."), __FUNCTION__)
 		return;
 	}
 
+	if (FromItemInstance->PayloadItems.IsEmpty() == false)
+	{
+		CancelDragItemInstance(FromItemInstance);
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, FromItemInstance->PayloadItems.Num = %d."), __FUNCTION__, FromItemInstance->PayloadItems.Num())
+		return;
+	}
+
+	if (ToItemInstance->PayloadItems.IsEmpty() == false)
+	{
+		CancelDragItemInstance(FromItemInstance);
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ToItemInstance->PayloadItems.Num = %d."), __FUNCTION__, FromItemInstance->PayloadItems.Num())
+		return;
+	}
+
+	if (SuperposeItemInstance(FromItemInstance, ToItemInstance))
+	{
+		CancelDragItemInstance(FromItemInstance);
+		return;
+	}
+
+	// 如果两物品不能叠加那么就互换它们的位置
 	UInvSys_InventoryComponent* FromInvComp = FromItemInstance->GetInventoryComponent();
 	UInvSys_InventoryComponent* ToInvComp = ToItemInstance->GetInventoryComponent();
 	if (FromInvComp == nullptr || ToInvComp == nullptr)
 	{
 		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, InventoryComponent is nullptr."), __FUNCTION__)
+		CancelDragItemInstance(FromItemInstance);
 		return;
 	}
 
-	// 两物品定义一致，且允许堆叠
-	if (FromItemInstance->GetItemDefinition() == ToItemInstance->GetItemDefinition())
-	{
-		if (auto PickupItemFragment = FromItemInstance->FindFragmentByClass<UInvSys_ItemFragment_BaseItem>())
-		{
-			const int32 MaxStackCount = PickupItemFragment->MaxStackCount;
-			const int32 FromItemStackCount = FromItemInstance->GetItemStackCount();
-			const int32 ToItemStackCount = ToItemInstance->GetItemStackCount();
-			const int32 NewItemStackCount = FromItemStackCount + ToItemStackCount;
-			if (NewItemStackCount <= MaxStackCount)
-			{
-				ToInvComp->UpdateItemStackCount(ToItemInstance, NewItemStackCount);
-				FromInvComp->RemoveItemInstance(FromItemInstance);
-			}
-			else
-			{
-				ToInvComp->UpdateItemStackCount(ToItemInstance, MaxStackCount);
-				FromInvComp->UpdateItemStackCount(FromItemInstance, NewItemStackCount - MaxStackCount);
-			}
-			return;
-		}
-	}
 	// 两物品实例大小相同
 	if (FromItemInstance->GetItemSize() == ToItemInstance->GetItemSize())
 	{
@@ -194,6 +208,7 @@ void UGridInvSys_GridInventoryControllerComponent::Server_SwapItemInstance_Imple
 		FromInvComp->AddItemInstance<UGridInvSys_InventoryItemInstance>(ToItemInstance, FromItemTag, FromItemPosition);
 		ToInvComp->AddItemInstance<UGridInvSys_InventoryItemInstance>(FromItemInstance, ToItemTag, ToItemPosition);
 	}
+	CancelDragItemInstance(FromItemInstance);
 }
 
 void UGridInvSys_GridInventoryControllerComponent::Server_TryDropItemInstance_Implementation(
@@ -204,23 +219,19 @@ void UGridInvSys_GridInventoryControllerComponent::Server_TryDropItemInstance_Im
 	UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(InItemInstance);
 	if (GridInvComp == nullptr || GridItemInstance == nullptr)
 	{
-		checkNoEntry();
+		CancelDragItemInstance(InItemInstance);
+		return;
+	}
+	if (InItemInstance->PayloadItems.IsEmpty() == false)
+	{
+		CancelDragItemInstance(InItemInstance);
+		return;
+	}
+	if(GridInvComp->CheckItemPosition(InItemInstance, InPos) == false)
+	{
+		CancelDragItemInstance(InItemInstance);
 		return;
 	}
 
-	// UGridInvSys_InventoryComponent* FromInvComp = InItemInstance->GetInventoryComponent<UGridInvSys_InventoryComponent>();
-	// if (FromInvComp == GridInvComp && GridItemInstance->GetItemPosition() == InPos)
-	// {
-	// 	SetDraggingItemInstance(nullptr);
-	// 	InvComp->CancelDragItemInstance(InItemInstance);
-	// }
-	if(GridInvComp->CheckItemPosition(InItemInstance, InPos))
-	{
-		DropItemInstance<UGridInvSys_InventoryItemInstance>(InvComp, InItemInstance, InPos.EquipSlotTag, InPos);
-	}
-	else
-	{
-		SetDraggingItemInstance(nullptr);
-		InvComp->CancelDragItemInstance(InItemInstance);
-	}
+	DropItemInstance<UGridInvSys_InventoryItemInstance>(InvComp, InItemInstance, InPos.EquipSlotTag, InPos);
 }

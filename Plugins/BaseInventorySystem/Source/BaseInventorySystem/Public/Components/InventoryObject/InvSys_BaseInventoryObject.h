@@ -93,7 +93,7 @@ public:
 
 protected:
 	UPROPERTY(BlueprintReadOnly, Replicated, Category = "Inventory Object")
-	FGameplayTag InventoryObjectTag;
+	FGameplayTag InventoryTag;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Replicated, Category = "Inventory Object")
 	TArray<UInvSys_BaseInventoryFragment*> InventoryObjectFragments;

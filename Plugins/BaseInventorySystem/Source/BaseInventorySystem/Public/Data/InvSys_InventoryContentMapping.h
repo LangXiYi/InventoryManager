@@ -22,12 +22,12 @@ public:
 	TArray<class UInvSys_BaseInventoryFragment*> Fragments;
 
 	template<class InventoryObjectType = UInvSys_BaseInventoryObject>
-	InventoryObjectType* ConstructInventoryObject(UInvSys_InventoryComponent* InvComp, FGameplayTag InventoryObjectTag)
+	InventoryObjectType* ConstructInventoryObject(UInvSys_InventoryComponent* InvComp, FGameplayTag InventoryTag)
 	{
 		if (InvComp)
 		{
 			InventoryObjectType* InvObj = NewObject<InventoryObjectType>(InvComp);
-			InvObj->InventoryObjectTag = InventoryObjectTag;
+			InvObj->InventoryTag = InventoryTag;
 			InvObj->ConstructInventoryFragment(Fragments);
 			return InvObj;
 		}

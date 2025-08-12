@@ -41,7 +41,7 @@ public:
 		return (T*)InventoryComponent;
 	}
 
-	FORCEINLINE FGameplayTag GetInventoryObjectTag() const;
+	FORCEINLINE FGameplayTag GetInventoryTag() const;
 
 	FORCEINLINE UInvSys_BaseInventoryObject* GetInventoryObject() const;
 
@@ -70,7 +70,7 @@ protected:
 	// 客户端同步装备时会广播一次，该广播会获取当前的标签，但此时该属性为 None
 	// UPROPERTY(BlueprintReadOnly, Replicated, Category = "Inventory Fragment")
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Fragment")
-	FGameplayTag InventoryObjectTag;
+	FGameplayTag InventoryTag;
 
 	// UPROPERTY(EditDefaultsOnly, Category = "Inventory Fragment", meta = (ClampMin = 0))
 	int32 Priority;	// 执行 OnRefreshInventoryObject 时的优先级，数值越小的对象执行优先级越高

@@ -57,10 +57,10 @@ UInvSys_InventoryComponent* UInvSys_BaseInventoryFragment::GetInventoryComponent
 	return InventoryComponent;
 }
 
-FGameplayTag UInvSys_BaseInventoryFragment::GetInventoryObjectTag() const
+FGameplayTag UInvSys_BaseInventoryFragment::GetInventoryTag() const
 {
-	check(InventoryObjectTag.IsValid())
-	return InventoryObjectTag;
+	check(InventoryTag.IsValid())
+	return InventoryTag;
 }
 
 UInvSys_BaseInventoryObject* UInvSys_BaseInventoryFragment::GetInventoryObject() const

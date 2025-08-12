@@ -19,7 +19,7 @@ UInvSys_InventoryFragment_Equipment::UInvSys_InventoryFragment_Equipment()
 
 void UInvSys_InventoryFragment_Equipment::RefreshInventoryFragment()
 {
-	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("正在刷新装备片段[%s]"), *GetInventoryObjectTag().ToString())
+	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("正在刷新装备片段[%s]"), *GetInventoryTag().ToString())
 	if (EquipmentInstance)
 	{
 		BroadcastEquipItemInstance(EquipmentInstance);
@@ -66,9 +66,9 @@ UInvSys_InventoryItemInstance* UInvSys_InventoryFragment_Equipment::EquipItemDef
 		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, EquipmentFragment is nullptr."), __FUNCTION__)
 		return nullptr;
 	}
-	if (EquipmentFragment->SupportEquipSlot.HasTagExact(InventoryObjectTag) == false)
+	if (EquipmentFragment->SupportEquipSlot.HasTagExact(InventoryTag) == false)
 	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, 物品支持的装备槽中不包括 %s ."), __FUNCTION__, *InventoryObjectTag.ToString())
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, 物品支持的装备槽中不包括 %s ."), __FUNCTION__, *InventoryTag.ToString())
 		return nullptr;
 	}
 
@@ -81,7 +81,7 @@ UInvSys_InventoryItemInstance* UInvSys_InventoryFragment_Equipment::EquipItemDef
 	EquipmentInstance = TempItemInstance;
 	EquipmentInstance->SetItemDefinition(ItemDef);
 	EquipmentInstance->SetItemUniqueID(FGuid::NewGuid());
-	EquipmentInstance->SetSlotTag(GetInventoryObjectTag());
+	EquipmentInstance->SetSlotTag(GetInventoryTag());
 	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
 	{
 		OnRep_ItemInstance();
@@ -112,9 +112,9 @@ UInvSys_InventoryItemInstance* UInvSys_InventoryFragment_Equipment::EquipItemIns
 		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, EquipmentFragment is nullptr."), __FUNCTION__)
 		return nullptr;
 	}
-	if (EquipItemFragment->SupportEquipSlot.HasTagExact(InventoryObjectTag) == false)
+	if (EquipItemFragment->SupportEquipSlot.HasTagExact(InventoryTag) == false)
 	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, 物品支持的装备槽中不包括 %s ."), __FUNCTION__, *InventoryObjectTag.ToString())
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, 物品支持的装备槽中不包括 %s ."), __FUNCTION__, *InventoryTag.ToString())
 		return nullptr;
 	}
 
@@ -135,7 +135,7 @@ UInvSys_InventoryItemInstance* UInvSys_InventoryFragment_Equipment::EquipItemIns
 	}
 
 	EquipmentInstance = TargetItemInstance;
-	EquipmentInstance->SetSlotTag(GetInventoryObjectTag());
+	EquipmentInstance->SetSlotTag(GetInventoryTag());
 	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
 	{
 		OnRep_ItemInstance();
@@ -148,7 +148,7 @@ bool UInvSys_InventoryFragment_Equipment::UnEquipItemInstance()
 	check(HasAuthority())
 	if (HasEquipmentItems() == false)
 	{
-		UE_LOG(LogInventorySystem, Warning, TEXT("当前装备模块 %s 未装备任何物品。"), *InventoryObjectTag.ToString())
+		UE_LOG(LogInventorySystem, Warning, TEXT("当前装备模块 %s 未装备任何物品。"), *InventoryTag.ToString())
 		return false;
 	}
 
@@ -196,7 +196,7 @@ void UInvSys_InventoryFragment_Equipment::BroadcastEquipItemInstance(UInvSys_Inv
 	{
 		FInvSys_EquipItemInstanceMessage EquipItemInstanceMessage;
 		EquipItemInstanceMessage.InvComp = GetInventoryComponent();
-		EquipItemInstanceMessage.InventoryObjectTag = GetInventoryObjectTag();
+		EquipItemInstanceMessage.InventoryObjectTag = GetInventoryTag();
 		EquipItemInstanceMessage.ItemInstance = NewItemInstance;
 
 		UGameplayMessageSubsystem& GameplayMessageSubsystem = UGameplayMessageSubsystem::Get(MyWorld);
@@ -211,7 +211,7 @@ void UInvSys_InventoryFragment_Equipment::BroadcastUnEquipItemInstance()
 	{
 		FInvSys_EquipItemInstanceMessage UnEquipItemInstanceMessage;
 		UnEquipItemInstanceMessage.InvComp = GetInventoryComponent();
-		UnEquipItemInstanceMessage.InventoryObjectTag = GetInventoryObjectTag();
+		UnEquipItemInstanceMessage.InventoryObjectTag = GetInventoryTag();
 		UnEquipItemInstanceMessage.ItemInstance = nullptr;
 
 		UGameplayMessageSubsystem& GameplayMessageSubsystem = UGameplayMessageSubsystem::Get(MyWorld);

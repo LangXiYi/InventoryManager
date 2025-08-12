@@ -11,14 +11,12 @@
 #include "InventoryObject/Fragment/InvSys_InventoryFragment_Equipment.h"
 #include "InvSys_InventoryComponent.generated.h"
 
-class UInvSys_InventoryContentMapping;
 class AInvSys_PickableItems;
 class UInvSys_BaseInventoryObject;
 class UInvSys_InventoryLayoutWidget;
-class UInvSys_InventoryItemDefinition;
 class UInvSys_PreEditInventoryObject;
-
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDropItemInstanceToWorld, AInvSys_PickableItems*, DropItem);
+class UInvSys_InventoryContentMapping;
+class UInvSys_InventoryItemDefinition;
 
 UCLASS(Abstract, BlueprintType, meta=(BlueprintSpawnableComponent))
 class BASEINVENTORYSYSTEM_API UInvSys_InventoryComponent : public UActorComponent
@@ -53,8 +51,11 @@ public:
 
 	bool UnEquipItemInstance(const FGameplayTag& InventoryTag);
 
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
-	bool HasEquipItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
+	UFUNCTION(BlueprintCallable, Category = "Inventory Component")
+	bool IsEquippedItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
+
+	UFUNCTION(BlueprintCallable, Category = "Inventory Component")
+	bool HasEquippedItemInstance(FGameplayTag InventoryTag);
 
 	/**
 	 * 根据物品定义创建物品并添加至当前容器内
@@ -161,7 +162,7 @@ public:
 		{
 			return InventoryObjectMap[Tag]->FindInventoryFragment<T>();
 		}
-		UE_LOG(LogInventorySystem, Error, TEXT("GameplayTag[%s] is not valid."), *Tag.ToString())
+		UE_LOG(LogInventorySystem, Warning, TEXT("GameplayTag[%s] is not valid."), *Tag.ToString())
 		return nullptr;
 	}
 
@@ -220,9 +221,6 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Component")
 	TObjectPtr<UInvSys_InventoryLayoutWidget> LayoutWidget;
-
-	UPROPERTY(BlueprintReadWrite, BlueprintAssignable, Category = "Inventory Component")
-	FOnDropItemInstanceToWorld OnDropItemInstanceToWorld;
 };
 
 template <class T, class ... Arg>

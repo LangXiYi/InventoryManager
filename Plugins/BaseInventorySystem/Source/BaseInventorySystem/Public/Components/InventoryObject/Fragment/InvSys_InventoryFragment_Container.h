@@ -61,6 +61,15 @@ public:
 	                                 TArray<UInvSys_InventoryItemInstance*>& StackableItems);
 
 	/**
+	 * 查找所有可堆叠的物品实例
+	 * @param ItemInstance 物品类型
+	 * @param StackableItems 输出物品实例 
+	 * @return 所有物品实例可用的堆叠数量
+	 */
+	int32 FindStackableItemInstances(TObjectPtr<UInvSys_InventoryItemInstance> ItemInstance,
+									 TArray<UInvSys_InventoryItemInstance*>& StackableItems);
+
+	/**
 	 * 更新容器内物品的属性
 	 * 注意：可变参数列表要求目标类型必须实现 InitItemInstanceProps 函数，且参数类型一致。
 	 */

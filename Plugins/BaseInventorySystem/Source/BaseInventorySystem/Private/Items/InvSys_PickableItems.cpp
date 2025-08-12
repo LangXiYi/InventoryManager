@@ -7,12 +7,9 @@
 
 #include "BaseInventorySystem.h"
 #include "NativeGameplayTags.h"
-#include "Components/InvSys_InventoryComponent.h"
 #include "Components/SphereComponent.h"
 #include "Data/InvSys_InventoryItemInstance.h"
 #include "Data/InvSys_ItemFragment_DragDrop.h"
-#include "Data/InvSys_ItemFragment_PickUpItem.h"
-#include "GameFramework/GameplayMessageSubsystem.h"
 #include "Net/UnrealNetwork.h"
 
 UE_DEFINE_GAMEPLAY_TAG(Inventory_Message_DropItem, "Inventory.Message.DropItem");
@@ -33,33 +30,20 @@ AInvSys_PickableItems::AInvSys_PickableItems()
 	bReplicates = true;
 }
 
-void AInvSys_PickableItems::BeginPlay()
+void AInvSys_PickableItems::OnConstruction(const FTransform& Transform)
 {
-	Super::BeginPlay();
-	if (ItemDefinition != nullptr)
+	Super::OnConstruction(Transform);
+	if (PickableItemInstance)
 	{
-		auto DropItemFragment = FindFragmentByClass<UInvSys_ItemFragment_DragDrop>();
-		if (DropItemFragment)
-		{
-			UStaticMesh* StaticMesh = DropItemFragment->DropDisplayMesh.LoadSynchronous();
-			if (StaticMesh)
-			{
-				ItemMesh->SetStaticMesh(StaticMesh);
-			}
-			ItemMesh->SetRelativeLocation(DropItemFragment->DropLocationOffset);
-		}
+		OnRep_PickableItemInstance();
+		MarkItemDirty();
 	}
 }
 
-void AInvSys_PickableItems::InitItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)
+void AInvSys_PickableItems::BeginPlay()
 {
-	if (NewItemInstance== nullptr)
-	{
-		checkNoEntry();
-		return;
-	}
-	ItemDefinition = NewItemInstance->GetItemDefinition();
-	ItemStackCount = NewItemInstance->GetItemStackCount();
+	Super::BeginPlay();
+
 }
 
 bool AInvSys_PickableItems::PickupItem(UInvSys_InventoryComponent* InvComp)
@@ -68,12 +52,11 @@ bool AInvSys_PickableItems::PickupItem(UInvSys_InventoryComponent* InvComp)
 	return false; 
 }
 
-void AInvSys_PickableItems::InitPickableItems(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 NewStackCount)
+void AInvSys_PickableItems::InitPickableItemInstance(UInvSys_InventoryItemInstance* ItemInstance)
 {
 	check(HasAuthority())
-	ItemDefinition = ItemDef;
-	ItemStackCount = NewStackCount;
-
+	check(ItemInstance)
+	PickableItemInstance = ItemInstance;
 	auto DropItemFragment = FindFragmentByClass<UInvSys_ItemFragment_DragDrop>();
 	if (DropItemFragment)
 	{
@@ -84,22 +67,65 @@ void AInvSys_PickableItems::InitPickableItems(TSubclassOf<UInvSys_InventoryItemD
 		}
 		ItemMesh->SetRelativeLocation(DropItemFragment->DropLocationOffset);
 	}
+	MarkItemDirty();
+}
+
+void AInvSys_PickableItems::MarkItemDirty()
+{
+	bIsDirty = true;
+}
+
+int32 AInvSys_PickableItems::GetItemStackCount() const
+{
+	check(PickableItemInstance)
+	return PickableItemInstance->GetItemStackCount();
+}
+
+void AInvSys_PickableItems::SetItemStackCount(int32 NewStackCount)
+{
+	check(PickableItemInstance)
+	PickableItemInstance->SetItemStackCount(NewStackCount);
+	bIsDirty = true;
 }
 
 const UInvSys_InventoryItemFragment* AInvSys_PickableItems::FindFragmentByClass(
 	TSubclassOf<UInvSys_InventoryItemFragment> FragmentClass) const
 {
-	if ((ItemDefinition != nullptr) && (FragmentClass != nullptr))
+	if (PickableItemInstance)
 	{
-		return GetDefault<UInvSys_InventoryItemDefinition>(ItemDefinition)->FindFragmentByClass(FragmentClass);
+		return PickableItemInstance->FindFragmentByClass(FragmentClass);
 	}
 	return nullptr;
+}
+
+bool AInvSys_PickableItems::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags)
+{
+	
+	bool bIsWrote =  Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
+	if (bIsDirty)
+	{
+		bIsDirty = false;
+		bIsWrote |= Channel->ReplicateSubobject(PickableItemInstance, *Bunch, *RepFlags);
+	}
+	return bIsWrote;
 }
 
 void AInvSys_PickableItems::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AInvSys_PickableItems, PickableItemInstance);
+}
 
-	DOREPLIFETIME(AInvSys_PickableItems, ItemDefinition);
-	DOREPLIFETIME(AInvSys_PickableItems, ItemStackCount);
+void AInvSys_PickableItems::OnRep_PickableItemInstance()
+{
+	auto DropItemFragment = FindFragmentByClass<UInvSys_ItemFragment_DragDrop>();
+	if (DropItemFragment)
+	{
+		UStaticMesh* StaticMesh = DropItemFragment->DropDisplayMesh.LoadSynchronous();
+		if (StaticMesh)
+		{
+			ItemMesh->SetStaticMesh(StaticMesh);
+		}
+		ItemMesh->SetRelativeLocation(DropItemFragment->DropLocationOffset);
+	}
 }

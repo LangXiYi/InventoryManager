@@ -266,7 +266,7 @@ T* FInvSys_ContainerList::AddDefinition(TSubclassOf<UInvSys_InventoryItemDefinit
 	// Result->SetInventoryComponent(InventoryFragment->GetInventoryComponent());
 	Result->SetItemDefinition(ItemDef);
 	Result->SetItemUniqueID(FGuid::NewGuid());
-	Result->SetSlotTag(InventoryFragment->GetInventoryObjectTag());
+	Result->SetSlotTag(InventoryFragment->GetInventoryTag());
 	Result->SetItemStackCount(StackCount);
 
 	for (const UInvSys_InventoryItemFragment* Fragment : GetDefault<UInvSys_InventoryItemDefinition>(ItemDef)->GetFragments())
@@ -298,18 +298,19 @@ T* FInvSys_ContainerList::AddInstance(UInvSys_InventoryItemInstance* ItemInstanc
 	check(ItemInstance)
 	check(InventoryFragment)
 	check(InventoryFragment->HasAuthority());
+	checkf(ItemInstance->PayloadItems.IsEmpty(), TEXT("添加到容器的实例内部不能包含负载项，必须在添加前处理这些负载项。"))
 	if (ItemInstance->IsA<T>() == false)
 	{
 		UE_LOG(LogInventorySystem, Error, TEXT("AddInstance Falied, 传入的物品实例的类型不匹配."))
 		return nullptr;
 	}
 	T* TargetItemInstance = Cast<T>(ItemInstance);
-	// todo::使用对象池获取新对象，优化深度拷贝对象带来的消耗？
+	// todo::使用对象池获取新对象，能否优化深度拷贝对象带来的消耗？
 	TargetItemInstance = DuplicateObject<T>(TargetItemInstance, InventoryFragment->GetInventoryComponent());
 	ItemInstance->ConditionalBeginDestroy();//标记目标待删除
 
 	// 更新物品的基础信息
-	TargetItemInstance->SetSlotTag(InventoryFragment->GetInventoryObjectTag());
+	TargetItemInstance->SetSlotTag(InventoryFragment->GetInventoryTag());
 	TargetItemInstance->SetIsDraggingItem(false);
 	// Instance->SetInventoryComponent(InventoryFragment->GetInventoryComponent());
 

@@ -38,6 +38,18 @@ public:
 	template<class T, class... Arg>
 	T* DropAndAddItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args);
 
+	void CancelDragItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
+
+	/**
+	 * 堆叠两个完全相同的物品
+	 */
+	bool SuperposeItemInstance(UInvSys_InventoryItemInstance* ItemInstanceA, UInvSys_InventoryItemInstance* ItemInstanceB);
+
+	/**
+	 * 指定标签下的装备模块是否以及装备了物品
+	 */
+	bool HasEquipItemInstance(UInvSys_InventoryComponent* InvComp, FGameplayTag InventoryTag);
+
 public:
 	/**
 	 * RPC Functions
@@ -60,9 +72,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
 	void Server_DropItemInstanceToWorld(UInvSys_InventoryItemInstance* InItemInstance);
-
-	UFUNCTION(BlueprintCallable, NetMulticast, Reliable, Category = "Player Inventory Component")
-	void Multi_DropItemInstanceToWorld(UInvSys_InventoryItemInstance* InItemInstance, const FTransform& Transform);
 
 protected:
 	FORCEINLINE bool HasAuthority() const;
@@ -91,16 +100,25 @@ bool UInvSys_InventoryControllerComponent::DropItemInstance(UInvSys_InventoryCom
 	if (InvComp == nullptr)
 	{
 		UE_LOG(LogInventorySystem, Error, TEXT("%hs Failed, Inventory Component is nullptr."), __FUNCTION__)
+		CancelDragItemInstance(InItemInstance);
 		return false;
 	}
 	if (DraggingItemInstance == nullptr)
 	{
 		UE_LOG(LogInventorySystem, Error, TEXT("%hs Failed, Dragging ItemInstance is nullptr."), __FUNCTION__)
+		CancelDragItemInstance(InItemInstance);
 		return false;
 	}
 	if (DraggingItemInstance != InItemInstance)
 	{
 		UE_LOG(LogInventorySystem, Error, TEXT("%hs Failed, DraggingItemInstance != InItemInstance."), __FUNCTION__)
+		CancelDragItemInstance(InItemInstance);
+		return false;
+	}
+	if (InItemInstance->PayloadItems.IsEmpty() == false)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Failed, DraggingItemInstance != InItemInstance."), __FUNCTION__)
+		CancelDragItemInstance(InItemInstance);
 		return false;
 	}
 
