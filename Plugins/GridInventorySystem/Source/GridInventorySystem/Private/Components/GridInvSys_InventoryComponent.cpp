@@ -58,55 +58,21 @@ bool UGridInvSys_InventoryComponent::FindEmptyPosition(UInvSys_InventoryItemInst
 {
 	if (InItemInstance == nullptr)
 	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstance is nullptr."), __FUNCTION__)
 		return false;
 	}
-	TArray<FGameplayTag> OutContainerTags;
-	auto ContainerPriority = InItemInstance->FindFragmentByClass<UInvSys_ItemFragment_PickUpItem>();
-	if (ContainerPriority)
-	{
-		OutContainerTags = ContainerPriority->ContainerPriority; // 根据各个物品自定义的优先级，优先寻找对应物品
-	}
-	else
-	{
-		OutContainerTags = DefaultContainerPriority;
-	}
-	for (FGameplayTag ContainerTag : OutContainerTags)
-	{
-		if (IsValidInventoryTag(ContainerTag) == false)
-		{
-			continue;
-		}
-
-		UGridInvSys_InventoryModule_Container* ContainerFragment =
-			FindInventoryModule<UGridInvSys_InventoryModule_Container>(ContainerTag);
-		if (ContainerFragment)
-		{
-			if (auto ItemSizeFragment = InItemInstance->FindFragmentByClass<UGridInvSys_ItemFragment_GridItemSize>())
-			{
-				if (ContainerFragment->FindEmptyPosition(ItemSizeFragment->ItemSize, OutPosition))
-				{
-					OutPosition.Direction = EGridInvSys_ItemDirection::Horizontal;
-					return true;
-				}
-				if (ContainerFragment->FindEmptyPosition(FIntPoint(ItemSizeFragment->ItemSize.Y, ItemSizeFragment->ItemSize.X), OutPosition))
-				{
-					OutPosition.Direction = EGridInvSys_ItemDirection::Vertical;
-					return true;
-				}
-			}
-		}
-	}
-	return false;
+	return FindEmptyPosition(InItemInstance->GetItemDefinition(), OutPosition);
 }
 
 bool UGridInvSys_InventoryComponent::FindEmptyPosition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDefinition,
 	FGridInvSys_ItemPosition& OutPosition)
 {
-	if (ItemDefinition == nullptr)
+	UInvSys_InventoryItemDefinition* CDO_ItemDefinition = ItemDefinition.GetDefaultObject();
+	if (CDO_ItemDefinition == nullptr)
 	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, CDO_ItemDefinition is nullptr."), __FUNCTION__)
 		return false;
 	}
-	UInvSys_InventoryItemDefinition* CDO_ItemDefinition = ItemDefinition.GetDefaultObject();
 	check(CDO_ItemDefinition)
 	TArray<FGameplayTag> OutContainerTags;
 	auto ContainerPriority = CDO_ItemDefinition->FindFragmentByClass<UInvSys_ItemFragment_PickUpItem>();

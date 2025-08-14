@@ -18,6 +18,8 @@ class BASEINVENTORYSYSTEM_API UInvSys_InventoryControllerComponent : public UAct
 public:
 	UInvSys_InventoryControllerComponent(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
+	virtual void InitializeComponent() override;
+
 	// todo::如果自定义 HUD，请重载该函数并添加自己的处理逻辑
 	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "Player Inventory Component")
 	virtual UInvSys_InventoryHUD* ConstructInventoryHUD();
@@ -38,6 +40,7 @@ public:
 	template<class T, class... Arg>
 	T* DropAndAddItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args);
 
+	void CancelDragItemInstance();
 	void CancelDragItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
 
 	/**
@@ -62,6 +65,12 @@ public:
 	void Server_EquipItemInstance(UInvSys_InventoryComponent* InvComp,UInvSys_InventoryItemInstance* ItemInstance, FGameplayTag InventoryTag);
 
 	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
+	void Server_UnEquipItemInstance(UInvSys_InventoryComponent* InvComp, FGameplayTag InventoryTag);
+
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component", meta = (AdvancedDisplay = bIsAutoEquip))
+	void Server_PickupItemInstance(UInvSys_InventoryComponent* InvComp, AInvSys_PickableItems* PickableItems, bool bIsAutoEquip = true);
+
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
 	void Server_DragItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance);
 
 	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
@@ -72,6 +81,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
 	void Server_DropItemInstanceToWorld(UInvSys_InventoryItemInstance* InItemInstance);
+
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
+	void Server_SuperposeItemInstance(UInvSys_InventoryItemInstance* FromItemInstance, UInvSys_InventoryItemInstance* ToItemInstance);
 
 protected:
 	FORCEINLINE bool HasAuthority() const;
@@ -91,39 +103,22 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Player Inventory Component")
 	UInvSys_InventoryHUD* InventoryHUD = nullptr;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Player Inventory Component")
+	TObjectPtr<APlayerController> Controller;
 };
 
 template <class T, class ... Arg>
 bool UInvSys_InventoryControllerComponent::DropItemInstance(UInvSys_InventoryComponent* InvComp,
 	UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args)
 {
-	if (InvComp == nullptr)
+	bool bIsSuccess = false;
+	if (InvComp)
 	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%hs Failed, Inventory Component is nullptr."), __FUNCTION__)
-		CancelDragItemInstance(InItemInstance);
-		return false;
+		bIsSuccess = InvComp->DropItemInstance<T>(InItemInstance, SlotTag, Args...);
 	}
-	if (DraggingItemInstance == nullptr)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%hs Failed, Dragging ItemInstance is nullptr."), __FUNCTION__)
-		CancelDragItemInstance(InItemInstance);
-		return false;
-	}
-	if (DraggingItemInstance != InItemInstance)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%hs Failed, DraggingItemInstance != InItemInstance."), __FUNCTION__)
-		CancelDragItemInstance(InItemInstance);
-		return false;
-	}
-	if (InItemInstance->PayloadItems.IsEmpty() == false)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%hs Failed, DraggingItemInstance != InItemInstance."), __FUNCTION__)
-		CancelDragItemInstance(InItemInstance);
-		return false;
-	}
-
-	SetDraggingItemInstance(nullptr);
-	return InvComp->DropItemInstance<T>(InItemInstance, SlotTag, Args...);
+	CancelDragItemInstance(InItemInstance);
+	return bIsSuccess;
 }
 
 template <class T, class ... Arg>

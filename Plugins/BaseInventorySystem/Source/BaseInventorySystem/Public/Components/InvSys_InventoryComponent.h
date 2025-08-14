@@ -84,38 +84,14 @@ public:
 	 */
 	template<class T, class... ArgList>
 	T* AddItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
-		FGameplayTag InventoryTag, int32 StackCount, const ArgList&... Args)
-	{
-		if (IsValidInventoryTag(InventoryTag) == false)
-		{
-			UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning,
-				TEXT("%hs Falied, Is not valid tag %s."), __FUNCTION__, *InventoryTag.ToString())
-			return nullptr;
-		}
-		auto ContainerFragment = FindInventoryModule<UInvSys_InventoryModule_Container>(InventoryTag);
-		if (ContainerFragment == nullptr)
-		{
-			UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning,
-				TEXT("%hs Falied, ContainerFragment not find by %s."), __FUNCTION__, *InventoryTag.ToString())
-			return nullptr;
-		}
-		return ContainerFragment->AddItemDefinition<T>(ItemDef, StackCount, Args...);
-	}
+		FGameplayTag InventoryTag, int32 StackCount, const ArgList&... Args);
 
 	/**
 	 * 添加物品至当前容器
 	 * 注意：可变参数列表要求目标类型必须实现 InitItemInstanceProps 函数，且参数类型一致。
 	 */
 	template<class T, class... ArgList>
-	T* AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const ArgList&... Args)
-	{
-		auto ContainerFragment = FindInventoryModule<UInvSys_InventoryModule_Container>(SlotTag);
-		if (ContainerFragment != nullptr)
-		{
-			return ContainerFragment->AddItemInstance<T>(InItemInstance, Args...);
-		}
-		return nullptr;
-	}
+	T* AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const ArgList&... Args);
 
 	/** 移除指定物品 */
 	bool RemoveItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
@@ -129,14 +105,11 @@ public:
 	 * 注意：可变参数列表要求目标类型必须实现 InitItemInstanceProps 函数，且参数类型一致。
 	 */
 	template<class T, class... ArgList>
-	void UpdateItemInstance(UInvSys_InventoryItemInstance* ItemInstance, FGameplayTag SlotTag, const ArgList&... Args)
-	{
-		auto ContainerFragment = FindInventoryModule<UInvSys_InventoryModule_Container>(SlotTag);
-		if (ContainerFragment != nullptr)
-		{
-			ContainerFragment->UpdateItemInstance<T>(ItemInstance, Args...);
-		}
-	}
+	void UpdateItemInstance(UInvSys_InventoryItemInstance* ItemInstance, FGameplayTag SlotTag, const ArgList&... Args);
+
+	/** 分割物品 */
+	template<class T, class... ArgList>
+	T* SplitItemInstance(UInvSys_InventoryItemInstance* ItemInstance, int32 SplitCount, FGameplayTag InventoryTag, const ArgList&... Args);
 
 	/** 修改物品堆叠数量 */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
@@ -182,6 +155,10 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
 	AInvSys_PickableItems* DiscardItemInstance(UInvSys_InventoryItemInstance* InItemInstance, const FTransform& Transform);
 
+	bool SuperposeItemInstance(UInvSys_InventoryItemInstance* From, UInvSys_InventoryItemInstance* To);
+	virtual void PreSuperposeItemInstance(UInvSys_InventoryItemInstance* From, UInvSys_InventoryItemInstance* To) {}
+	virtual void PostSuperposeItemInstance(UInvSys_InventoryItemInstance* From, UInvSys_InventoryItemInstance* To) {}
+
 protected:
 	/** 创建所有库存对象后被调用 */
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCosmetic, Category = "Inventory Component")
@@ -192,14 +169,7 @@ public:
 	 * Getter Or Setter
 	 **/
 	template<class T>
-	T* FindInventoryModule(FGameplayTag Tag) const
-	{
-		if (InventoryObjectMap.Contains(Tag))
-		{
-			return InventoryObjectMap[Tag]->FindInventoryFragment<T>();
-		}
-		return nullptr;
-	}
+	FORCEINLINE T* FindInventoryModule(FGameplayTag Tag) const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure = false, meta = (DeterminesOutputType = OutClass))
 	UInvSys_InventoryModule* FindInventoryFragment(FGameplayTag Tag, TSubclassOf<UInvSys_InventoryModule> OutClass) const;
@@ -210,14 +180,10 @@ public:
 
 	bool IsValidInventoryTag(const FGameplayTag& InventoryTag) const;
 
+	UInvSys_InventoryObjectContent* GetInventoryObjectContent(int32 Index) const;
+
 	/** Returns true if the owner's role is ROLE_Authority */
 	bool HasAuthority() const;
-
-	bool IsLocalController() const;
-
-	APlayerController* GetPlayerController() const;
-
-	UInvSys_InventoryObjectContent* GetInventoryObjectContent(int32 Index) const;
 
 protected:
 	/**
@@ -245,10 +211,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Component")
 	TSoftClassPtr<class UInvSys_InventoryContentMapping> InventoryObjectContent;
 
-	/** [Client] 拥有该组件的玩家控制器。 */
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Component")
-	APlayerController* OwningPlayer;
-
 	/** [Client] 库存对象是否已经更新？限制初始化函数只执行一次。 */
 	bool bDisplayWidgetIsValid;
 
@@ -260,22 +222,100 @@ protected:
 	TObjectPtr<UInvSys_InventoryLayoutWidget> LayoutWidget;
 };
 
+template <class T, class ... ArgList>
+T* UInvSys_InventoryComponent::AddItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
+	FGameplayTag InventoryTag, int32 StackCount, const ArgList&... Args)
+{
+	if (IsValidInventoryTag(InventoryTag) == false)
+	{
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning,
+			TEXT("%hs Falied, Is not valid tag %s."), __FUNCTION__, *InventoryTag.ToString())
+		return nullptr;
+	}
+	auto ContainerFragment = FindInventoryModule<UInvSys_InventoryModule_Container>(InventoryTag);
+	if (ContainerFragment == nullptr)
+	{
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning,
+			TEXT("%hs Falied, ContainerFragment not find by %s."), __FUNCTION__, *InventoryTag.ToString())
+		return nullptr;
+	}
+	return ContainerFragment->AddItemDefinition<T>(ItemDef, StackCount, Args...);
+}
+
+template <class T, class ... ArgList>
+T* UInvSys_InventoryComponent::AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag,
+	const ArgList&... Args)
+{
+	auto ContainerFragment = FindInventoryModule<UInvSys_InventoryModule_Container>(SlotTag);
+	if (ContainerFragment != nullptr)
+	{
+		return ContainerFragment->AddItemInstance<T>(InItemInstance, Args...);
+	}
+	return nullptr;
+}
+
+template <class T, class ... ArgList>
+void UInvSys_InventoryComponent::UpdateItemInstance(UInvSys_InventoryItemInstance* ItemInstance, FGameplayTag SlotTag,
+	const ArgList&... Args)
+{
+	auto ContainerFragment = FindInventoryModule<UInvSys_InventoryModule_Container>(SlotTag);
+	if (ContainerFragment != nullptr)
+	{
+		ContainerFragment->UpdateItemInstance<T>(ItemInstance, Args...);
+	}
+}
+
+template <class T, class ... ArgList>
+T* UInvSys_InventoryComponent::SplitItemInstance(UInvSys_InventoryItemInstance* ItemInstance, int32 SplitCount,
+	FGameplayTag InventoryTag, const ArgList&... Args)
+{
+	if (ItemInstance)
+	{
+		int32 ItemStackCount = ItemInstance->GetItemStackCount();
+		if (SplitCount < ItemStackCount)
+		{
+			T* SplitItemInstance = AddItemDefinition<T>(ItemInstance->GetItemDefinition(), InventoryTag, SplitCount, Args...);
+			if (SplitItemInstance != nullptr)
+			{
+				UpdateItemStackCount(ItemInstance, ItemStackCount - SplitCount);
+				return SplitItemInstance;
+			}
+		}
+	}
+	return nullptr;
+}
+
 template <class T, class ... Arg>
 bool UInvSys_InventoryComponent::DropItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag,
 	const Arg&... Args)
 {
-	check(InItemInstance)
-	UInvSys_InventoryComponent* FromInvComp = InItemInstance->GetInventoryComponent();
-	if (SlotTag == InItemInstance->GetInventoryObjectTag() && this == FromInvComp)
+	if (InItemInstance)
 	{
-		UpdateItemDragState(InItemInstance, SlotTag, false); 
-		UpdateItemInstance<T>(InItemInstance, SlotTag, Args...);
-		return true;
-	}
-	if (FromInvComp->RemoveItemInstance(InItemInstance))
-	{
-		AddItemInstance<T>(InItemInstance, SlotTag, Args...);
-		return true;
+		CancelDragItemInstance(InItemInstance);
+		UInvSys_InventoryComponent* FromInvComp = InItemInstance->GetInventoryComponent();
+		if (FromInvComp)
+		{
+			if (SlotTag == InItemInstance->GetInventoryObjectTag() && this == FromInvComp)
+			{
+				UpdateItemInstance<T>(InItemInstance, SlotTag, Args...);
+				return true;
+			}
+			if (FromInvComp->RemoveItemInstance(InItemInstance))
+			{
+				AddItemInstance<T>(InItemInstance, SlotTag, Args...);
+				return true;
+			}
+		}
 	}
 	return false;
+}
+
+template <class T>
+T* UInvSys_InventoryComponent::FindInventoryModule(FGameplayTag Tag) const
+{
+	if (InventoryObjectMap.Contains(Tag))
+	{
+		return InventoryObjectMap[Tag]->FindInventoryFragment<T>();
+	}
+	return nullptr;
 }

@@ -101,8 +101,6 @@ UInvSys_InventoryLayoutWidget* UInvSys_InventoryComponent::CreateDisplayWidget(A
 	if (NewPlayerController && NewPlayerController->IsLocalController() && LayoutWidgetClass)
 	{
 		bDisplayWidgetIsValid = true;
-		OwningPlayer = NewPlayerController;
-		
 		// 创建布局控件后，收集所有的 TagSlot 供后续控件插入正确位置。
 		LayoutWidget = CreateWidget<UInvSys_InventoryLayoutWidget>(NewPlayerController, LayoutWidgetClass);
 		check(LayoutWidget)
@@ -119,6 +117,7 @@ UInvSys_InventoryLayoutWidget* UInvSys_InventoryComponent::CreateDisplayWidget(A
 			if (DisplayWidgetFragment)
 			{
 				// 将库存对象的控件插入对应位置的插槽。
+				// todo::LayoutWidget改为InventoryHUD，修改AddWidget的逻辑，根据标签逐级查找合适的槽位
 				UUserWidget* DisplayWidget = DisplayWidgetFragment->CreateDisplayWidget(NewPlayerController);
 				LayoutWidget->AddWidget(DisplayWidget, InvObj->GetInventoryObjectTag());
 			}
@@ -195,7 +194,7 @@ bool UInvSys_InventoryComponent::DragAndRemoveItemInstance(UInvSys_InventoryItem
 	if (EquipmentFragment && EquipmentFragment->GetEquipItemInstance() == ItemInstance)
 	{
 		UpdateItemDragState(ItemInstance, InventoryTag, true);
-		return UnEquipItemInstance(ItemInstance);
+		return UnEquipItemInstanceByTag(InventoryTag);
 	}
 
 	//判断拖拽这个物品之前判断物品在它容器中是否存在
@@ -275,6 +274,68 @@ AInvSys_PickableItems* UInvSys_InventoryComponent::DiscardItemInstance(
 		return PickableItems;
 	}
 	return nullptr;
+}
+
+bool UInvSys_InventoryComponent::SuperposeItemInstance(UInvSys_InventoryItemInstance* From, UInvSys_InventoryItemInstance* To)
+{
+	if (From == nullptr || To == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstance is nullptr."), __FUNCTION__)
+		return false;
+	}
+
+	if (From == To)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, FromItemInstance == ToItemInstance."), __FUNCTION__)
+		return false;
+	}
+
+	if (From->PayloadItems.IsEmpty() == false)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstanceA->PayloadItems.Num = %d."), __FUNCTION__, From->PayloadItems.Num())
+		return false;
+	}
+
+	if (To->PayloadItems.IsEmpty() == false)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstanceB->PayloadItems.Num = %d."), __FUNCTION__, To->PayloadItems.Num())
+		return false;
+	}
+
+	UInvSys_InventoryComponent* FromInvComp = From->GetInventoryComponent();
+	UInvSys_InventoryComponent* ToInvComp = To->GetInventoryComponent();
+	if (FromInvComp == nullptr || ToInvComp == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, InventoryComponent is nullptr."), __FUNCTION__)
+		return false;
+	}
+
+	// 两物品定义一致，且允许堆叠时，自动堆叠物品
+	if (From->GetItemDefinition() == To->GetItemDefinition())
+	{
+		if (auto BaseItemFragment = From->FindFragmentByClass<UInvSys_ItemFragment_BaseItem>())
+		{
+			const int32 MaxStackCount = BaseItemFragment->MaxStackCount;
+			const int32 FromItemStackCount = From->GetItemStackCount();
+			const int32 ToItemStackCount = To->GetItemStackCount();
+			const int32 NewItemStackCount = FromItemStackCount + ToItemStackCount;
+			PreSuperposeItemInstance(From, To);
+			if (NewItemStackCount <= MaxStackCount)
+			{
+				// 完全堆叠，FromItemInstance 全部转移至 ToItemInstance 
+				ToInvComp->UpdateItemStackCount(To, NewItemStackCount);
+				FromInvComp->RemoveItemInstance(From);
+			}
+			else
+			{
+				ToInvComp->UpdateItemStackCount(To, MaxStackCount);
+				FromInvComp->UpdateItemStackCount(From, NewItemStackCount - MaxStackCount);
+			}
+			PostSuperposeItemInstance(From, To);
+			return true;
+		}
+	}
+	return false;
 }
 
 UInvSys_InventoryItemInstance* UInvSys_InventoryComponent::EquipItemDefinition(
@@ -374,13 +435,11 @@ bool UInvSys_InventoryComponent::IsEquippedItemInstance(UInvSys_InventoryItemIns
 {
 	if (ItemInstance == nullptr)
 	{
-		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, ItemInstance is nullptr."), __FUNCTION__)
 		return false;
 	}
 	auto EquipmentFragment = FindInventoryModule<UInvSys_InventoryModule_Equipment>(ItemInstance->GetInventoryObjectTag());
 	if (EquipmentFragment == nullptr)
 	{
-		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, EquipmentFragment is nullptr."), __FUNCTION__)
 		return false;
 	}
 
@@ -446,18 +505,6 @@ bool UInvSys_InventoryComponent::HasAuthority() const
 {
 	ensure(GetOwner());
 	return GetOwner() ? GetOwner()->HasAuthority() : false;
-}
-
-APlayerController* UInvSys_InventoryComponent::GetPlayerController() const
-{
-	ensure(OwningPlayer);
-	return OwningPlayer;
-}
-
-bool UInvSys_InventoryComponent::IsLocalController() const
-{
-	ensure(OwningPlayer);
-	return OwningPlayer ? OwningPlayer->IsLocalController() : false;
 }
 
 UInvSys_InventoryObjectContent* UInvSys_InventoryComponent::GetInventoryObjectContent(int32 Index) const

@@ -148,7 +148,7 @@ UInvSys_InventoryItemInstance* UInvSys_InventoryModule_Equipment::EquipItemInsta
 bool UInvSys_InventoryModule_Equipment::UnEquipItemInstance()
 {
 	check(HasAuthority())
-	if (HasEquipmentItems() == false)
+	if (EquipmentInstance == nullptr)
 	{
 		UE_LOG(LogInventorySystem, Warning, TEXT("当前装备模块 %s 未装备任何物品。"), *InventoryTag.ToString())
 		return false;

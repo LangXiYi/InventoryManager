@@ -46,8 +46,18 @@ UInvSys_InventoryHUD* UInvSys_InventorySystemLibrary::GetInventoryHUD(const UObj
 	return nullptr;
 }
 
-UInvSys_InventoryHUD* UInvSys_InventorySystemLibrary::GetInventoryHUDBy(const UObject* WorldContextObject,
+UInvSys_InventoryHUD* UInvSys_InventorySystemLibrary::GetCustomInventoryHUD(const UObject* WorldContextObject,
 	TSubclassOf<UInvSys_InventoryHUD> OutClass)
 {
 	return GetInventoryHUD(WorldContextObject);
+}
+
+const UInvSys_InventoryItemFragment* UInvSys_InventorySystemLibrary::FindInventoryFragment(
+	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, TSubclassOf<UInvSys_InventoryItemFragment> FragmentClass)
+{
+	if (UInvSys_InventoryItemDefinition* CDO_ItemDef = ItemDef.GetDefaultObject())
+	{
+		return CDO_ItemDef->FindFragmentByClass(FragmentClass);
+	}
+	return nullptr;
 }

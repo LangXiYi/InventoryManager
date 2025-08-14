@@ -72,6 +72,11 @@ void AInvSys_PickableItems::MarkItemDirty()
 	bIsDirty = true;
 }
 
+TSubclassOf<UInvSys_InventoryItemDefinition> AInvSys_PickableItems::GetItemDefinition()
+{
+	return PickableItemInstance->GetItemDefinition();
+}
+
 int32 AInvSys_PickableItems::GetItemStackCount() const
 {
 	check(PickableItemInstance)

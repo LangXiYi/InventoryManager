@@ -149,13 +149,20 @@ void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeEqual(
 
 	UGridInvSys_ContainerGridItemWidget* ToGridItemWidget = GetGridItemWidget(DropPosition.Position);
 	UGridInvSys_InventoryItemInstance* ToItemInstance = ToGridItemWidget->GetItemInstance<UGridInvSys_InventoryItemInstance>();
+	UGridInvSys_InventoryItemInstance* FromItemInstance = Cast<UGridInvSys_InventoryItemInstance>(ItemInstance);
 
-	UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(ItemInstance);
-
-	if (GridItemInstance && ToItemInstance)
+	if (FromItemInstance && ToItemInstance)
 	{
-		PlayerInvComp->Server_CancelDragItemInstance(ItemInstance);
-		PlayerInvComp->Server_SwapItemInstance(GridItemInstance, ToItemInstance);
+		if (FromItemInstance->GetItemDefinition() == ToItemInstance->GetItemDefinition())
+		{
+			PlayerInvComp->Server_SuperposeItemInstance(FromItemInstance, ToItemInstance);
+			PlayerInvComp->Server_CancelDragItemInstance(ItemInstance);
+		}
+		else
+		{
+			PlayerInvComp->Server_SwapItemInstance(FromItemInstance, ToItemInstance);
+			PlayerInvComp->Server_CancelDragItemInstance(ItemInstance);
+		}
 	}
 }
 
@@ -199,11 +206,9 @@ void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeGreaterThan_Compon
 		TempItemPos.GridID = FromItemPosition.GridID;
 		// TempItemPos.Direction; // 方向保持不变。
 		NewItemPositions.Add(TempItemPos);
-		// PlayerInvComp->Server_UpdateItemInstancePosition(ItemInstance->GetInventoryComponent(), HoveredItemInstance, TempItemPos);
 	}
-	// PlayerInvComp->Server_TryDropItemInstance(InventoryComponent.Get(), ItemInstance, DropPosition);
-	PlayerInvComp->Server_CancelDragItemInstance(ItemInstance);
 	PlayerInvComp->Server_SwapItemInstances(InventoryComponent.Get(), GridItemInstance, DropPosition, AllHoveredItemInstances, NewItemPositions);
+	PlayerInvComp->Server_CancelDragItemInstance(GridItemInstance);
 }
 
 void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeGreaterThan_ComponentEqual(
@@ -259,14 +264,8 @@ void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeGreaterThan_Compon
 		// TempItemPos.Direction; // 方向保持不变。
 		NewItemPositions.Add(TempItemPos);
 	}
-	// PlayerInvComp->Server_RemoveItemInstance(ItemInstance);
 	PlayerInvComp->Server_SwapItemInstances(InventoryComponent.Get(), GridItemInstance, DropPosition, AllHoveredItemInstances, NewItemPositions);
-	// for (int i = 0; i < AllHoveredItemInstances.Num(); ++i)
-	// {
-	// 	PlayerInvComp->Server_UpdateItemInstancePosition(
-	// 		InventoryComponent.Get(), AllHoveredItemInstances[i], NewItemPositions[i]);
-	// }
-	// PlayerInvComp->Server_TryDropItemInstance(InventoryComponent.Get(), ItemInstance, DropPosition);
+	PlayerInvComp->Server_CancelDragItemInstance(GridItemInstance);
 }
 
 void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeLessThan(
@@ -298,10 +297,11 @@ void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeLessThan(
 		// 计算 To 物品在From容器下的位置
 		FGridInvSys_ItemPosition TempItemData = ToGridItemInstance->GetItemPosition();
 		TempItemData.Position = ValidPosition;
-		// todo::合并这三个请求未一个RPC
+		// todo::合并请求
 		PlayerInvComp->Server_RemoveItemInstance(ItemInstance);
 		PlayerInvComp->Server_UpdateItemInstancePosition(GetInventoryComponent(), ToGridItemInstance, TempItemData);
 		PlayerInvComp->Server_AddItemInstancesToContainerPos(GetInventoryComponent(), ItemInstance, DropPosition);
+		PlayerInvComp->Server_CancelDragItemInstance(ItemInstance);
 	}
 }
 

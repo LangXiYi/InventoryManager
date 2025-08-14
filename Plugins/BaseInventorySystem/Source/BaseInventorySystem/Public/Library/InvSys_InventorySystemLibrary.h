@@ -29,7 +29,7 @@ public:
 	static UInvSys_InventoryHUD* GetInventoryHUD(const UObject* WorldContextObject);
 
 	UFUNCTION(BlueprintPure, Category="Inventory System Library", meta=(WorldContext="WorldContextObject", DeterminesOutputType = OutClass, UnsafeDuringActorConstruction="true"))
-	static UInvSys_InventoryHUD* GetInventoryHUDBy(const UObject* WorldContextObject, TSubclassOf<UInvSys_InventoryHUD> OutClass);
+	static UInvSys_InventoryHUD* GetCustomInventoryHUD(const UObject* WorldContextObject, TSubclassOf<UInvSys_InventoryHUD> OutClass);
 
 	template<class T = UInvSys_InventoryControllerComponent>
 	static T* GetPlayerInventoryComponent(const UObject* WorldContextObject)
@@ -42,4 +42,7 @@ public:
 		}
 		return nullptr;
 	}
+
+	UFUNCTION(BlueprintCallable, BlueprintPure = false, Category="Inventory System Library", meta=(WorldContext="WorldContextObject", DeterminesOutputType = FragmentClass, UnsafeDuringActorConstruction="true"))
+	static const UInvSys_InventoryItemFragment* FindInventoryFragment(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, TSubclassOf<UInvSys_InventoryItemFragment> FragmentClass);
 };

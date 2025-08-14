@@ -6,6 +6,7 @@
 #include "Components/InvSys_InventoryComponent.h"
 #include "Data/InvSys_ItemFragment_BaseItem.h"
 #include "Data/InvSys_ItemFragment_EquipItem.h"
+#include "Items/InvSys_PickableItems.h"
 #include "Net/UnrealNetwork.h"
 #include "Widgets/InvSys_InventoryHUD.h"
 
@@ -14,6 +15,7 @@ UInvSys_InventoryControllerComponent::UInvSys_InventoryControllerComponent(const
 	:Super(ObjectInitializer)
 {
 	PrimaryComponentTick.bCanEverTick = false;
+	bWantsInitializeComponent = true;
 }
 
 UInvSys_InventoryHUD* UInvSys_InventoryControllerComponent::ConstructInventoryHUD()
@@ -24,7 +26,7 @@ UInvSys_InventoryHUD* UInvSys_InventoryControllerComponent::ConstructInventoryHU
 		if (InventoryHUD == nullptr)
 		{
 			InventoryHUD = CreateWidget<UInvSys_InventoryHUD>(GetOwner<APlayerController>(), InventoryHUDClass);
-			InventoryHUD->SetVisibility(ESlateVisibility::Hidden);
+			// InventoryHUD->SetVisibility(ESlateVisibility::Hidden);
 		}
 	}
 	return InventoryHUD;
@@ -34,6 +36,14 @@ UInvSys_InventoryHUD* UInvSys_InventoryControllerComponent::GetInventoryHUD() co
 {
 	check(InventoryHUD);
 	return InventoryHUD;
+}
+
+void UInvSys_InventoryControllerComponent::InitializeComponent()
+{
+	Super::InitializeComponent();
+
+	Controller = GetOwner<APlayerController>();
+	check(Controller)
 }
 
 void UInvSys_InventoryControllerComponent::CancelDragItemInstance(UInvSys_InventoryItemInstance* ItemInstance)
@@ -48,6 +58,11 @@ void UInvSys_InventoryControllerComponent::CancelDragItemInstance(UInvSys_Invent
 	SetDraggingItemInstance(nullptr);
 }
 
+void UInvSys_InventoryControllerComponent::CancelDragItemInstance()
+{
+	CancelDragItemInstance(DraggingItemInstance.Get());
+}
+
 bool UInvSys_InventoryControllerComponent::SuperposeItemInstance(
 	UInvSys_InventoryItemInstance* ItemInstanceA, UInvSys_InventoryItemInstance* ItemInstanceB)
 {
@@ -56,62 +71,56 @@ bool UInvSys_InventoryControllerComponent::SuperposeItemInstance(
 		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstance is nullptr."), __FUNCTION__)
 		return false;
 	}
-
 	if (ItemInstanceA == ItemInstanceB)
 	{
 		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, FromItemInstance == ToItemInstance."), __FUNCTION__)
 		return false;
 	}
-
-	if (ItemInstanceA->PayloadItems.IsEmpty() == false)
+	UInvSys_InventoryComponent* ToInvComp = ItemInstanceA->GetInventoryComponent();
+	if (ToInvComp == nullptr)
 	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstanceA->PayloadItems.Num = %d."), __FUNCTION__, ItemInstanceA->PayloadItems.Num())
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ToInvComp is nullptr."), __FUNCTION__)
 		return false;
 	}
-
-	if (ItemInstanceB->PayloadItems.IsEmpty() == false)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstanceB->PayloadItems.Num = %d."), __FUNCTION__, ItemInstanceB->PayloadItems.Num())
-		return false;
-	}
-
-	UInvSys_InventoryComponent* InvComp_A = ItemInstanceA->GetInventoryComponent();
-	UInvSys_InventoryComponent* InvComp_B = ItemInstanceB->GetInventoryComponent();
-	if (InvComp_A == nullptr || InvComp_B == nullptr)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, InventoryComponent is nullptr."), __FUNCTION__)
-		return false;
-	}
-
-	// 两物品定义一致，且允许堆叠时，自动堆叠物品
-	if (ItemInstanceA->GetItemDefinition() == ItemInstanceB->GetItemDefinition())
-	{
-		if (auto BaseItemFragment = ItemInstanceA->FindFragmentByClass<UInvSys_ItemFragment_BaseItem>())
-		{
-			const int32 MaxStackCount = BaseItemFragment->MaxStackCount;
-			const int32 FromItemStackCount = ItemInstanceA->GetItemStackCount();
-			const int32 ToItemStackCount = ItemInstanceB->GetItemStackCount();
-			const int32 NewItemStackCount = FromItemStackCount + ToItemStackCount;
-			if (NewItemStackCount <= MaxStackCount)
-			{
-				InvComp_B->UpdateItemStackCount(ItemInstanceB, NewItemStackCount);
-				InvComp_A->RemoveItemInstance(ItemInstanceA);
-			}
-			else
-			{
-				InvComp_B->UpdateItemStackCount(ItemInstanceB, MaxStackCount);
-				InvComp_A->UpdateItemStackCount(ItemInstanceA, NewItemStackCount - MaxStackCount);
-			}
-			return true;
-		}
-	}
-	return false;
+	return ToInvComp->SuperposeItemInstance(ItemInstanceA, ItemInstanceB);
 }
 
 bool UInvSys_InventoryControllerComponent::HasEquipItemInstance(UInvSys_InventoryComponent* InvComp,
 	FGameplayTag InventoryTag)
 {
 	return InvComp->HasEquippedItemInstance(InventoryTag);
+}
+
+void UInvSys_InventoryControllerComponent::Server_PickupItemInstance_Implementation(UInvSys_InventoryComponent* InvComp,
+	AInvSys_PickableItems* PickableItems, bool bIsAutoEquip)
+{
+	if (PickableItems)
+	{
+		// 返回true时，所有物品都被拾取
+		if (PickableItems->PickupItem(InvComp, bIsAutoEquip))
+		{
+			PickableItems->Destroy();
+		}
+	}
+}
+
+void UInvSys_InventoryControllerComponent::Server_UnEquipItemInstance_Implementation(
+	UInvSys_InventoryComponent* InvComp, FGameplayTag InventoryTag)
+{
+	if (InvComp == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, InvComp is nullptr."), __FUNCTION__)
+		return;
+	}
+	if (InvComp->IsValidInventoryTag(InventoryTag) == false)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, InventoryTag is not valid."), __FUNCTION__)
+		return;
+	}
+	if (InvComp->HasEquippedItemInstance(InventoryTag))
+	{
+		InvComp->UnEquipItemInstanceByTag(InventoryTag);
+	}
 }
 
 void UInvSys_InventoryControllerComponent::Server_DragAndRemoveItemInstance_Implementation(
@@ -263,12 +272,12 @@ void UInvSys_InventoryControllerComponent::Server_DropItemInstanceToWorld_Implem
 		UInvSys_InventoryComponent* InvComp = InItemInstance->GetInventoryComponent();
 		if (InvComp)
 		{
-			APlayerController* PlayerController = GetOwner<APlayerController>();
-			APawn* Pawn = PlayerController->GetPawn();
-			FTransform Transform = Pawn->GetTransform();
-
-			// Multi_DropItemInstanceToWorld(InItemInstance, Transform);
-			InvComp->DiscardItemInstance(InItemInstance, Transform);
+			check(Controller)
+			if (APawn* Pawn = Controller->GetPawn())
+			{
+				FTransform Transform = Pawn->GetTransform();
+				InvComp->DiscardItemInstance(InItemInstance, Transform);
+			}
 		}
 	}
 }
@@ -297,6 +306,28 @@ void UInvSys_InventoryControllerComponent::GetLifetimeReplicatedProps(TArray<FLi
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	// 限制仅拥有者同步数据
 	DOREPLIFETIME_CONDITION(UInvSys_InventoryControllerComponent, DraggingItemInstance, COND_OwnerOnly);
+}
+
+void UInvSys_InventoryControllerComponent::Server_SuperposeItemInstance_Implementation(
+	UInvSys_InventoryItemInstance* FromItemInstance, UInvSys_InventoryItemInstance* ToItemInstance)
+{
+	if (FromItemInstance == nullptr || ToItemInstance == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstance is nullptr."), __FUNCTION__)
+		return;
+	}
+	if (FromItemInstance == ToItemInstance)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, FromItemInstance == ToItemInstance."), __FUNCTION__)
+		return;
+	}
+	UInvSys_InventoryComponent* ToInvComp = ToItemInstance->GetInventoryComponent();
+	if (ToInvComp == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ToInvComp is nullptr."), __FUNCTION__)
+		return;
+	}
+	ToInvComp->SuperposeItemInstance(FromItemInstance, ToItemInstance);
 }
 
 bool UInvSys_InventoryControllerComponent::HasAuthority() const

@@ -98,13 +98,13 @@ bool UGridInvSys_InventoryModule_Container::IsUnoccupiedInSquareRange(
 		return false;
 	}
 	int32 ToIndex = ToPosition.X * ContainerGridSize[ToGridID].Y + ToPosition.Y;
-	int32 MaxGridWidth = ContainerGridSize[ToGridID].Y;
-	int32 MaxGridHeight = ContainerGridSize[ToGridID].X;
+	int32 MaxGridWidth = ContainerGridSize[ToGridID].Y - 1;
+	int32 MaxGridHeight = ContainerGridSize[ToGridID].X - 1;
 	for (int X = 0; X < ItemSize.X; ++X)
 	{
 		for (int Y = 0; Y < ItemSize.Y; ++Y)
 		{
-			if (ToPosition.X + X > MaxGridWidth || ToPosition.Y + Y > MaxGridHeight)
+			if (ToPosition.X + X > MaxGridHeight || ToPosition.Y + Y > MaxGridWidth)
 			{
 				// UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Error,
 				// 	TEXT("[ToPosition.X + X](%d) > [MaxGridWidth](%d) || [ToPosition.Y + Y](%d) > [MaxGridHeight](%d)"),

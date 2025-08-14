@@ -19,14 +19,6 @@ public:
 	UGridInvSys_GridInventoryControllerComponent();
 
 	/**
-	 * Local Prediction Function
-	 **/
-
-	UFUNCTION(BlueprintCallable)
-	void TryDropItemInstance(UInvSys_InventoryComponent* InvComp,
-		UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos);
-
-	/**
 	 * RPC Function
 	 **/
 
@@ -42,6 +34,9 @@ public:
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_TryDropItemInstance(UInvSys_InventoryComponent* InvComp,
 		UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos);
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void Server_SplitItemInstance(UInvSys_InventoryItemInstance* ItemInstance, int32 SplitSize);
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_SwapItemInstance(UGridInvSys_InventoryItemInstance* FromItemInstance, UGridInvSys_InventoryItemInstance* ToItemInstance);
