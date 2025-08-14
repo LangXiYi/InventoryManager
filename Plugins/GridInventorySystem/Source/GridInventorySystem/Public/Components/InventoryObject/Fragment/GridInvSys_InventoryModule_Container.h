@@ -4,8 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "GridInvSys_CommonType.h"
-#include "Components/InventoryObject/Fragment/InvSys_InventoryFragment_Container.h"
-#include "GridInvSys_InventoryFragment_Container.generated.h"
+#include "Components/InventoryObject/Fragment/InvSys_InventoryModule_Container.h"
+#include "GridInvSys_InventoryModule_Container.generated.h"
 
 class UGridInvSys_ContainerGridWidget;
 
@@ -24,7 +24,7 @@ class UGridInvSys_InventoryItemInstance;
  * 
  */
 UCLASS()
-class GRIDINVENTORYSYSTEM_API UGridInvSys_InventoryFragment_Container : public UInvSys_InventoryFragment_Container
+class GRIDINVENTORYSYSTEM_API UGridInvSys_InventoryModule_Container : public UInvSys_InventoryModule_Container
 {
 	GENERATED_BODY()
 

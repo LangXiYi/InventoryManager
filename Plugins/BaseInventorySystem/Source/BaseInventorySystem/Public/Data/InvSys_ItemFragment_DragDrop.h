@@ -20,7 +20,7 @@ public:
 	TSubclassOf<AInvSys_PickableItems> DropItemClass;
 
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment|Drop")
-	TSubclassOf<UDragDropOperation> DragDropOperationClass = UInvSys_DragDropOperation::StaticClass();
+	TSubclassOf<UInvSys_DragDropOperation> DragDropOperationClass = UInvSys_DragDropOperation::StaticClass();
 
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment|Drop")
 	FVector DropLocationOffset;

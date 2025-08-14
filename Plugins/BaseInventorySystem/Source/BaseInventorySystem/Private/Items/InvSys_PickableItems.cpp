@@ -123,6 +123,6 @@ void AInvSys_PickableItems::OnRep_PickableItemInstance()
 		{
 			ItemMesh->SetStaticMesh(StaticMesh);
 		}
-		ItemMesh->SetRelativeLocation(DropItemFragment->DropLocationOffset);
+		// ItemMesh->SetRelativeLocation(DropItemFragment->DropLocationOffset);
 	}
 }

@@ -19,7 +19,7 @@ class BASEINVENTORYSYSTEM_API UInvSys_InventoryObjectContent : public UPrimaryDa
 
 public:
 	UPROPERTY(Instanced, EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Component")
-	TArray<class UInvSys_BaseInventoryFragment*> Fragments;
+	TArray<class UInvSys_InventoryModule*> Fragments;
 
 	template<class InventoryObjectType = UInvSys_BaseInventoryObject>
 	InventoryObjectType* ConstructInventoryObject(UInvSys_InventoryComponent* InvComp, FGameplayTag InventoryTag)

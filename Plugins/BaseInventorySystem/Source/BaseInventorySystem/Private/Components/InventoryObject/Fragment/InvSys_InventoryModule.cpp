@@ -1,13 +1,13 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Components/InventoryObject/Fragment/InvSys_BaseInventoryFragment.h"
+#include "Components/InventoryObject/Fragment/InvSys_InventoryModule.h"
 
 #include "Components/InvSys_InventoryComponent.h"
 #include "Engine/ActorChannel.h"
 #include "Net/UnrealNetwork.h"
 
-UInvSys_BaseInventoryFragment::UInvSys_BaseInventoryFragment()
+UInvSys_InventoryModule::UInvSys_InventoryModule()
 {
 	UObject* MyOuter = GetOuter();
 	if (MyOuter)
@@ -20,12 +20,12 @@ UInvSys_BaseInventoryFragment::UInvSys_BaseInventoryFragment()
 	}
 }
 
-void UInvSys_BaseInventoryFragment::MarkInventoryModuleDirty()
+void UInvSys_InventoryModule::MarkInventoryModuleDirty()
 {
 	++InventoryModuleRepKey;
 }
 
-bool UInvSys_BaseInventoryFragment::ReplicateSubobjects(
+bool UInvSys_InventoryModule::ReplicateSubobjects(
 	UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags)
 {
 	UActorChannel::SetCurrentSubObjectOwner(GetInventoryComponent());
@@ -33,19 +33,19 @@ bool UInvSys_BaseInventoryFragment::ReplicateSubobjects(
 	return false;
 }
 
-void UInvSys_BaseInventoryFragment::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+void UInvSys_InventoryModule::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	UObject::GetLifetimeReplicatedProps(OutLifetimeProps);
 	// DOREPLIFETIME(UInvSys_BaseInventoryFragment, InventoryObjectTag);
 }
 
-bool UInvSys_BaseInventoryFragment::HasAuthority() const
+bool UInvSys_InventoryModule::HasAuthority() const
 {
 	check(Owner_Private);
 	return Owner_Private->HasAuthority();
 }
 
-ENetMode UInvSys_BaseInventoryFragment::GetNetMode() const
+ENetMode UInvSys_InventoryModule::GetNetMode() const
 {
 	check(Owner_Private);
 	return Owner_Private->GetNetMode();

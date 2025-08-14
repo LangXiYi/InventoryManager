@@ -3,19 +3,19 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "InvSys_BaseInventoryFragment.h"
+#include "InvSys_InventoryModule.h"
 #include "Widgets/InvSys_InventoryWidget.h"
-#include "InvSys_InventoryFragment_DisplayWidget.generated.h"
+#include "InvSys_InventoryModule_Display.generated.h"
 
 class UInvSys_InventoryWidget;
 
 UCLASS()
-class BASEINVENTORYSYSTEM_API UInvSys_InventoryFragment_DisplayWidget : public UInvSys_BaseInventoryFragment
+class BASEINVENTORYSYSTEM_API UInvSys_InventoryModule_Display : public UInvSys_InventoryModule
 {
 	GENERATED_BODY()
 
 public:
-	UInvSys_InventoryFragment_DisplayWidget();
+	UInvSys_InventoryModule_Display();
 	
 	virtual void InitInventoryFragment(UObject* PreEditFragment) override;
 

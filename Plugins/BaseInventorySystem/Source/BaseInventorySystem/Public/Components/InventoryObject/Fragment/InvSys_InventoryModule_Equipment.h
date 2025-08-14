@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "InvSys_BaseInventoryFragment.h"
-#include "InvSys_InventoryFragment_Equipment.generated.h"
+#include "InvSys_InventoryModule.h"
+#include "InvSys_InventoryModule_Equipment.generated.h"
 
 class UInvSys_InventoryItemDefinition;
 class UInvSys_InventoryItemInstance;
@@ -25,12 +25,12 @@ struct FInvSys_EquipItemInstanceMessage
 };
 
 UCLASS()
-class BASEINVENTORYSYSTEM_API UInvSys_InventoryFragment_Equipment : public UInvSys_BaseInventoryFragment
+class BASEINVENTORYSYSTEM_API UInvSys_InventoryModule_Equipment : public UInvSys_InventoryModule
 {
 	GENERATED_BODY()
 
 public:
-	UInvSys_InventoryFragment_Equipment();
+	UInvSys_InventoryModule_Equipment();
 
 	virtual void RefreshInventoryFragment() override;
 

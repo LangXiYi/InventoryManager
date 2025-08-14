@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Components/InventoryObject/Fragment/InvSys_InventoryFragment_Equipment.h"
+#include "Components/InventoryObject/Fragment/InvSys_InventoryModule_Equipment.h"
 
 #include "BaseInventorySystem.h"
 #include "NativeGameplayTags.h"
@@ -12,12 +12,12 @@
 #include "GameFramework/GameplayMessageSubsystem.h"
 #include "Net/UnrealNetwork.h"
 
-UInvSys_InventoryFragment_Equipment::UInvSys_InventoryFragment_Equipment()
+UInvSys_InventoryModule_Equipment::UInvSys_InventoryModule_Equipment()
 {
 	Priority = 10;
 }
 
-void UInvSys_InventoryFragment_Equipment::RefreshInventoryFragment()
+void UInvSys_InventoryModule_Equipment::RefreshInventoryFragment()
 {
 	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("正在刷新装备片段[%s]"), *GetInventoryTag().ToString())
 	if (EquipmentInstance)
@@ -30,13 +30,13 @@ void UInvSys_InventoryFragment_Equipment::RefreshInventoryFragment()
 	}
 }
 
-void UInvSys_InventoryFragment_Equipment::InitInventoryFragment(UObject* PreEditFragment)
+void UInvSys_InventoryModule_Equipment::InitInventoryFragment(UObject* PreEditFragment)
 {
 	Super::InitInventoryFragment(PreEditFragment);
 	// COPY_INVENTORY_FRAGMENT_PROPERTY(UInvSys_InventoryFragment_Equipment, SupportEquipTag);
 }
 
-UInvSys_InventoryItemInstance* UInvSys_InventoryFragment_Equipment::EquipItemDefinition(
+UInvSys_InventoryItemInstance* UInvSys_InventoryModule_Equipment::EquipItemDefinition(
 	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount)
 {
 	check(HasAuthority())
@@ -90,7 +90,7 @@ UInvSys_InventoryItemInstance* UInvSys_InventoryFragment_Equipment::EquipItemDef
 	return EquipmentInstance;
 }
 
-UInvSys_InventoryItemInstance* UInvSys_InventoryFragment_Equipment::EquipItemInstance(UInvSys_InventoryItemInstance* ItemInstance)
+UInvSys_InventoryItemInstance* UInvSys_InventoryModule_Equipment::EquipItemInstance(UInvSys_InventoryItemInstance* ItemInstance)
 {
 	check(HasAuthority())
 	if (HasEquipmentItems())
@@ -145,7 +145,7 @@ UInvSys_InventoryItemInstance* UInvSys_InventoryFragment_Equipment::EquipItemIns
 	return EquipmentInstance;
 }
 
-bool UInvSys_InventoryFragment_Equipment::UnEquipItemInstance()
+bool UInvSys_InventoryModule_Equipment::UnEquipItemInstance()
 {
 	check(HasAuthority())
 	if (HasEquipmentItems() == false)
@@ -163,17 +163,17 @@ bool UInvSys_InventoryFragment_Equipment::UnEquipItemInstance()
 	return true;
 }
 
-bool UInvSys_InventoryFragment_Equipment::HasEquipmentItems() const
+bool UInvSys_InventoryModule_Equipment::HasEquipmentItems() const
 {
 	return EquipmentInstance != nullptr;
 }
 
-UInvSys_InventoryItemInstance* UInvSys_InventoryFragment_Equipment::GetEquipItemInstance() const
+UInvSys_InventoryItemInstance* UInvSys_InventoryModule_Equipment::GetEquipItemInstance() const
 {
 	return EquipmentInstance;
 }
 
-bool UInvSys_InventoryFragment_Equipment::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch,
+bool UInvSys_InventoryModule_Equipment::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch,
                                                               FReplicationFlags* RepFlags)
 {
 	bool bWroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
@@ -184,14 +184,14 @@ bool UInvSys_InventoryFragment_Equipment::ReplicateSubobjects(UActorChannel* Cha
 	return bWroteSomething;
 }
 
-void UInvSys_InventoryFragment_Equipment::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+void UInvSys_InventoryModule_Equipment::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME_CONDITION(UInvSys_InventoryFragment_Equipment, EquipmentInstance, COND_None);
+	DOREPLIFETIME_CONDITION(UInvSys_InventoryModule_Equipment, EquipmentInstance, COND_None);
 }
 
-void UInvSys_InventoryFragment_Equipment::BroadcastEquipItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)
+void UInvSys_InventoryModule_Equipment::BroadcastEquipItemInstance(UInvSys_InventoryItemInstance* NewItemInstance)
 {
 	UWorld* MyWorld = GetWorld();
 	if (MyWorld)
@@ -206,7 +206,7 @@ void UInvSys_InventoryFragment_Equipment::BroadcastEquipItemInstance(UInvSys_Inv
 	}
 }
 
-void UInvSys_InventoryFragment_Equipment::BroadcastUnEquipItemInstance()
+void UInvSys_InventoryModule_Equipment::BroadcastUnEquipItemInstance()
 {
 	UWorld* MyWorld = GetWorld();
 	if (MyWorld)
@@ -221,7 +221,7 @@ void UInvSys_InventoryFragment_Equipment::BroadcastUnEquipItemInstance()
 	}
 }
 
-void UInvSys_InventoryFragment_Equipment::OnRep_ItemInstance()
+void UInvSys_InventoryModule_Equipment::OnRep_ItemInstance()
 {
 	// UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Error, TEXT("[%s] OnRep Equip ItemInstance"), HasAuthority() ? TEXT("Server"):TEXT("Client"));
 	if (EquipmentInstance)

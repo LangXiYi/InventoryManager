@@ -7,15 +7,15 @@
 #include "Data/InvSys_ContainerList.h"
 #include "Data/InvSys_InventoryItemDefinition.h"
 #include "GameFramework/GameplayMessageSubsystem.h"
-#include "InvSys_InventoryFragment_Container.generated.h"
+#include "InvSys_InventoryModule_Container.generated.h"
 
 UCLASS()
-class BASEINVENTORYSYSTEM_API UInvSys_InventoryFragment_Container : public UInvSys_BaseInventoryFragment
+class BASEINVENTORYSYSTEM_API UInvSys_InventoryModule_Container : public UInvSys_InventoryModule
 {
 	GENERATED_BODY()
 
 public:
-	UInvSys_InventoryFragment_Container();
+	UInvSys_InventoryModule_Container();
 
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Fragment|Container")
 	virtual void RefreshInventoryFragment() override;

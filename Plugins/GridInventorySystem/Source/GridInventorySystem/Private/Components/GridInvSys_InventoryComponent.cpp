@@ -4,8 +4,8 @@
 #include "Components/GridInvSys_InventoryComponent.h"
 
 #include "BaseInventorySystem.h"
-#include "Components/InventoryObject/Fragment/GridInvSys_InventoryFragment_Container.h"
-#include "Components/InventoryObject/Fragment/InvSys_InventoryFragment_DisplayWidget.h"
+#include "Components/InventoryObject/Fragment/GridInvSys_InventoryModule_Container.h"
+#include "Components/InventoryObject/Fragment/InvSys_InventoryModule_Display.h"
 #include "Data/GridInvSys_InventoryItemInstance.h"
 #include "Data/GridInvSys_ItemFragment_GridItemSize.h"
 #include "Data/InvSys_ItemFragment_PickUpItem.h"
@@ -33,8 +33,8 @@ void UGridInvSys_InventoryComponent::AddItemDefinitionToContainerPos(
 		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("%hs Falied, EquipSlotTag Is not valid %s"), __FUNCTION__, *Pos.EquipSlotTag.ToString())
 		return;
 	}
-	UGridInvSys_InventoryFragment_Container* ContainerFragment =
-		FindInventoryModule<UGridInvSys_InventoryFragment_Container>(Pos.EquipSlotTag);
+	UGridInvSys_InventoryModule_Container* ContainerFragment =
+		FindInventoryModule<UGridInvSys_InventoryModule_Container>(Pos.EquipSlotTag);
 	if (ContainerFragment == nullptr)
 	{
 		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("无有效的容器片段: %s"), *Pos.ToString())
@@ -77,8 +77,8 @@ bool UGridInvSys_InventoryComponent::FindEmptyPosition(UInvSys_InventoryItemInst
 			continue;
 		}
 
-		UGridInvSys_InventoryFragment_Container* ContainerFragment =
-			FindInventoryModule<UGridInvSys_InventoryFragment_Container>(ContainerTag);
+		UGridInvSys_InventoryModule_Container* ContainerFragment =
+			FindInventoryModule<UGridInvSys_InventoryModule_Container>(ContainerTag);
 		if (ContainerFragment)
 		{
 			if (auto ItemSizeFragment = InItemInstance->FindFragmentByClass<UGridInvSys_ItemFragment_GridItemSize>())
@@ -120,8 +120,8 @@ bool UGridInvSys_InventoryComponent::FindEmptyPosition(TSubclassOf<UInvSys_Inven
 	}
 	for (FGameplayTag ContainerTag : OutContainerTags)
 	{
-		UGridInvSys_InventoryFragment_Container* ContainerFragment =
-			FindInventoryModule<UGridInvSys_InventoryFragment_Container>(ContainerTag);
+		UGridInvSys_InventoryModule_Container* ContainerFragment =
+			FindInventoryModule<UGridInvSys_InventoryModule_Container>(ContainerTag);
 
 		if (ContainerFragment)
 		{
@@ -151,7 +151,7 @@ void UGridInvSys_InventoryComponent::UpdateItemInstancePosition(UInvSys_Inventor
 	{
 		UGridInvSys_InventoryItemInstance* GridItem = Cast<UGridInvSys_InventoryItemInstance>(ItemInstance);
 		check(GridItem)
-		auto ContainerFragment = FindInventoryModule<UGridInvSys_InventoryFragment_Container>(NewPosition.EquipSlotTag);
+		auto ContainerFragment = FindInventoryModule<UGridInvSys_InventoryModule_Container>(NewPosition.EquipSlotTag);
 		if (ContainerFragment)
 		{
 			bool bIsSuccess = ContainerFragment->UpdateItemInstancePosition(GridItem, NewPosition);
@@ -173,7 +173,7 @@ bool UGridInvSys_InventoryComponent::CheckItemPosition(UInvSys_InventoryItemInst
 		return false;
 	}
 
-	auto ContainerFragment = FindInventoryModule<UGridInvSys_InventoryFragment_Container>(NewPosition.EquipSlotTag);
+	auto ContainerFragment = FindInventoryModule<UGridInvSys_InventoryModule_Container>(NewPosition.EquipSlotTag);
 	if (ContainerFragment)
 	{
 		return ContainerFragment->CheckItemPosition(ItemInstance, NewPosition, bIsIgnoreInItemInstance);
@@ -192,7 +192,7 @@ bool UGridInvSys_InventoryComponent::CancelOccupied(UInvSys_InventoryItemInstanc
 	}
 	UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(ItemInstance);
 	FGameplayTag InventoryObjectTag = GridItemInstance->GetInventoryObjectTag();
-	auto ContainerFragment = FindInventoryModule<UGridInvSys_InventoryFragment_Container>(InventoryObjectTag);
+	auto ContainerFragment = FindInventoryModule<UGridInvSys_InventoryModule_Container>(InventoryObjectTag);
 	if (ContainerFragment)
 	{
 		ContainerFragment->UpdateContainerGridItemState(GridItemInstance, GridItemInstance->GetItemPosition(), false);
@@ -206,8 +206,8 @@ bool UGridInvSys_InventoryComponent::CancelOccupied(UInvSys_InventoryItemInstanc
 UGridInvSys_ContainerGridWidget* UGridInvSys_InventoryComponent::FindContainerGridWidget(FGameplayTag SlotTag,
                                                                                          int32 GridID)
 {
-	UInvSys_InventoryFragment_DisplayWidget* DisplayFragment =
-		FindInventoryModule<UInvSys_InventoryFragment_DisplayWidget>(SlotTag);
+	UInvSys_InventoryModule_Display* DisplayFragment =
+		FindInventoryModule<UInvSys_InventoryModule_Display>(SlotTag);
 	if (DisplayFragment)
 	{
 		UGridInvSys_ContainerGridLayoutWidget* ContainerLayoutWidget =

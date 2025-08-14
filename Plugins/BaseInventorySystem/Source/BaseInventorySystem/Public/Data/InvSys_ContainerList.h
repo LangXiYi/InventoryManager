@@ -8,12 +8,12 @@
 #include "InvSys_InventoryItemDefinition.h"
 #include "InvSys_ItemFragment_PickUpItem.h"
 #include "Net/Serialization/FastArraySerializer.h"
-#include "Components/InventoryObject/Fragment/InvSys_BaseInventoryFragment.h"
+#include "Components/InventoryObject/Fragment/InvSys_InventoryModule.h"
 #include "InvSys_ContainerList.generated.h"
 
 class UInvSys_InventoryComponent;
 class UInvSys_InventoryItemInstance;
-class UInvSys_BaseInventoryFragment;
+class UInvSys_InventoryModule;
 
 USTRUCT(BlueprintType)
 struct FInvSys_InventoryItemChangedMessage
@@ -120,7 +120,7 @@ struct BASEINVENTORYSYSTEM_API FInvSys_ContainerList : public FFastArraySerializ
 public:
 	FInvSys_ContainerList() { }
 
-	FInvSys_ContainerList(UInvSys_BaseInventoryFragment* InOwnerObject) : InventoryFragment(InOwnerObject)
+	FInvSys_ContainerList(UInvSys_InventoryModule* InOwnerObject) : InventoryFragment(InOwnerObject)
 	{
 		SetDeltaSerializationEnabled(false);
 	}
@@ -136,7 +136,7 @@ public:
 	TArray<FInvSys_ContainerEntry> Entries;
 
 	UPROPERTY(NotReplicated)
-	TObjectPtr<UInvSys_BaseInventoryFragment> InventoryFragment;
+	TObjectPtr<UInvSys_InventoryModule> InventoryFragment;
 
 	// UPROPERTY(NotReplicated)
 	// TArray<>

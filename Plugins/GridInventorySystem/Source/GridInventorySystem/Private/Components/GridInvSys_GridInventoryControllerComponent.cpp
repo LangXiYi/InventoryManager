@@ -4,7 +4,7 @@
 #include "Components/GridInvSys_GridInventoryControllerComponent.h"
 
 #include "Components/GridInvSys_InventoryComponent.h"
-#include "Components/InventoryObject/Fragment/GridInvSys_InventoryFragment_Container.h"
+#include "Components/InventoryObject/Fragment/GridInvSys_InventoryModule_Container.h"
 #include "Data/GridInvSys_InventoryItemInstance.h"
 #include "Data/InvSys_ItemFragment_BaseItem.h"
 #include "Library/GridInvSys_CommonFunctionLibrary.h"

@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Components/InventoryObject/Fragment/GridInvSys_InventoryFragment_Container.h"
+#include "Components/InventoryObject/Fragment/GridInvSys_InventoryModule_Container.h"
 
 #include "GridInvSys_CommonType.h"
 #include "Data/GridInvSys_InventoryItemInstance.h"
@@ -11,15 +11,15 @@
 #include "Widgets/GridInvSys_ContainerGridWidget.h"
 #include "BaseInventorySystem.h"
 #include "GridInventorySystem.h"
-#include "Components/InventoryObject/Fragment/InvSys_InventoryFragment_DisplayWidget.h"
-#include "Components/InventoryObject/Fragment/InvSys_InventoryFragment_Equipment.h"
+#include "Components/InventoryObject/Fragment/InvSys_InventoryModule_Display.h"
+#include "Components/InventoryObject/Fragment/InvSys_InventoryModule_Equipment.h"
 #include "Data/InvSys_ItemFragment_ContainerLayout.h"
 
-void UGridInvSys_InventoryFragment_Container::InitInventoryFragment(UObject* PreEditFragment)
+void UGridInvSys_InventoryModule_Container::InitInventoryFragment(UObject* PreEditFragment)
 {
 	Super::InitInventoryFragment(PreEditFragment);
 
-	COPY_INVENTORY_FRAGMENT_PROPERTY(UGridInvSys_InventoryFragment_Container, ContainerLayoutDataType);
+	COPY_INVENTORY_FRAGMENT_PROPERTY(UGridInvSys_InventoryModule_Container, ContainerLayoutDataType);
 
 	switch (ContainerLayoutDataType)
 	{
@@ -61,7 +61,7 @@ void UGridInvSys_InventoryFragment_Container::InitInventoryFragment(UObject* Pre
 	ItemPositionChangeHandle = GameplayMessageSubsystem.RegisterListener<FGridInvSys_ItemPositionChangeMessage>(Inventory_Message_ItemPositionChanged, WarpItemPositionFunc);
 }
 
-bool UGridInvSys_InventoryFragment_Container::UpdateItemInstancePosition(
+bool UGridInvSys_InventoryModule_Container::UpdateItemInstancePosition(
 	UGridInvSys_InventoryItemInstance* GridItemInstance, const FGridInvSys_ItemPosition& NewPosition)
 {
 	bool bIsSuccess = false;
@@ -84,9 +84,19 @@ bool UGridInvSys_InventoryFragment_Container::UpdateItemInstancePosition(
 	return bIsSuccess;
 }
 
-bool UGridInvSys_InventoryFragment_Container::IsUnoccupiedInSquareRange(
+bool UGridInvSys_InventoryModule_Container::IsUnoccupiedInSquareRange(
 	int32 ToGridID, FIntPoint ToPosition, FIntPoint ItemSize)
 {
+	if (ContainerGridSize.IsEmpty())
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ContainerGridSize is empty."), __FUNCTION__)
+		return false;
+	}
+	if (OccupiedGrid.IsEmpty())
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, OccupiedGrid is empty."), __FUNCTION__)
+		return false;
+	}
 	int32 ToIndex = ToPosition.X * ContainerGridSize[ToGridID].Y + ToPosition.Y;
 	int32 MaxGridWidth = ContainerGridSize[ToGridID].Y;
 	int32 MaxGridHeight = ContainerGridSize[ToGridID].X;
@@ -116,7 +126,7 @@ bool UGridInvSys_InventoryFragment_Container::IsUnoccupiedInSquareRange(
 	return true;
 }
 
-TArray<int32> UGridInvSys_InventoryFragment_Container::GetItemGridOccupiedIndexes(
+TArray<int32> UGridInvSys_InventoryModule_Container::GetItemGridOccupiedIndexes(
 	UGridInvSys_InventoryItemInstance* ItemInstance) const
 {
 	TArray<int32> OutArray;
@@ -164,7 +174,7 @@ TArray<int32> UGridInvSys_InventoryFragment_Container::GetItemGridOccupiedIndexe
 	return OutArray;
 }
 
-bool UGridInvSys_InventoryFragment_Container::CheckItemPosition(
+bool UGridInvSys_InventoryModule_Container::CheckItemPosition(
 	UInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& NewPosition, bool bIsIgnoreInItemInstance)
 {
 	if (ItemInstance == nullptr || ItemInstance->IsA<UGridInvSys_InventoryItemInstance>() == false)
@@ -217,7 +227,7 @@ bool UGridInvSys_InventoryFragment_Container::CheckItemPosition(
 	return true;
 }
 
-void UGridInvSys_InventoryFragment_Container::UpdateContainerGridItemState(
+void UGridInvSys_InventoryModule_Container::UpdateContainerGridItemState(
 	UInvSys_InventoryItemInstance* ItemInstance, const FGridInvSys_ItemPosition& ItemPosition, bool IsOccupy)
 {
 	if (ItemInstance == nullptr || ItemInstance->IsA<UGridInvSys_InventoryItemInstance>() == false)
@@ -251,7 +261,7 @@ void UGridInvSys_InventoryFragment_Container::UpdateContainerGridItemState(
 	// PrintDebugOccupiedGrid();
 }
 
-void UGridInvSys_InventoryFragment_Container::UpdateContainerGridOccupyState(FIntPoint ItemSize,
+void UGridInvSys_InventoryModule_Container::UpdateContainerGridOccupyState(FIntPoint ItemSize,
 	const FGridInvSys_ItemPosition& ItemPosition, bool IsOccupy)
 {
 	if (ItemPosition.IsValid() == false)
@@ -291,7 +301,7 @@ void UGridInvSys_InventoryFragment_Container::UpdateContainerGridOccupyState(FIn
 	}
 }
 
-bool UGridInvSys_InventoryFragment_Container::FindEmptyPosition(FIntPoint ItemSize,
+bool UGridInvSys_InventoryModule_Container::FindEmptyPosition(FIntPoint ItemSize,
                                                                 FGridInvSys_ItemPosition& OutPosition)
 {
 	// 循环容器内所有的网格
@@ -317,7 +327,7 @@ bool UGridInvSys_InventoryFragment_Container::FindEmptyPosition(FIntPoint ItemSi
 	return false;
 }
 
-void UGridInvSys_InventoryFragment_Container::OnContainerPostAdd(UInvSys_InventoryItemInstance* ItemInstance)
+void UGridInvSys_InventoryModule_Container::OnContainerPostAdd(UInvSys_InventoryItemInstance* ItemInstance)
 {
 	Super::OnContainerPostAdd(ItemInstance);
 	if (ItemInstance)
@@ -328,7 +338,7 @@ void UGridInvSys_InventoryFragment_Container::OnContainerPostAdd(UInvSys_Invento
 	}
 }
 
-void UGridInvSys_InventoryFragment_Container::OnContainerPreRemove(UInvSys_InventoryItemInstance* ItemInstance)
+void UGridInvSys_InventoryModule_Container::OnContainerPreRemove(UInvSys_InventoryItemInstance* ItemInstance)
 {
 	Super::OnContainerPreRemove(ItemInstance);
 	if (ItemInstance)
@@ -339,7 +349,7 @@ void UGridInvSys_InventoryFragment_Container::OnContainerPreRemove(UInvSys_Inven
 	}
 }
 
-void UGridInvSys_InventoryFragment_Container::UpdateContainerData_FromEquip()
+void UGridInvSys_InventoryModule_Container::UpdateContainerData_FromEquip()
 {
 	// 当装备物品时，根据物品定义中的容器布局创建临时控件，初始化容器内部数据
 	auto WarpEquipItemFunc = [this](FGameplayTag Tag, const FInvSys_EquipItemInstanceMessage& Message)
@@ -376,11 +386,11 @@ void UGridInvSys_InventoryFragment_Container::UpdateContainerData_FromEquip()
 		Inventory_Message_UnEquipItem, MoveTemp(WarpUnEquipItemFunc));
 }
 
-void UGridInvSys_InventoryFragment_Container::UpdateContainerData_FromWidget()
+void UGridInvSys_InventoryModule_Container::UpdateContainerData_FromWidget()
 {
 	if (InventoryObject)
 	{
-		auto DisplayFragment = InventoryObject->FindInventoryFragment<UInvSys_InventoryFragment_DisplayWidget>();
+		auto DisplayFragment = InventoryObject->FindInventoryFragment<UInvSys_InventoryModule_Display>();
 		if (DisplayFragment)
 		{
 			// CreateDisplayWidget 函数执行时机是由玩家控制的，故这里直接获取显示控件可能会为空。
@@ -397,7 +407,7 @@ void UGridInvSys_InventoryFragment_Container::UpdateContainerData_FromWidget()
 	}
 }
 
-void UGridInvSys_InventoryFragment_Container::UpdateContainerData_FromCustom()
+void UGridInvSys_InventoryModule_Container::UpdateContainerData_FromCustom()
 {
 	OccupiedGrid.Empty();
 	OccupiedGrid.Reserve(CustomContainerLayoutData.Num());
@@ -413,7 +423,7 @@ void UGridInvSys_InventoryFragment_Container::UpdateContainerData_FromCustom()
 	}
 }
 
-void UGridInvSys_InventoryFragment_Container::UpdateContainerData(UGridInvSys_ContainerGridLayoutWidget* ContainerLayout)
+void UGridInvSys_InventoryModule_Container::UpdateContainerData(UGridInvSys_ContainerGridLayoutWidget* ContainerLayout)
 {
 	if(ContainerLayout)
 	{
@@ -436,7 +446,7 @@ void UGridInvSys_InventoryFragment_Container::UpdateContainerData(UGridInvSys_Co
 	}
 }
 
-void UGridInvSys_InventoryFragment_Container::PrintDebugOccupiedGrid(const FString& PrintReason) const
+void UGridInvSys_InventoryModule_Container::PrintDebugOccupiedGrid(const FString& PrintReason) const
 {
 #if WITH_EDITOR
 	for (int i = 0; i < OccupiedGrid.Num(); ++i)

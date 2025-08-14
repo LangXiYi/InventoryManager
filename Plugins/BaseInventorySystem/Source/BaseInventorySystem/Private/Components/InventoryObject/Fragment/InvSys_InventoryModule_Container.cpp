@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Components/InventoryObject/Fragment/InvSys_InventoryFragment_Container.h"
+#include "Components/InventoryObject/Fragment/InvSys_InventoryModule_Container.h"
 
 #include "BaseInventorySystem.h"
 #include "NativeGameplayTags.h"
@@ -10,12 +10,12 @@
 #include "GameFramework/GameplayMessageSubsystem.h"
 #include "Net/UnrealNetwork.h"
 
-UInvSys_InventoryFragment_Container::UInvSys_InventoryFragment_Container() : ContainerList(this)
+UInvSys_InventoryModule_Container::UInvSys_InventoryModule_Container() : ContainerList(this)
 {
 	Priority = 20;
 }
 
-void UInvSys_InventoryFragment_Container::RefreshInventoryFragment()
+void UInvSys_InventoryModule_Container::RefreshInventoryFragment()
 {
 	Super::RefreshInventoryFragment();
 	TArray<UInvSys_InventoryItemInstance*> AllItems;
@@ -35,7 +35,7 @@ void UInvSys_InventoryFragment_Container::RefreshInventoryFragment()
 	}
 }
 
-int32 UInvSys_InventoryFragment_Container::FindStackableItemInstances(
+int32 UInvSys_InventoryModule_Container::FindStackableItemInstances(
 	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, TArray<UInvSys_InventoryItemInstance*>& StackableItems)
 {
 	if (ItemDef == nullptr)
@@ -74,7 +74,7 @@ int32 UInvSys_InventoryFragment_Container::FindStackableItemInstances(
 	return RemainCount;
 }
 
-int32 UInvSys_InventoryFragment_Container::FindStackableItemInstances(TObjectPtr<UInvSys_InventoryItemInstance> ItemInstance,
+int32 UInvSys_InventoryModule_Container::FindStackableItemInstances(TObjectPtr<UInvSys_InventoryItemInstance> ItemInstance,
 	TArray<UInvSys_InventoryItemInstance*>& StackableItems)
 {
 	if (ItemInstance == nullptr)
@@ -85,7 +85,7 @@ int32 UInvSys_InventoryFragment_Container::FindStackableItemInstances(TObjectPtr
 	return FindStackableItemInstances(ItemInstance->GetItemDefinition(), StackableItems);
 }
 
-void UInvSys_InventoryFragment_Container::UpdateItemStackCount(
+void UInvSys_InventoryModule_Container::UpdateItemStackCount(
 	UInvSys_InventoryItemInstance* ItemInstance, int32 NewStackCount)
 {
 	if (ContainsItem(ItemInstance))
@@ -95,7 +95,7 @@ void UInvSys_InventoryFragment_Container::UpdateItemStackCount(
 	}
 }
 
-void UInvSys_InventoryFragment_Container::UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance,
+void UInvSys_InventoryModule_Container::UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance,
                                                                       bool NewState)
 {
 	if (ContainsItem(ItemInstance))
@@ -105,7 +105,7 @@ void UInvSys_InventoryFragment_Container::UpdateItemInstanceDragState(UInvSys_In
 	}
 }
 
-void UInvSys_InventoryFragment_Container::RemoveAllItemInstance()
+void UInvSys_InventoryModule_Container::RemoveAllItemInstance()
 {
 	int32 Count = ContainerList.Num();
 	for (int i = 0; i < Count; ++i)
@@ -116,7 +116,7 @@ void UInvSys_InventoryFragment_Container::RemoveAllItemInstance()
 	MarkInventoryModuleDirty();
 }
 
-bool UInvSys_InventoryFragment_Container::RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
+bool UInvSys_InventoryModule_Container::RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance)
 {
 	if (ContainerList.RemoveEntry(InItemInstance))
 	{
@@ -127,17 +127,17 @@ bool UInvSys_InventoryFragment_Container::RemoveItemInstance(UInvSys_InventoryIt
 	return false;
 }
 
-bool UInvSys_InventoryFragment_Container::ContainsItem(UInvSys_InventoryItemInstance* ItemInstance) const
+bool UInvSys_InventoryModule_Container::ContainsItem(UInvSys_InventoryItemInstance* ItemInstance) const
 {
 	return ContainerList.Contains(ItemInstance);
 }
 
-void UInvSys_InventoryFragment_Container::GetAllItemInstance(TArray<UInvSys_InventoryItemInstance*>& OutArray) const
+void UInvSys_InventoryModule_Container::GetAllItemInstance(TArray<UInvSys_InventoryItemInstance*>& OutArray) const
 {
 	ContainerList.GetAllItems(OutArray);
 }
 
-void UInvSys_InventoryFragment_Container::MarkItemInstanceDirty(UInvSys_InventoryItemInstance* ItemInstance)
+void UInvSys_InventoryModule_Container::MarkItemInstanceDirty(UInvSys_InventoryItemInstance* ItemInstance)
 {
 	check(ItemInstance)
 	int32 Index = ContainerList.FindEntryIndex(ItemInstance);
@@ -153,7 +153,7 @@ void UInvSys_InventoryFragment_Container::MarkItemInstanceDirty(UInvSys_Inventor
 	}
 }
 
-void UInvSys_InventoryFragment_Container::MarkInventoryModuleDirty()
+void UInvSys_InventoryModule_Container::MarkInventoryModuleDirty()
 {
 	Super::MarkInventoryModuleDirty();
 	if (ContainerList.Num() != ContainerEntryRepKeyMap.Num() - 1)
@@ -163,7 +163,7 @@ void UInvSys_InventoryFragment_Container::MarkInventoryModuleDirty()
 	ContainerList.MarkArrayDirty();
 }
 
-bool UInvSys_InventoryFragment_Container::KeyNeedsToReplicate(int32 ObjID, int32 RepKey)
+bool UInvSys_InventoryModule_Container::KeyNeedsToReplicate(int32 ObjID, int32 RepKey)
 {
 	if (bPendingDormancy)
 	{
@@ -179,14 +179,14 @@ bool UInvSys_InventoryFragment_Container::KeyNeedsToReplicate(int32 ObjID, int32
 	return true;
 }
 
-void UInvSys_InventoryFragment_Container::GetLifetimeReplicatedProps(
+void UInvSys_InventoryModule_Container::GetLifetimeReplicatedProps(
 	TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME_CONDITION(UInvSys_InventoryFragment_Container, ContainerList, COND_None)
+	DOREPLIFETIME_CONDITION(UInvSys_InventoryModule_Container, ContainerList, COND_None)
 }
 
-bool UInvSys_InventoryFragment_Container::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch,
+bool UInvSys_InventoryModule_Container::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch,
 	FReplicationFlags* RepFlags)
 {
 	bool bWroteSomething =  Super::ReplicateSubobjects(Channel, Bunch, RepFlags);

@@ -6,6 +6,8 @@
 #include "Blueprint/DragDropOperation.h"
 #include "InvSys_DragDropOperation.generated.h"
 
+class UInvSys_InventoryItemInstance;
+
 /**
  * 
  */
@@ -15,7 +17,9 @@ class BASEINVENTORYSYSTEM_API UInvSys_DragDropOperation : public UDragDropOperat
 	GENERATED_BODY()
 
 public:
-	virtual void Drop_Implementation(const FPointerEvent& PointerEvent) override;
-	virtual void Dragged_Implementation(const FPointerEvent& PointerEvent) override;
-	virtual void DragCancelled_Implementation(const FPointerEvent& PointerEvent) override;
+	template<class T = UInvSys_InventoryItemInstance>
+	T* GetItemInstance() const
+	{
+		return (T*)Payload;
+	}
 };

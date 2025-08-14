@@ -5,12 +5,12 @@
 #include "CoreMinimal.h"
 #include "UObject/Object.h"
 #include "GameplayTagContainer.h"
-#include "InvSys_BaseInventoryFragment.generated.h"
+#include "InvSys_InventoryModule.generated.h"
 
 class UInvSys_InventoryComponent;
 
 UCLASS(DefaultToInstanced, EditInlineNew, Abstract)
-class BASEINVENTORYSYSTEM_API UInvSys_BaseInventoryFragment : public UObject
+class BASEINVENTORYSYSTEM_API UInvSys_InventoryModule : public UObject
 {
 	GENERATED_BODY()
 
@@ -20,7 +20,7 @@ class BASEINVENTORYSYSTEM_API UInvSys_BaseInventoryFragment : public UObject
 		v = static_cast<c*>(PreEditFragment)->v;
 
 public:
-	UInvSys_BaseInventoryFragment();
+	UInvSys_InventoryModule();
 	
 	/** 初始化库存片段，库存组件:OnRep ---> 库存对象 ---> this */
 	virtual void InitInventoryFragment(UObject* PreEditFragment) {}
@@ -68,7 +68,7 @@ public:
 
 	FORCEINLINE virtual bool IsSupportedForNetworking() const override { return true; }
 
-	FORCEINLINE bool operator<(const UInvSys_BaseInventoryFragment& Other) const
+	FORCEINLINE bool operator<(const UInvSys_InventoryModule& Other) const
 	{
 		return this->Priority < Other.Priority;
 	}

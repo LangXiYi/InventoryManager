@@ -6,7 +6,7 @@
 #include "UObject/Object.h"
 #include "GameplayTagContainer.h"
 #include "Components/ActorComponent.h"
-#include "Fragment/InvSys_BaseInventoryFragment.h"
+#include "Fragment/InvSys_InventoryModule.h"
 #include "InvSys_BaseInventoryObject.generated.h"
 
 class UInvSys_InventoryObjectContent;
@@ -31,7 +31,7 @@ public:
 
 	// [Only Server] 在构建库存对象后调用
 	// InvComp::ConstructInventoryObject ---> UInvSys_PreEditInventoryObject::NewInventoryObject ---> This Func
-	virtual void ConstructInventoryFragment(const TArray<UInvSys_BaseInventoryFragment*>& Fragments);
+	virtual void ConstructInventoryFragment(const TArray<UInvSys_InventoryModule*>& Fragments);
 
 	// [Server & Client] 在服务器创建库存对象后由库存组件的 OnRep_InventoryObjectList 调用
 	virtual void InitInventoryObject(UInvSys_InventoryComponent* InvComp, int32 InventoryObjectID);
@@ -40,18 +40,18 @@ public:
 	void RefreshInventoryObject();
 
 	UFUNCTION(BlueprintCallable, BlueprintPure = false)
-	void RefreshInventoryFragment(TSubclassOf<UInvSys_BaseInventoryFragment> OutClass);
+	void RefreshInventoryFragment(TSubclassOf<UInvSys_InventoryModule> OutClass);
 
 	/** Only Server todo:: wait edit. */
-	void AddInventoryFragment(UInvSys_BaseInventoryFragment* NewFragment);
+	void AddInventoryFragment(UInvSys_InventoryModule* NewFragment);
 
 	UFUNCTION(BlueprintCallable, BlueprintPure = false, meta = (DeterminesOutputType = OutClass))
-	UInvSys_BaseInventoryFragment* FindInventoryFragment(TSubclassOf<UInvSys_BaseInventoryFragment> OutClass);
+	UInvSys_InventoryModule* FindInventoryFragment(TSubclassOf<UInvSys_InventoryModule> OutClass);
 
 	template<class FragmentType>
 	FragmentType* FindInventoryFragment()
 	{
-		for (UInvSys_BaseInventoryFragment* Fragment : InventoryObjectFragments)
+		for (UInvSys_InventoryModule* Fragment : InventoryObjectFragments)
 		{
 			check(Fragment)
 			if (Fragment && Fragment->IsA<FragmentType>())
@@ -96,7 +96,7 @@ protected:
 	FGameplayTag InventoryTag;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Replicated, Category = "Inventory Object")
-	TArray<UInvSys_BaseInventoryFragment*> InventoryObjectFragments;
+	TArray<UInvSys_InventoryModule*> InventoryObjectFragments;
 
 private:
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Object", meta = (AllowPrivateAccess))

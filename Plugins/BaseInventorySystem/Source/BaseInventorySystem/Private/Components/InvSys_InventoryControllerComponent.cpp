@@ -204,7 +204,7 @@ void UInvSys_InventoryControllerComponent::Server_EquipItemInstance_Implementati
 		 * 若 ItemInstance 是在其他位置被装备的物品
 		 * 且存在容器模块那么就将容器模块内所有物品暂存至 ItemInstance 中
 		 */
-		auto ContainerFragment = OldInvComp->FindInventoryModule<UInvSys_InventoryFragment_Container>(OldInventoryTag);
+		auto ContainerFragment = OldInvComp->FindInventoryModule<UInvSys_InventoryModule_Container>(OldInventoryTag);
 		if (ContainerFragment)
 		{
 			ContainerFragment->GetAllItemInstance(ItemInstance->PayloadItems);
@@ -242,7 +242,7 @@ void UInvSys_InventoryControllerComponent::Server_EquipItemInstance_Implementati
 		}
 	}
 #if WITH_EDITOR && 1 // Debug_Print
-	auto ContainerFragment = OldInvComp->FindInventoryModule<UInvSys_InventoryFragment_Container>(OldInventoryTag);
+	auto ContainerFragment = OldInvComp->FindInventoryModule<UInvSys_InventoryModule_Container>(OldInventoryTag);
 	if (ContainerFragment)
 	{
 		TArray<UInvSys_InventoryItemInstance*> AllItemInstances;

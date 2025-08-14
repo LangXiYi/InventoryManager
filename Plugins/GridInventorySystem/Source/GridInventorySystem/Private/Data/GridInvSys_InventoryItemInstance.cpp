@@ -4,7 +4,7 @@
 #include "Data/GridInvSys_InventoryItemInstance.h"
 
 #include "GridInventorySystem.h"
-#include "Components/InventoryObject/Fragment/GridInvSys_InventoryFragment_Container.h"
+#include "Components/InventoryObject/Fragment/GridInvSys_InventoryModule_Container.h"
 #include "Data/GridInvSys_ItemFragment_GridItemSize.h"
 #include "Net/UnrealNetwork.h"
 
@@ -20,7 +20,7 @@ void UGridInvSys_InventoryItemInstance::PostReplicatedChange()
 	}
 }
 
-void UGridInvSys_InventoryItemInstance::OnTransferItems(UInvSys_InventoryFragment_Container* ContainerFragment)
+void UGridInvSys_InventoryItemInstance::OnTransferItems(UInvSys_InventoryModule_Container* ContainerFragment)
 {
 	Super::OnTransferItems(ContainerFragment);
 	ItemPosition.EquipSlotTag = ContainerFragment->GetInventoryTag();

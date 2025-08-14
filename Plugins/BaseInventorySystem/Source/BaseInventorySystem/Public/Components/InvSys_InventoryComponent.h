@@ -7,8 +7,8 @@
 #include "GameplayTagContainer.h"
 #include "Components/ActorComponent.h"
 #include "InventoryObject/InvSys_BaseInventoryObject.h"
-#include "InventoryObject/Fragment/InvSys_InventoryFragment_Container.h"
-#include "InventoryObject/Fragment/InvSys_InventoryFragment_Equipment.h"
+#include "InventoryObject/Fragment/InvSys_InventoryModule_Container.h"
+#include "InventoryObject/Fragment/InvSys_InventoryModule_Equipment.h"
 #include "InvSys_InventoryComponent.generated.h"
 
 class AInvSys_PickableItems;
@@ -92,7 +92,7 @@ public:
 				TEXT("%hs Falied, Is not valid tag %s."), __FUNCTION__, *InventoryTag.ToString())
 			return nullptr;
 		}
-		auto ContainerFragment = FindInventoryModule<UInvSys_InventoryFragment_Container>(InventoryTag);
+		auto ContainerFragment = FindInventoryModule<UInvSys_InventoryModule_Container>(InventoryTag);
 		if (ContainerFragment == nullptr)
 		{
 			UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning,
@@ -109,7 +109,7 @@ public:
 	template<class T, class... ArgList>
 	T* AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const ArgList&... Args)
 	{
-		auto ContainerFragment = FindInventoryModule<UInvSys_InventoryFragment_Container>(SlotTag);
+		auto ContainerFragment = FindInventoryModule<UInvSys_InventoryModule_Container>(SlotTag);
 		if (ContainerFragment != nullptr)
 		{
 			return ContainerFragment->AddItemInstance<T>(InItemInstance, Args...);
@@ -131,7 +131,7 @@ public:
 	template<class T, class... ArgList>
 	void UpdateItemInstance(UInvSys_InventoryItemInstance* ItemInstance, FGameplayTag SlotTag, const ArgList&... Args)
 	{
-		auto ContainerFragment = FindInventoryModule<UInvSys_InventoryFragment_Container>(SlotTag);
+		auto ContainerFragment = FindInventoryModule<UInvSys_InventoryModule_Container>(SlotTag);
 		if (ContainerFragment != nullptr)
 		{
 			ContainerFragment->UpdateItemInstance<T>(ItemInstance, Args...);
@@ -198,12 +198,11 @@ public:
 		{
 			return InventoryObjectMap[Tag]->FindInventoryFragment<T>();
 		}
-		UE_LOG(LogInventorySystem, Warning, TEXT("GameplayTag[%s] is not valid."), *Tag.ToString())
 		return nullptr;
 	}
 
 	UFUNCTION(BlueprintCallable, BlueprintPure = false, meta = (DeterminesOutputType = OutClass))
-	UInvSys_BaseInventoryFragment* FindInventoryFragment(FGameplayTag Tag, TSubclassOf<UInvSys_BaseInventoryFragment> OutClass) const;
+	UInvSys_InventoryModule* FindInventoryFragment(FGameplayTag Tag, TSubclassOf<UInvSys_InventoryModule> OutClass) const;
 
 	void RegisterInventoryComponent(
 		const TSoftClassPtr<UInvSys_InventoryContentMapping>& InInventoryContent,

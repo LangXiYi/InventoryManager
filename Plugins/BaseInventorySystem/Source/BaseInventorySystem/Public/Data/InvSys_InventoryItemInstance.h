@@ -10,7 +10,7 @@
 class UInvSys_InventoryComponent;
 class UInvSys_InventoryItemFragment;
 class UInvSys_InventoryItemDefinition;
-class UInvSys_InventoryFragment_Container;
+class UInvSys_InventoryModule_Container;
 
 UENUM()
 enum class EInvSys_ReplicateState : uint8
@@ -78,7 +78,7 @@ public:
 	 * 当物品在从某一容器转移至另一容器内时触发
 	 * todo::目前仅在切换装备容器时，内部物品会触发该函数。
 	 */
-	virtual void OnTransferItems(UInvSys_InventoryFragment_Container* ContainerFragment) {}
+	virtual void OnTransferItems(UInvSys_InventoryModule_Container* ContainerFragment) {}
 
 protected:
 	// Custom FastArrayItem API Begin -----
@@ -145,21 +145,18 @@ public:
 	template<class T = UInvSys_InventoryComponent>
 	FORCEINLINE T* GetInventoryComponent() const
 	{
-		// check(InventoryComponent);
 		return (T*)InventoryComponent;
 	}
 
 	/** 获取物品的唯一ID */
 	FORCEINLINE const FGuid& GetItemUniqueID() const
 	{
-		check(ItemUniqueID.IsValid());
 		return ItemUniqueID;
 	}
 
 	/** 获取物品的库存对象标签 */
 	FORCEINLINE const FGameplayTag& GetInventoryObjectTag() const
 	{
-		check(InventoryObjectTag.IsValid())
 		return InventoryObjectTag;
 	}
 

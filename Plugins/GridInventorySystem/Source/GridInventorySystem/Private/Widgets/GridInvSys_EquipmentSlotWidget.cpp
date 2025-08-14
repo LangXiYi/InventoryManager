@@ -7,7 +7,7 @@
 #include "InvSys_CommonType.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Components/InvSys_InventoryControllerComponent.h"
-#include "Components/InventoryObject/Fragment/InvSys_InventoryFragment_Equipment.h"
+#include "Components/InventoryObject/Fragment/InvSys_InventoryModule_Equipment.h"
 #include "Data/InvSys_ItemFragment_DragDrop.h"
 #include "Data/InvSys_InventoryItemInstance.h"
 #include "Data/InvSys_ItemFragment_EquipItem.h"
@@ -18,7 +18,7 @@ void UGridInvSys_EquipmentSlotWidget::RefreshInventoryWidget(UInvSys_BaseInvento
 {
 	Super::RefreshInventoryWidget(NewInventoryObject);
 	check(InventoryObject)
-	auto EquipFragment = InventoryObject->FindInventoryFragment<UInvSys_InventoryFragment_Equipment>();
+	auto EquipFragment = InventoryObject->FindInventoryFragment<UInvSys_InventoryModule_Equipment>();
 	if (EquipFragment)
 	{
 		UInvSys_InventoryItemInstance* TargetItemInstance = EquipFragment->GetEquipItemInstance();

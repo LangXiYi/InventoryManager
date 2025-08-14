@@ -5,7 +5,7 @@
 
 #include "Components/GridInvSys_InventoryComponent.h"
 #include "Components/InvSys_InventoryComponent.h"
-#include "Components/InventoryObject/Fragment/InvSys_InventoryFragment_Container.h"
+#include "Components/InventoryObject/Fragment/InvSys_InventoryModule_Container.h"
 #include "Data/InvSys_ItemFragment_BaseItem.h"
 #include "Data/InvSys_ItemFragment_EquipItem.h"
 #include "Data/InvSys_ItemFragment_PickUpItem.h"
@@ -60,6 +60,7 @@ bool AGridInvSys_PickableItems::PickupItem(UInvSys_InventoryComponent* InvComp, 
 		if (EquipItemFragment)
 		{
 			int32 SupportSlotCount = EquipItemFragment->SupportEquipSlot.Num();
+			bool bIsSuccessEquip = false;
 			for (int i = 0; i < SupportSlotCount; ++i)
 			{
 				FGameplayTag InventoryTag = EquipItemFragment->SupportEquipSlot.GetByIndex(i);
@@ -80,6 +81,12 @@ bool AGridInvSys_PickableItems::PickupItem(UInvSys_InventoryComponent* InvComp, 
 				// 仍然剩余部分物品，此时会继续循环查找可装备的槽位，若循环结束，则将剩余物品添加至容器内。
 				GridInvComp->EquipItemDefinition(PickableItemInstance->GetItemDefinition(), InventoryTag, MaxStackCount);
 				ItemStackCount -= MaxStackCount;
+				bIsSuccessEquip = true;
+			}
+			if (bIsSuccessEquip == false && PickableItemInstance->PayloadItems.IsEmpty() == false)
+			{
+				// todo::目标物品内部存在其他物品且不能直接装备，所以需要尝试将该物品以及内部物品一起添加到背包中
+				return false;
 			}
 		}
 	}
@@ -87,7 +94,7 @@ bool AGridInvSys_PickableItems::PickupItem(UInvSys_InventoryComponent* InvComp, 
 	// 根据优先级遍历容器，优先填充未达到最大堆叠数量的物品
 	for (FGameplayTag ContainerTag : PickupItemFragment->ContainerPriority)
 	{
-		auto Container = GridInvComp->FindInventoryModule<UInvSys_InventoryFragment_Container>(ContainerTag);
+		auto Container = GridInvComp->FindInventoryModule<UInvSys_InventoryModule_Container>(ContainerTag);
 		if (Container == nullptr)
 		{
 			continue;
@@ -130,12 +137,12 @@ bool AGridInvSys_PickableItems::PickupItem(UInvSys_InventoryComponent* InvComp, 
 		if (GridInvComp->FindEmptyPosition(PickableItemInstance, NewPosition) == false)
 		{
 			// todo::是否需要广播该事件？
-			UE_LOG(LogInventorySystem, Warning, TEXT("容器组件已满"))
+			// UE_LOG(LogInventorySystem, Warning, TEXT("容器组件已满"))
 			SetItemStackCount(ItemStackCount); // 所有修改操作完成后，更新物品实例的堆叠数量
 			return false;
 		}
 
-		UE_LOG(LogInventorySystem, Warning, TEXT("找到有效位置 %s"), *NewPosition.ToString())
+		// UE_LOG(LogInventorySystem, Warning, TEXT("找到有效位置 %s"), *NewPosition.ToString())
 		int32 NewStackCount = ItemStackCount > MaxStackCount ? MaxStackCount : ItemStackCount;
 		// todo::除了位置你是否还有其他需要添加的属性？
 		GridInvComp->AddItemDefinitionToContainerPos(PickableItemInstance->GetItemDefinition(), NewStackCount, NewPosition);

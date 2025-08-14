@@ -5,7 +5,7 @@
 
 #include "BaseInventorySystem.h"
 #include "Components/InvSys_InventoryComponent.h"
-#include "Components/InventoryObject/Fragment/InvSys_BaseInventoryFragment.h"
+#include "Components/InventoryObject/Fragment/InvSys_InventoryModule.h"
 #include "Data/InvSys_InventoryContentMapping.h"
 #include "Engine/ActorChannel.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -37,17 +37,17 @@ void UInvSys_BaseInventoryObject::PostRepNotifies()
 	}
 }
 
-void UInvSys_BaseInventoryObject::ConstructInventoryFragment(const TArray<UInvSys_BaseInventoryFragment*>& Fragments)
+void UInvSys_BaseInventoryObject::ConstructInventoryFragment(const TArray<UInvSys_InventoryModule*>& Fragments)
 {
 	InventoryObjectFragments.Empty();
 	InventoryObjectFragments.Reserve(Fragments.Num());
-	for (UInvSys_BaseInventoryFragment* Fragment : Fragments)
+	for (UInvSys_InventoryModule* Fragment : Fragments)
 	{
 		if (Fragment != nullptr)
 		{
 			// 这里不能使用 DuplicateObject，该操作会导致 ActorChanel 无法复制这些对象！！
-			UInvSys_BaseInventoryFragment* TargetFragment =
-				NewObject<UInvSys_BaseInventoryFragment>(GetInventoryComponent(), Fragment->GetClass());
+			UInvSys_InventoryModule* TargetFragment =
+				NewObject<UInvSys_InventoryModule>(GetInventoryComponent(), Fragment->GetClass());
 
 			TargetFragment->InventoryObject = this;
 			TargetFragment->InventoryTag = GetInventoryObjectTag();
@@ -61,7 +61,7 @@ void UInvSys_BaseInventoryObject::InitInventoryObject(UInvSys_InventoryComponent
 	UInvSys_InventoryObjectContent* InventoryObjectContent = InvComp->GetInventoryObjectContent(InventoryObjectID);
 	if (InventoryObjectContent == nullptr)
 	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, InventoryObjectContent is nullptr, Index = %d"), __FUNCTION__, Index);
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, InventoryObjectContent is nullptr, Index = %d"), __FUNCTION__, InventoryObjectID);
 		return;
 	}
 	// 对数组进行排序，确定内部片段的执行顺序
@@ -86,22 +86,22 @@ void UInvSys_BaseInventoryObject::RefreshInventoryObject()
 	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
 		TEXT("[%s] 刷新库存对象及其所有片段 [%d]"),
 		HasAuthority() ? TEXT("Server"):TEXT("Client"), InventoryObjectFragments.Num())
-	for (UInvSys_BaseInventoryFragment* ObjectFragment : InventoryObjectFragments)
+	for (UInvSys_InventoryModule* ObjectFragment : InventoryObjectFragments)
 	{
 		ObjectFragment->RefreshInventoryFragment();
 	}
 }
 
-void UInvSys_BaseInventoryObject::RefreshInventoryFragment(TSubclassOf<UInvSys_BaseInventoryFragment> OutClass)
+void UInvSys_BaseInventoryObject::RefreshInventoryFragment(TSubclassOf<UInvSys_InventoryModule> OutClass)
 {
-	UInvSys_BaseInventoryFragment* InventoryFragment = FindInventoryFragment(OutClass);
+	UInvSys_InventoryModule* InventoryFragment = FindInventoryFragment(OutClass);
 	if (InventoryFragment)
 	{
 		InventoryFragment->RefreshInventoryFragment();
 	}
 }
 
-void UInvSys_BaseInventoryObject::AddInventoryFragment(UInvSys_BaseInventoryFragment* NewFragment)
+void UInvSys_BaseInventoryObject::AddInventoryFragment(UInvSys_InventoryModule* NewFragment)
 {
 	/*if (HasAuthority())
 	{
@@ -114,10 +114,10 @@ void UInvSys_BaseInventoryObject::AddInventoryFragment(UInvSys_BaseInventoryFrag
 	}*/
 }
 
-UInvSys_BaseInventoryFragment* UInvSys_BaseInventoryObject::FindInventoryFragment(
-	TSubclassOf<UInvSys_BaseInventoryFragment> OutClass)
+UInvSys_InventoryModule* UInvSys_BaseInventoryObject::FindInventoryFragment(
+	TSubclassOf<UInvSys_InventoryModule> OutClass)
 {
-	for (UInvSys_BaseInventoryFragment* Fragment : InventoryObjectFragments)
+	for (UInvSys_InventoryModule* Fragment : InventoryObjectFragments)
 	{
 		check(Fragment)
 		if (Fragment && Fragment->IsA(OutClass))
@@ -133,7 +133,7 @@ bool UInvSys_BaseInventoryObject::ReplicateSubobjects(UActorChannel* Channel, FO
 {
 	bool bWroteSomething = false;
 	UActorChannel::SetCurrentSubObjectOwner(GetInventoryComponent());
-	for (UInvSys_BaseInventoryFragment* Fragment : InventoryObjectFragments)
+	for (UInvSys_InventoryModule* Fragment : InventoryObjectFragments)
 	{
 		if (Fragment == nullptr || IsValid(Fragment) == false)
 		{
