@@ -20,10 +20,16 @@ UInvSys_BaseInventoryFragment::UInvSys_BaseInventoryFragment()
 	}
 }
 
+void UInvSys_BaseInventoryFragment::MarkInventoryModuleDirty()
+{
+	++InventoryModuleRepKey;
+}
+
 bool UInvSys_BaseInventoryFragment::ReplicateSubobjects(
 	UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags)
 {
 	UActorChannel::SetCurrentSubObjectOwner(GetInventoryComponent());
+	bPendingDormancy = Channel->KeyNeedsToReplicate(InventoryModuleID, InventoryModuleRepKey);
 	return false;
 }
 
@@ -43,28 +49,4 @@ ENetMode UInvSys_BaseInventoryFragment::GetNetMode() const
 {
 	check(Owner_Private);
 	return Owner_Private->GetNetMode();
-}
-
-AActor* UInvSys_BaseInventoryFragment::GetOwner() const
-{
-	check(Owner_Private)
-	return Owner_Private;
-}
-
-UInvSys_InventoryComponent* UInvSys_BaseInventoryFragment::GetInventoryComponent() const
-{
-	check(InventoryComponent);
-	return InventoryComponent;
-}
-
-FGameplayTag UInvSys_BaseInventoryFragment::GetInventoryTag() const
-{
-	check(InventoryTag.IsValid())
-	return InventoryTag;
-}
-
-UInvSys_BaseInventoryObject* UInvSys_BaseInventoryFragment::GetInventoryObject() const
-{
-	check(InventoryObject)
-	return InventoryObject;
 }

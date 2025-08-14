@@ -23,7 +23,10 @@ public:
 
 	void RemoveItemInstance();
 
-	FORCEINLINE UGridInvSys_ContainerGridWidget* GetContainerGridWidget() const;
+	FORCEINLINE UGridInvSys_ContainerGridWidget* GetContainerGridWidget() const
+	{
+		return ContainerGridWidget;
+	}
 
 	template<class T>
 	T* GetItemInfo() const
@@ -31,20 +34,25 @@ public:
 		return nullptr;
 	}
 
-	FORCEINLINE FIntPoint GetPosition() const;
+	FORCEINLINE FIntPoint GetPosition() const
+	{
+		return Position;
+	}
 	
-	FORCEINLINE FIntPoint GetOriginPosition() const;
+	FORCEINLINE FIntPoint GetOriginPosition() const
+	{
+		return OriginGridItemWidget ? OriginGridItemWidget->GetPosition() : GetPosition();
+	}
 
-	FORCEINLINE UGridInvSys_ContainerGridItemWidget* GetOriginGridItemWidget() const;
+	FORCEINLINE UGridInvSys_ContainerGridItemWidget* GetOriginGridItemWidget() const
+	{
+		return OriginGridItemWidget;
+	}
 
-	bool IsOccupied();
-
-	FORCEINLINE EGridInvSys_ItemDirection GetItemDirection() const;
-
-	UFUNCTION(BlueprintPure)
-	FORCEINLINE FName GetItemUniqueID() const;
-	
-	FORCEINLINE FName GetSlotName() const;
+	FORCEINLINE bool IsOccupied()
+	{
+		return bIsOccupied;
+	}
 	
 	TArray<UWidget*> GetOccupiedGridItems();
 

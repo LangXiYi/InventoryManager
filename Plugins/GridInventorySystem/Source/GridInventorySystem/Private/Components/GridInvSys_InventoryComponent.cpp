@@ -28,28 +28,23 @@ UGridInvSys_InventoryComponent::UGridInvSys_InventoryComponent()
 void UGridInvSys_InventoryComponent::AddItemDefinitionToContainerPos(
 	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, FGridInvSys_ItemPosition Pos)
 {
-	check(ItemDef)
-	if (ItemDef == nullptr)
+	if (IsValidInventoryTag(Pos.EquipSlotTag) == false)
 	{
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("%hs Falied, EquipSlotTag Is not valid %s"), __FUNCTION__, *Pos.EquipSlotTag.ToString())
 		return;
 	}
-	UInvSys_InventoryItemDefinition* ItemDefObj = ItemDef->GetDefaultObject<UInvSys_InventoryItemDefinition>();
-	if (ItemDefObj)
+	UGridInvSys_InventoryFragment_Container* ContainerFragment =
+		FindInventoryModule<UGridInvSys_InventoryFragment_Container>(Pos.EquipSlotTag);
+	if (ContainerFragment == nullptr)
 	{
-		UGridInvSys_InventoryFragment_Container* ContainerFragment =
-			FindInventoryFragment<UGridInvSys_InventoryFragment_Container>(Pos.EquipSlotTag);
-		if (ContainerFragment)
-		{
-			FIntPoint ItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemDefinitionSizeFrom(ItemDef, Pos.Direction);
-			if (ContainerFragment->HasEnoughFreeSpace(Pos.Position, Pos.GridID, ItemSize))
-			{
-				AddItemDefinition<UGridInvSys_InventoryItemInstance>(ItemDef, Pos.EquipSlotTag, StackCount, Pos);
-			}
-		}
-		else
-		{
-			UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("无有效的容器片段: %s"), *Pos.ToString())
-		}
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("无有效的容器片段: %s"), *Pos.ToString())
+		return;
+	}
+
+	FIntPoint ItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemDefinitionSizeFrom(ItemDef, Pos.Direction);
+	if (ContainerFragment->IsUnoccupiedInSquareRange(Pos.GridID, Pos.Position, ItemSize))
+	{
+		AddItemDefinition<UGridInvSys_InventoryItemInstance>(ItemDef, Pos.EquipSlotTag, StackCount, Pos);
 	}
 }
 
@@ -77,9 +72,13 @@ bool UGridInvSys_InventoryComponent::FindEmptyPosition(UInvSys_InventoryItemInst
 	}
 	for (FGameplayTag ContainerTag : OutContainerTags)
 	{
-		UGridInvSys_InventoryFragment_Container* ContainerFragment =
-			FindInventoryFragment<UGridInvSys_InventoryFragment_Container>(ContainerTag);
+		if (IsValidInventoryTag(ContainerTag) == false)
+		{
+			continue;
+		}
 
+		UGridInvSys_InventoryFragment_Container* ContainerFragment =
+			FindInventoryModule<UGridInvSys_InventoryFragment_Container>(ContainerTag);
 		if (ContainerFragment)
 		{
 			if (auto ItemSizeFragment = InItemInstance->FindFragmentByClass<UGridInvSys_ItemFragment_GridItemSize>())
@@ -122,7 +121,7 @@ bool UGridInvSys_InventoryComponent::FindEmptyPosition(TSubclassOf<UInvSys_Inven
 	for (FGameplayTag ContainerTag : OutContainerTags)
 	{
 		UGridInvSys_InventoryFragment_Container* ContainerFragment =
-			FindInventoryFragment<UGridInvSys_InventoryFragment_Container>(ContainerTag);
+			FindInventoryModule<UGridInvSys_InventoryFragment_Container>(ContainerTag);
 
 		if (ContainerFragment)
 		{
@@ -152,7 +151,7 @@ void UGridInvSys_InventoryComponent::UpdateItemInstancePosition(UInvSys_Inventor
 	{
 		UGridInvSys_InventoryItemInstance* GridItem = Cast<UGridInvSys_InventoryItemInstance>(ItemInstance);
 		check(GridItem)
-		auto ContainerFragment = FindInventoryFragment<UGridInvSys_InventoryFragment_Container>(NewPosition.EquipSlotTag);
+		auto ContainerFragment = FindInventoryModule<UGridInvSys_InventoryFragment_Container>(NewPosition.EquipSlotTag);
 		if (ContainerFragment)
 		{
 			bool bIsSuccess = ContainerFragment->UpdateItemInstancePosition(GridItem, NewPosition);
@@ -174,7 +173,7 @@ bool UGridInvSys_InventoryComponent::CheckItemPosition(UInvSys_InventoryItemInst
 		return false;
 	}
 
-	auto ContainerFragment = FindInventoryFragment<UGridInvSys_InventoryFragment_Container>(NewPosition.EquipSlotTag);
+	auto ContainerFragment = FindInventoryModule<UGridInvSys_InventoryFragment_Container>(NewPosition.EquipSlotTag);
 	if (ContainerFragment)
 	{
 		return ContainerFragment->CheckItemPosition(ItemInstance, NewPosition, bIsIgnoreInItemInstance);
@@ -193,7 +192,7 @@ bool UGridInvSys_InventoryComponent::CancelOccupied(UInvSys_InventoryItemInstanc
 	}
 	UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(ItemInstance);
 	FGameplayTag InventoryObjectTag = GridItemInstance->GetInventoryObjectTag();
-	auto ContainerFragment = FindInventoryFragment<UGridInvSys_InventoryFragment_Container>(InventoryObjectTag);
+	auto ContainerFragment = FindInventoryModule<UGridInvSys_InventoryFragment_Container>(InventoryObjectTag);
 	if (ContainerFragment)
 	{
 		ContainerFragment->UpdateContainerGridItemState(GridItemInstance, GridItemInstance->GetItemPosition(), false);
@@ -208,7 +207,7 @@ UGridInvSys_ContainerGridWidget* UGridInvSys_InventoryComponent::FindContainerGr
                                                                                          int32 GridID)
 {
 	UInvSys_InventoryFragment_DisplayWidget* DisplayFragment =
-		FindInventoryFragment<UInvSys_InventoryFragment_DisplayWidget>(SlotTag);
+		FindInventoryModule<UInvSys_InventoryFragment_DisplayWidget>(SlotTag);
 	if (DisplayFragment)
 	{
 		UGridInvSys_ContainerGridLayoutWidget* ContainerLayoutWidget =

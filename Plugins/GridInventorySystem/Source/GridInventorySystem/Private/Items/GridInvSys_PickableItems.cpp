@@ -7,6 +7,7 @@
 #include "Components/InvSys_InventoryComponent.h"
 #include "Components/InventoryObject/Fragment/InvSys_InventoryFragment_Container.h"
 #include "Data/InvSys_ItemFragment_BaseItem.h"
+#include "Data/InvSys_ItemFragment_EquipItem.h"
 #include "Data/InvSys_ItemFragment_PickUpItem.h"
 
 
@@ -17,7 +18,7 @@ AGridInvSys_PickableItems::AGridInvSys_PickableItems()
 	PrimaryActorTick.bCanEverTick = true;
 }
 
-bool AGridInvSys_PickableItems::PickupItem(UInvSys_InventoryComponent* InvComp)
+bool AGridInvSys_PickableItems::PickupItem(UInvSys_InventoryComponent* InvComp, bool bIsAutoEquip)
 {
 	if (PickableItemInstance == nullptr)
 	{
@@ -47,16 +48,51 @@ bool AGridInvSys_PickableItems::PickupItem(UInvSys_InventoryComponent* InvComp)
 		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, StackableFragment is nullptr."), __FUNCTION__)
 		return false;
 	}
-
+	int32 MaxStackCount = BaseItemFragment->MaxStackCount;
 	UGridInvSys_InventoryComponent* GridInvComp = Cast<UGridInvSys_InventoryComponent>(InvComp);
 
+	/**
+	 * 自动装备物品，若物品可堆叠则根据有效最大值装备物品
+	 */
+	if (bIsAutoEquip)
+	{
+		auto EquipItemFragment = FindFragmentByClass<UInvSys_ItemFragment_EquipItem>();
+		if (EquipItemFragment)
+		{
+			int32 SupportSlotCount = EquipItemFragment->SupportEquipSlot.Num();
+			for (int i = 0; i < SupportSlotCount; ++i)
+			{
+				FGameplayTag InventoryTag = EquipItemFragment->SupportEquipSlot.GetByIndex(i);
+				if (GridInvComp->IsValidInventoryTag(InventoryTag) == false)
+				{
+					continue;
+				}
+				if (GridInvComp->HasEquippedItemInstance(InventoryTag))
+				{
+					continue;
+				}
+				if (ItemStackCount <= MaxStackCount)
+				{
+					// 将物品之间装备至目标位置
+					GridInvComp->EquipItemInstance(PickableItemInstance, InventoryTag);
+					return true;
+				}
+				// 仍然剩余部分物品，此时会继续循环查找可装备的槽位，若循环结束，则将剩余物品添加至容器内。
+				GridInvComp->EquipItemDefinition(PickableItemInstance->GetItemDefinition(), InventoryTag, MaxStackCount);
+				ItemStackCount -= MaxStackCount;
+			}
+		}
+	}
+
+	// 根据优先级遍历容器，优先填充未达到最大堆叠数量的物品
 	for (FGameplayTag ContainerTag : PickupItemFragment->ContainerPriority)
 	{
-		auto Container = GridInvComp->FindInventoryFragment<UInvSys_InventoryFragment_Container>(ContainerTag);
+		auto Container = GridInvComp->FindInventoryModule<UInvSys_InventoryFragment_Container>(ContainerTag);
 		if (Container == nullptr)
 		{
 			continue;
 		}
+		// 查找所有未达到最大堆叠数量的同类物品
 		TArray<UInvSys_InventoryItemInstance*> StackableItems;
 		Container->FindStackableItemInstances(PickableItemInstance, StackableItems);
 
@@ -72,17 +108,18 @@ bool AGridInvSys_PickableItems::PickupItem(UInvSys_InventoryComponent* InvComp)
 			 */
 
 			int32 StackCount = StackableItems[i]->GetItemStackCount();
-			int32 IncreaseStackCount = BaseItemFragment->MaxStackCount - StackCount;
+			int32 IncreaseStackCount = MaxStackCount - StackCount;
 			if (ItemStackCount < IncreaseStackCount)
 			{
 				IncreaseStackCount = ItemStackCount;
 			}
+			// todo::如果是食物具有新鲜度属性的，可以在这里处理。
 			GridInvComp->UpdateItemStackCount(StackableItems[i], StackCount + IncreaseStackCount);
 			// 更新结束条件: 当前值 - 增量
 			ItemStackCount -= IncreaseStackCount;
 		}
 	}
-	// 判断上一步堆叠物品是否将物品全部处理完成
+	// 库存内所有同类物品的堆叠数量已经达到最大值，若此时仍有剩余数量，则会添加新的物品实例到容器内
 	while (ItemStackCount > 0)
 	{
 		/*
@@ -98,7 +135,8 @@ bool AGridInvSys_PickableItems::PickupItem(UInvSys_InventoryComponent* InvComp)
 			return false;
 		}
 
-		int32 NewStackCount = ItemStackCount > BaseItemFragment->MaxStackCount ? BaseItemFragment->MaxStackCount : ItemStackCount;
+		UE_LOG(LogInventorySystem, Warning, TEXT("找到有效位置 %s"), *NewPosition.ToString())
+		int32 NewStackCount = ItemStackCount > MaxStackCount ? MaxStackCount : ItemStackCount;
 		// todo::除了位置你是否还有其他需要添加的属性？
 		GridInvComp->AddItemDefinitionToContainerPos(PickableItemInstance->GetItemDefinition(), NewStackCount, NewPosition);
 

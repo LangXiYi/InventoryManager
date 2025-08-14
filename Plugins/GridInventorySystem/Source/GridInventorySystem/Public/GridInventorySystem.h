@@ -6,7 +6,7 @@
 #include "NativeGameplayTags.h"
 #include "Modules/ModuleManager.h"
 
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(Inventory_Message_ItemPositionChanged)
+GRIDINVENTORYSYSTEM_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Inventory_Message_ItemPositionChanged)
 
 class FGridInventorySystemModule : public IModuleInterface
 {

@@ -8,15 +8,85 @@
 #include "GameFramework/GameplayMessageSubsystem.h"
 
 
+void FInvSys_ContainerEntry::PreReplicatedRemove(const FFastArraySerializer& InArraySerializer)
+{
+	// if (Instance == nullptr)
+	// {
+	// 	UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, Instance is nullptr."), __FUNCTION__)
+	// 	return;
+	// }
+	// Instance->ReplicateState = EInvSys_ReplicateState::PreRemove;
+	// // UE_LOG(LogInventorySystem, Log, TEXT("PreReplicatedRemove: %s "), *Instance->GetName())
+	// Instance->PreReplicatedRemove();
+}
+
+void FInvSys_ContainerEntry::PostReplicatedAdd(const FFastArraySerializer& InArraySerializer)
+{
+	// if (Instance == nullptr)
+	// {
+	// 	UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, Instance is nullptr."), __FUNCTION__)
+	// 	return;
+	// }
+	// Instance->ReplicateState = EInvSys_ReplicateState::PostAdd;
+	// // UE_LOG(LogInventorySystem, Log, TEXT("PostReplicatedAdd: %s "), *Instance->GetName())
+}
+
+void FInvSys_ContainerEntry::PostReplicatedChange(const FFastArraySerializer& InArraySerializer)
+{
+	// if (Instance == nullptr)
+	// {
+	// 	UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, Instance is nullptr."), __FUNCTION__)
+	// 	return;
+	// }
+	// Instance->ReplicateState = EInvSys_ReplicateState::PostChange;
+	// // UE_LOG(LogInventorySystem, Log, TEXT("PostReplicatedChange: %s "), *Instance->GetName())
+}
+
 FString FInvSys_ContainerEntry::GetDebugString() const
 {
-	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef;
-	if (Instance != nullptr)
+	if (Instance == nullptr)
 	{
-		ItemDef = Instance->GetItemDefinition();
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, Instance is nullptr."), __FUNCTION__)
+		return "None";
 	}
+	return FString::Printf(TEXT("%s -- %s"), *GetNameSafe(Instance), *Instance->GetItemDisplayName().ToString());
+}
 
-	return FString::Printf(TEXT("%s (%d x %s)"), *GetNameSafe(Instance), StackCount, *GetNameSafe(ItemDef));
+void FInvSys_ContainerList::PreReplicatedRemove(const TArrayView<int32>& RemovedIndices, int32 FinalSize)
+{
+	for (int32 RemovedIndex : RemovedIndices)
+	{
+		FInvSys_ContainerEntry& Entry = Entries[RemovedIndex];
+		if (Entry.Instance && IsValid(Entry.Instance))
+		{
+			Entry.Instance->ReplicateState = EInvSys_ReplicateState::PreRemove;
+			Entry.Instance->PreReplicatedRemove();
+		}
+	}
+}
+
+void FInvSys_ContainerList::PostReplicatedAdd(const TArrayView<int32>& AddedIndices, int32 FinalSize)
+{
+	for (int32 AddIndex : AddedIndices)
+	{
+		FInvSys_ContainerEntry& Entry = Entries[AddIndex];
+		if (Entry.Instance && IsValid(Entry.Instance))
+		{
+			Entry.Instance->ReplicateState = EInvSys_ReplicateState::PostAdd;
+		}
+	}
+}
+
+void FInvSys_ContainerList::PostReplicatedChange(const TArrayView<int32>& ChangedIndices, int32 FinalSize)
+{
+	for (int32 ChangedIndex : ChangedIndices)
+	{
+		FInvSys_ContainerEntry& Entry = Entries[ChangedIndex];
+		if (Entry.Instance && IsValid(Entry.Instance))
+		{
+			Entry.Instance->ReplicateState = EInvSys_ReplicateState::PostChange;
+		}
+	}
 }
 
 void FInvSys_ContainerList::RemoveAll()
@@ -57,6 +127,19 @@ bool FInvSys_ContainerList::RemoveEntry(UInvSys_InventoryItemInstance* Instance)
 	}
 	UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, 物品实例在容器内不存在."), __FUNCTION__)
 	return false;
+}
+
+void FInvSys_ContainerList::GetAllItems(TArray<UInvSys_InventoryItemInstance*>& OutArray) const
+{
+	// bug::物品对象的指针存在，但目标位置的对象缺并未创建
+	OutArray.Reserve(Entries.Num());
+	for (const FInvSys_ContainerEntry& Entry : Entries)
+	{
+		if (Entry.Instance != nullptr && IsValid(Entry.Instance) && Entry.Instance->IsA<UInvSys_InventoryItemInstance>())
+		{
+			OutArray.Add(Entry.Instance);
+		}
+	}
 }
 
 UInvSys_InventoryItemInstance* FInvSys_ContainerList::FindItemInstance(FGuid ItemUniqueID) const

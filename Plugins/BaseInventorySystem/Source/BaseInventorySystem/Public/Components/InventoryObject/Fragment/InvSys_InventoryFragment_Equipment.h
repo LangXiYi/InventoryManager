@@ -36,16 +36,16 @@ public:
 
 	virtual void InitInventoryFragment(UObject* PreEditFragment) override;
 	
-	virtual UInvSys_InventoryItemInstance* EquipItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef);
+	virtual UInvSys_InventoryItemInstance* EquipItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount = 1);
 
 	virtual UInvSys_InventoryItemInstance* EquipItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
 
 	virtual bool UnEquipItemInstance();
 
 	UFUNCTION(BlueprintPure, Category = "Inventory Fragment|Equipment")
-	FORCEINLINE bool HasEquipmentItems() const;
+	bool HasEquipmentItems() const;
 
-	FORCEINLINE UInvSys_InventoryItemInstance* GetEquipItemInstance() const;
+	UInvSys_InventoryItemInstance* GetEquipItemInstance() const;
 
 protected:
 	virtual bool ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags) override;

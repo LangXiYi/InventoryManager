@@ -77,3 +77,4 @@ DerivedDataCache/*
 
 # Custom Ignore Files
 /Content/ClassicRPGUI_2
+/Packages/*

@@ -104,7 +104,7 @@ public:
 
 	void FindAllFreeGridItems(TArray<UGridInvSys_ContainerGridItemWidget*>& OutArray, const TArray<UWidget*>& Ignores = {}) const;
 	
-	FORCEINLINE int32 GetContainerGridID() const;
+	FORCEINLINE int32 GetContainerGridID() const { return ContainerGridID; }
 
 	FORCEINLINE FIntPoint GetContainerGridSize() const { return ContainerGridSize; }
 

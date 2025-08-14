@@ -28,11 +28,6 @@ void UInvSys_InventoryWidget::NativeConstruct()
 	Super::NativeConstruct();
 }
 
-UInvSys_InventoryComponent* UInvSys_InventoryWidget::GetInventoryComponent() const
-{
-	return InventoryComponent.Get();
-}
-
 FGameplayTag UInvSys_InventoryWidget::GetSlotTag() const
 {
 	check(InventoryObject)

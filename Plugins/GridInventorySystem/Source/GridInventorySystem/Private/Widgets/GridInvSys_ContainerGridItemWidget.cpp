@@ -76,36 +76,6 @@ void UGridInvSys_ContainerGridItemWidget::RemoveItemInstance()
 	OnRemoveItemInstance();
 }
 
-UGridInvSys_ContainerGridWidget* UGridInvSys_ContainerGridItemWidget::GetContainerGridWidget() const
-{
-	return ContainerGridWidget;
-}
-
-FIntPoint UGridInvSys_ContainerGridItemWidget::GetPosition() const
-{
-	return Position;
-}
-
-FIntPoint UGridInvSys_ContainerGridItemWidget::GetOriginPosition() const
-{
-	return OriginGridItemWidget ? OriginGridItemWidget->GetPosition() : GetPosition();
-}
-
-UGridInvSys_ContainerGridItemWidget* UGridInvSys_ContainerGridItemWidget::GetOriginGridItemWidget() const
-{
-	return OriginGridItemWidget;
-}
-
-bool UGridInvSys_ContainerGridItemWidget::IsOccupied()
-{
-	return bIsOccupied;
-}
-
-EGridInvSys_ItemDirection UGridInvSys_ContainerGridItemWidget::GetItemDirection() const
-{
-	return EGridInvSys_ItemDirection::Horizontal;
-}
-
 FIntPoint UGridInvSys_ContainerGridItemWidget::CalculateGridItemSize(UInvSys_InventoryItemInstance* InItemInstance) const
 {
 	FIntPoint Result = FIntPoint(1, 1);
@@ -127,16 +97,6 @@ FIntPoint UGridInvSys_ContainerGridItemWidget::CalculateGridItemSize(UInvSys_Inv
 		}
 	}
 	return Result;
-}
-
-FName UGridInvSys_ContainerGridItemWidget::GetItemUniqueID() const
-{
-	return NAME_None;
-}
-
-FName UGridInvSys_ContainerGridItemWidget::GetSlotName() const
-{
-	return NAME_None;
 }
 
 TArray<UWidget*> UGridInvSys_ContainerGridItemWidget::GetOccupiedGridItems()

@@ -102,11 +102,6 @@ bool UGridInvSys_ContainerGridWidget::FindValidPosition(FIntPoint ItemSize, FInt
 	return false;
 }
 
-int32 UGridInvSys_ContainerGridWidget::GetContainerGridID() const
-{
-	return ContainerGridID;
-}
-
 bool UGridInvSys_ContainerGridWidget::IsValidPosition(const FIntPoint Position) const
 {
 	return !(Position.X < 0 || Position.Y < 0 || Position.X >= ContainerGridSize.X || Position.Y >= ContainerGridSize.Y);
@@ -836,6 +831,15 @@ void UGridInvSys_ContainerGridWidget::ShowDragGridEffect(FIntPoint Position, FIn
 
 void UGridInvSys_ContainerGridWidget::RemoveAllInventoryItem()
 {
+	int32 StartIndex = ContainerPanel->GetChildrenCount() - 1;
+	int32 EndIndex = ContainerGridSize.X * ContainerGridSize.Y;
+	// 倒叙移除物品控件， 0 ~ EndIndex 是 ContainerGridItem 不能移除
+	for (int Index =  StartIndex; Index >= EndIndex; ++Index)
+	{
+		UE_LOG(LogInventorySystem, Log, TEXT("移除布局中的物品 Index = %d"), Index);
+		ContainerPanel->RemoveChild(ContainerPanel->GetChildAt(Index));
+	}
+
 	TArray<UGridInvSys_ContainerGridItemWidget*> ItemWidgets = GetAllContainerGridItems();
 	for (UGridInvSys_ContainerGridItemWidget* ItemWidget : ItemWidgets)
 	{

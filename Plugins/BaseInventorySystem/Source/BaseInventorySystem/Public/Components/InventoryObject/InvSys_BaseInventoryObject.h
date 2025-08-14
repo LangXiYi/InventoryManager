@@ -34,7 +34,7 @@ public:
 	virtual void ConstructInventoryFragment(const TArray<UInvSys_BaseInventoryFragment*>& Fragments);
 
 	// [Server & Client] 在服务器创建库存对象后由库存组件的 OnRep_InventoryObjectList 调用
-	virtual void InitInventoryObject(UInvSys_InventoryObjectContent* InventoryObjectContent);
+	virtual void InitInventoryObject(UInvSys_InventoryComponent* InvComp, int32 InventoryObjectID);
 
 	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "Inventory Object")
 	void RefreshInventoryObject();
@@ -67,19 +67,19 @@ public:
 	 * Getter or Setter
 	 */
 
-	FORCEINLINE FGameplayTag GetInventoryObjectTag() const;
+	FGameplayTag GetInventoryObjectTag() const;
 
-	FORCEINLINE UInvSys_InventoryComponent* GetInventoryComponent() const;
+	UInvSys_InventoryComponent* GetInventoryComponent() const;
 
-	FORCEINLINE bool HasAuthority() const;
+	bool HasAuthority() const;
 
-	FORCEINLINE ENetMode GetNetMode() const;
+	ENetMode GetNetMode() const;
 
-	FORCEINLINE AActor* GetOwner() const;
+	AActor* GetOwner() const;
 
-	FORCEINLINE bool IsReadyForReplication() const;
+	bool IsReadyForReplication() const;
 	
-	FORCEINLINE bool IsUsingRegisteredSubObjectList() const;
+	bool IsUsingRegisteredSubObjectList() const;
 	
 	FORCEINLINE virtual bool IsSupportedForNetworking() const override { return true; }
 

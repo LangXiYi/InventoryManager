@@ -21,6 +21,8 @@ UInvSys_InventoryItemInstance::UInvSys_InventoryItemInstance()
 			// UE_LOG(LogInventorySystem, Error, TEXT("构建库存物品实例的 Outer[%s]！！！"), *InventoryComponent->GetOwner()->GetName())
 		}
 	}
+	ReplicateState = EInvSys_ReplicateState::PostAdd;
+
 }
 
 void UInvSys_InventoryItemInstance::PostDuplicate(bool bDuplicateForPIE)
@@ -33,10 +35,14 @@ void UInvSys_InventoryItemInstance::PostDuplicate(bool bDuplicateForPIE)
 		{
 			InventoryComponent = Cast<UInvSys_InventoryComponent>(MyOuter);
 			Owner_Private = InventoryComponent->GetOwner();
-			// UE_LOG(LogInventorySystem, Log, TEXT("PostDuplicate 库存物品实例的 Outer[%s]！！！"), *InventoryComponent->GetOwner()->GetName())
+#if WITH_EDITOR
+			UE_LOG(LogInventorySystem, Log, TEXT("%s::PostDuplicate 库存物品实例的 Outer[%s]！！！"), *GPlayInEditorContextString, *InventoryComponent->GetOwner()->GetName())
+#endif
 		}
 	}
+	ReplicateState = EInvSys_ReplicateState::PostAdd;
 }
+
 
 void UInvSys_InventoryItemInstance::PostRepNotifies()
 {
@@ -111,21 +117,6 @@ void UInvSys_InventoryItemInstance::OnRep_IsDragging()
 	}
 }
 
-void UInvSys_InventoryItemInstance::SetItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> NewItemDef)
-{
-	ItemDefinition = NewItemDef;
-}
-
-void UInvSys_InventoryItemInstance::SetItemUniqueID(FGuid Guid)
-{
-	ItemUniqueID = Guid;
-}
-
-void UInvSys_InventoryItemInstance::SetSlotTag(FGameplayTag Tag)
-{
-	InventoryObjectTag = Tag;
-}
-
 void UInvSys_InventoryItemInstance::SetIsDraggingItem(bool NewDragState)
 {
 	if (bIsDragging != NewDragState)
@@ -139,29 +130,6 @@ void UInvSys_InventoryItemInstance::SetIsDraggingItem(bool NewDragState)
 	}
 }
 
-bool UInvSys_InventoryItemInstance::IsDraggingItemInstance() const
-{
-	return bIsDragging;
-}
-
-TSubclassOf<UInvSys_InventoryItemDefinition> UInvSys_InventoryItemInstance::GetItemDefinition() const
-{
-	check(ItemDefinition);
-	return ItemDefinition;
-}
-
-const FGuid& UInvSys_InventoryItemInstance::GetItemUniqueID() const
-{
-	check(ItemUniqueID.IsValid());
-	return ItemUniqueID;
-}
-
-const FGameplayTag& UInvSys_InventoryItemInstance::GetInventoryObjectTag() const
-{
-	check(InventoryObjectTag.IsValid())
-	return InventoryObjectTag;
-}
-
 int32 UInvSys_InventoryItemInstance::GetItemRemainStackCount() const
 {
 	auto BaseItemFragment = FindFragmentByClass<UInvSys_ItemFragment_BaseItem>();
@@ -172,17 +140,6 @@ int32 UInvSys_InventoryItemInstance::GetItemMaxStackCount() const
 {
 	auto BaseItemFragment = FindFragmentByClass<UInvSys_ItemFragment_BaseItem>();
 	return BaseItemFragment ? BaseItemFragment->MaxStackCount : 1;
-}
-
-int32 UInvSys_InventoryItemInstance::GetItemStackCount() const
-{
-	return StackCount;
-}
-
-void UInvSys_InventoryItemInstance::SetItemStackCount(int32 NewStackCount)
-{
-	check(NewStackCount <= GetItemMaxStackCount())
-	StackCount = NewStackCount;
 }
 
 void UInvSys_InventoryItemInstance::BroadcastAddItemInstanceMessage()

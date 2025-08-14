@@ -17,8 +17,7 @@ class BASEINVENTORYSYSTEM_API UInvSys_InventoryFragment_Container : public UInvS
 public:
 	UInvSys_InventoryFragment_Container();
 
-	virtual void InitInventoryFragment(UObject* PreEditFragment) override;
-
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Fragment|Container")
 	virtual void RefreshInventoryFragment() override;
 
 	/**
@@ -29,6 +28,7 @@ public:
 	T* AddItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, const ArgList&... Args)
 	{
 		T* ItemInstance = ContainerList.AddDefinition<T>(ItemDef, StackCount, Args...);
+		OnContainerPostAdd(ItemInstance);
 		MarkItemInstanceDirty(ItemInstance);
 		return ItemInstance;
 	}
@@ -41,14 +41,9 @@ public:
 	T* AddItemInstance(UInvSys_InventoryItemInstance* ItemInstance, const ArgList&... Args)
 	{
 		T* NewItemInstance = ContainerList.AddInstance<T>(ItemInstance, Args...);
+		OnContainerPostAdd(NewItemInstance);
 		MarkItemInstanceDirty(NewItemInstance);
 		return NewItemInstance;
-	}
-
-	/** 堆叠物品 */
-	void StackItemInstance(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 Delta)
-	{
-		
 	}
 
 	/**
@@ -57,6 +52,7 @@ public:
 	 * @param StackableItems 输出物品实例 
 	 * @return 所有物品实例可用的堆叠数量
 	 */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Fragment|Container")
 	int32 FindStackableItemInstances(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
 	                                 TArray<UInvSys_InventoryItemInstance*>& StackableItems);
 
@@ -85,33 +81,37 @@ public:
 		}
 	}
 
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Fragment|Container")
 	void UpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance, int32 NewStackCount);
 
 	/** 更新物品的拖拽状态 */
-	FORCEINLINE void UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance, bool NewState);
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Fragment|Container")
+	void UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance, bool NewState);
 
 	/** 移除所有物品 */
-	FORCEINLINE void RemoveAllItemInstance();
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Fragment|Container")
+	void RemoveAllItemInstance();
 
 	/** 移除指定物品 */
-	FORCEINLINE bool RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Fragment|Container")
+	bool RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
 
 	/** 获取当前容器内的所有物品 */
-	FORCEINLINE bool ContainsItem(UInvSys_InventoryItemInstance* ItemInstance) const;
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Fragment|Container")
+	bool ContainsItem(UInvSys_InventoryItemInstance* ItemInstance) const;
 
 	/** 获取当前容器内的所有物品 */
-	FORCEINLINE void GetAllItemInstance(TArray<UInvSys_InventoryItemInstance*>& OutArray) const;
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Fragment|Container")
+	void GetAllItemInstance(TArray<UInvSys_InventoryItemInstance*>& OutArray) const;
 
 	/** 标记指定物品为脏 */
 	void MarkItemInstanceDirty(UInvSys_InventoryItemInstance* ItemInstance);
 
-	/** 标记当前容器为脏 */
-	void MarkContainerDirty();
+	virtual void MarkInventoryModuleDirty() override;
 
 protected:
-	virtual void NativeOnItemStackChange(FInvSys_InventoryStackChangeMessage ChangeInfo) {}
-	virtual void NativeOnContainerEntryAdded(FInvSys_InventoryItemChangedMessage ChangeInfo) {}
-	virtual void NativeOnContainerEntryRemove(FInvSys_InventoryItemChangedMessage ChangeInfo) {}
+	virtual void OnContainerPostAdd(UInvSys_InventoryItemInstance* ItemInstance) {}
+	virtual void OnContainerPreRemove(UInvSys_InventoryItemInstance* ItemInstance) {}
 
 	/**
 	 * 该函数参考 ActorChannel 的 KeyNeedsToReplicate，使用映射记录不同元素的脏标记
@@ -124,8 +124,6 @@ protected:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 private:
-	void Debug_PrintContainerAllItems();
-
 	template<class C, class V>
 	void InitItemInstanceProps(UInvSys_InventoryItemInstance* ItemInstance, const V& Value, bool bIsBroadcast = true)
 	{

@@ -14,7 +14,6 @@
 class UInvSys_InventoryComponent;
 class UInvSys_InventoryItemInstance;
 class UInvSys_BaseInventoryFragment;
-struct FInvSys_ContainerEntry;
 
 USTRUCT(BlueprintType)
 struct FInvSys_InventoryItemChangedMessage
@@ -59,17 +58,9 @@ struct FInvSys_ContainerEntry : public FFastArraySerializerItem
 
 	friend struct FInvSys_ContainerList;
 
-public:
 	UPROPERTY()
 	TObjectPtr<UInvSys_InventoryItemInstance> Instance = nullptr;
 
-	UPROPERTY()
-	int32 StackCount = 0;
-	
-	UPROPERTY(NotReplicated)
-	int32 LastObservedCount = INDEX_NONE;
-
-public:
 	/**
 	 * Called right before deleting element during replication.
 	 * 
@@ -78,12 +69,8 @@ public:
 	 * NOTE: intentionally not virtual; invoked via templated code, @see FExampleItemEntry
 	 * NOTE: 函数执行优先级在对象的 RepNotify 之前
 	 */
-	FORCEINLINE void PreReplicatedRemove(const struct FFastArraySerializer& InArraySerializer)
-	{
-		Instance->ReplicateState = EInvSys_ReplicateState::PreRemove;
-		// UE_LOG(LogInventorySystem, Log, TEXT("PreReplicatedRemove: %s "), *Instance->GetName())
-		Instance->PreReplicatedRemove();
-	}
+	void PreReplicatedRemove(const struct FFastArraySerializer& InArraySerializer);
+
 	/**
 	 * Called after adding and serializing a new element
 	 *
@@ -92,11 +79,8 @@ public:
 	 * NOTE: intentionally not virtual; invoked via templated code, @see FExampleItemEntry
 	 * NOTE: 函数执行优先级在对象的 RepNotify 之前
 	 */
-	FORCEINLINE void PostReplicatedAdd(const struct FFastArraySerializer& InArraySerializer)
-	{
-		Instance->ReplicateState = EInvSys_ReplicateState::PostAdd;
-		// UE_LOG(LogInventorySystem, Log, TEXT("PostReplicatedAdd: %s "), *Instance->GetName())
-	}
+	void PostReplicatedAdd(const struct FFastArraySerializer& InArraySerializer);
+
 	/**
 	 * Called after updating an existing element with new data
 	 *
@@ -104,23 +88,19 @@ public:
 	 * NOTE: intentionally not virtual; invoked via templated code, @see FExampleItemEntry
 	 * NOTE: 函数执行优先级在对象的 RepNotify 之前
 	 */
-	FORCEINLINE void PostReplicatedChange(const struct FFastArraySerializer& InArraySerializer)
-	{
-		Instance->ReplicateState = EInvSys_ReplicateState::PostChange;
-		// UE_LOG(LogInventorySystem, Log, TEXT("PostReplicatedChange: %s "), *Instance->GetName())
-	}
+	void PostReplicatedChange(const struct FFastArraySerializer& InArraySerializer);
 
 	FString GetDebugString() const;
 
 	template<class T = UInvSys_InventoryItemInstance>
-	T* GetInstance() const
+	FORCEINLINE T* GetInstance() const
 	{
 		return (T*)Instance;
 	}
 
-	bool IsValid() const
+	FORCEINLINE bool IsValid() const
 	{
-		return Instance->IsValidLowLevel();
+		return Instance != nullptr;
 	}
 };
 
@@ -145,12 +125,21 @@ public:
 		SetDeltaSerializationEnabled(false);
 	}
 
+	void PreReplicatedRemove(const TArrayView<int32>& RemovedIndices, int32 FinalSize);
+
+	void PostReplicatedAdd(const TArrayView<int32>& AddedIndices, int32 FinalSize);
+
+	void PostReplicatedChange(const TArrayView<int32>& ChangedIndices, int32 FinalSize);
+
 public:
 	UPROPERTY()
 	TArray<FInvSys_ContainerEntry> Entries;
 
 	UPROPERTY(NotReplicated)
 	TObjectPtr<UInvSys_BaseInventoryFragment> InventoryFragment;
+
+	// UPROPERTY(NotReplicated)
+	// TArray<>
 
 public:
 	/**
@@ -174,18 +163,7 @@ public:
 	bool RemoveEntry(UInvSys_InventoryItemInstance* Instance);
 
 	/** 获取当前容器的所有物品实例，然后将其转换为指定类型。 */
-	template<class T = UInvSys_InventoryItemInstance>
-	void GetAllItems(TArray<T*>& OutArray) const
-	{
-		OutArray.Reserve(Entries.Num());
-		for (const FInvSys_ContainerEntry& Entry : Entries)
-		{
-			if (Entry.Instance && Entry.Instance->IsA<T>())
-			{
-				OutArray.Add((T*)Entry.Instance);
-			}
-		}
-	}
+	void GetAllItems(TArray<UInvSys_InventoryItemInstance*>& OutArray) const;
 
 	/** 根据物品的唯一ID查找物品 */
 	UInvSys_InventoryItemInstance* FindItemInstance(FGuid ItemUniqueID) const;
@@ -227,15 +205,15 @@ protected:
 
 	void BroadcastAddEntryMessage(UInvSys_InventoryItemInstance* ItemInstance) const;
 
-	FORCEINLINE UWorld* GetWorld() const;
+	UWorld* GetWorld() const;
 
-	FORCEINLINE bool HasAuthority() const;
+	bool HasAuthority() const;
 
-	FORCEINLINE ENetMode GetNetMode() const;
+	ENetMode GetNetMode() const;
 
-	FORCEINLINE UInvSys_InventoryComponent* GetInventoryComponent() const;
+	UInvSys_InventoryComponent* GetInventoryComponent() const;
 
-	FORCEINLINE FGameplayTag GetInventoryObjectTag() const;
+	FGameplayTag GetInventoryObjectTag() const;
 
 private:
 	template<class C, class V>
@@ -263,11 +241,12 @@ T* FInvSys_ContainerList::AddDefinition(TSubclassOf<UInvSys_InventoryItemDefinit
 
 	FInvSys_ContainerEntry& NewEntry = Entries.AddDefaulted_GetRef();
 	T* Result = NewObject<T>(InventoryFragment->GetInventoryComponent());
+	check(Result)
 	// Result->SetInventoryComponent(InventoryFragment->GetInventoryComponent());
 	Result->SetItemDefinition(ItemDef);
+	Result->SetItemStackCount(StackCount);
 	Result->SetItemUniqueID(FGuid::NewGuid());
 	Result->SetSlotTag(InventoryFragment->GetInventoryTag());
-	Result->SetItemStackCount(StackCount);
 
 	for (const UInvSys_InventoryItemFragment* Fragment : GetDefault<UInvSys_InventoryItemDefinition>(ItemDef)->GetFragments())
 	{
@@ -278,7 +257,6 @@ T* FInvSys_ContainerList::AddDefinition(TSubclassOf<UInvSys_InventoryItemDefinit
 	}
 		
 	NewEntry.Instance = Result;
-	NewEntry.StackCount = StackCount;
 
 	//执行可变参数模板，将参数列表中的值赋予目标对象。
 	int32 Arr[] = {0, (InitItemInstanceProps<T>(Result, Args, false), 0)...}; 
@@ -334,34 +312,3 @@ struct TStructOpsTypeTraits< FInvSys_ContainerList > : public TStructOpsTypeTrai
 {
 	enum { WithNetDeltaSerializer = true };
 };
-
-/*
-	自动堆叠物品！！
-	int32 ItemStackCount = ItemInstance->StackCount;
-	if (auto PickupItemFragment = ItemInstance->FindFragmentByClass<UInvSys_ItemFragment_PickUpItem>())
-	{
-		if (PickupItemFragment->bAllowStack)
-		{
-			int32 AddItemStackCount = ItemInstance->GetItemStackCount();
-			//在容器内查找具有相同物品定义的物品实例
-			UInvSys_InventoryItemInstance* StackItemInstance = FindItemInstance(ItemInstance->GetItemDefinition());
-			if (StackItemInstance)
-			{
-				int32 NewItemStackCount = StackItemInstance->GetItemStackCount() + AddItemStackCount;
-				if (NewItemStackCount <= PickupItemFragment->MaxStackCount)
-				{
-					StackItemInstance->SetItemStackCount(NewItemStackCount);
-					return StackItemInstance;
-				}
-				else
-				{
-					StackItemInstance->SetItemStackCount(PickupItemFragment->MaxStackCount);
-					ItemStackCount = NewItemStackCount - PickupItemFragment->MaxStackCount;
-				}
-			}
-		}
-	}
-	达到最大堆叠上限，需要创建新的物品实例
-	TargetItemInstance->SetItemStackCount(ItemStackCount);
-
- */

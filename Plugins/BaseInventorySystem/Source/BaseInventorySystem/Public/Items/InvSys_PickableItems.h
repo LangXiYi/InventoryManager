@@ -44,7 +44,7 @@ public:
 	virtual void BeginPlay() override;
 
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Pickable Items")
-	virtual bool PickupItem(UInvSys_InventoryComponent* InvComp);
+	virtual bool PickupItem(UInvSys_InventoryComponent* InvComp, bool bIsAutoEquip = true);
 
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Pickable Items")
 	void InitPickableItemInstance(UInvSys_InventoryItemInstance* ItemInstance);

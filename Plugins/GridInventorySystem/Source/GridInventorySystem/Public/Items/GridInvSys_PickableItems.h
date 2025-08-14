@@ -16,5 +16,5 @@ public:
 	AGridInvSys_PickableItems();
 
 public:
-	virtual bool PickupItem(UInvSys_InventoryComponent* InvComp) override;
+	virtual bool PickupItem(UInvSys_InventoryComponent* InvComp, bool bIsAutoEquip = true) override;
 };

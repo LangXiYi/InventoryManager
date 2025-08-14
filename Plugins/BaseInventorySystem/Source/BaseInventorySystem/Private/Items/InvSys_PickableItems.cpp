@@ -35,8 +35,11 @@ void AInvSys_PickableItems::OnConstruction(const FTransform& Transform)
 	Super::OnConstruction(Transform);
 	if (PickableItemInstance)
 	{
-		OnRep_PickableItemInstance();
-		MarkItemDirty();
+		if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
+		{
+			OnRep_PickableItemInstance();
+			MarkItemDirty();
+		}
 	}
 }
 
@@ -46,7 +49,7 @@ void AInvSys_PickableItems::BeginPlay()
 
 }
 
-bool AInvSys_PickableItems::PickupItem(UInvSys_InventoryComponent* InvComp)
+bool AInvSys_PickableItems::PickupItem(UInvSys_InventoryComponent* InvComp, bool bIsAutoEquip)
 {
 	checkNoEntry();
 	return false; 
@@ -57,15 +60,9 @@ void AInvSys_PickableItems::InitPickableItemInstance(UInvSys_InventoryItemInstan
 	check(HasAuthority())
 	check(ItemInstance)
 	PickableItemInstance = ItemInstance;
-	auto DropItemFragment = FindFragmentByClass<UInvSys_ItemFragment_DragDrop>();
-	if (DropItemFragment)
+	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
 	{
-		UStaticMesh* StaticMesh = DropItemFragment->DropDisplayMesh.LoadSynchronous();
-		if (StaticMesh)
-		{
-			ItemMesh->SetStaticMesh(StaticMesh);
-		}
-		ItemMesh->SetRelativeLocation(DropItemFragment->DropLocationOffset);
+		OnRep_PickableItemInstance();
 	}
 	MarkItemDirty();
 }

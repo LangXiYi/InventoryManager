@@ -19,6 +19,7 @@ enum class EGridInvSys_ContainerLayoutDataType
 
 class UGridInvSys_ContainerGridLayoutWidget;
 class UGridInvSys_InventoryItemInstance;
+
 /**
  * 
  */
@@ -32,7 +33,8 @@ public:
 
 	bool UpdateItemInstancePosition(UGridInvSys_InventoryItemInstance* GridItemInstance, const FGridInvSys_ItemPosition& NewPosition);
 
-	bool HasEnoughFreeSpace(FIntPoint ToPosition, int32 ToGridID, FIntPoint ItemSize);
+	/** 在方形范围内是否未被占据 */
+	bool IsUnoccupiedInSquareRange(int32 ToGridID, FIntPoint ToPosition, FIntPoint ItemSize);
 
 	TArray<int32> GetItemGridOccupiedIndexes(UGridInvSys_InventoryItemInstance* ItemInstance) const;
 
@@ -51,8 +53,8 @@ public:
 	// virtual void RemoveAllItemInstance() override;
 
 protected:
-	virtual void NativeOnContainerEntryAdded(FInvSys_InventoryItemChangedMessage ChangeInfo) override;
-	virtual void NativeOnContainerEntryRemove(FInvSys_InventoryItemChangedMessage ChangeInfo) override;
+	virtual void OnContainerPostAdd(UInvSys_InventoryItemInstance* ItemInstance) override;
+	virtual void OnContainerPreRemove(UInvSys_InventoryItemInstance* ItemInstance) override;
 	
 private:
 	void UpdateContainerData_FromEquip();

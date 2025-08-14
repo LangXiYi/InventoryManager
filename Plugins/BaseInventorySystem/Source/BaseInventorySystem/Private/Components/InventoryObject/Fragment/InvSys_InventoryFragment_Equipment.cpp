@@ -37,7 +37,7 @@ void UInvSys_InventoryFragment_Equipment::InitInventoryFragment(UObject* PreEdit
 }
 
 UInvSys_InventoryItemInstance* UInvSys_InventoryFragment_Equipment::EquipItemDefinition(
-	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef)
+	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount)
 {
 	check(HasAuthority())
 	if (HasEquipmentItems())
@@ -80,6 +80,7 @@ UInvSys_InventoryItemInstance* UInvSys_InventoryFragment_Equipment::EquipItemDef
 	}
 	EquipmentInstance = TempItemInstance;
 	EquipmentInstance->SetItemDefinition(ItemDef);
+	EquipmentInstance->SetItemStackCount(StackCount);
 	EquipmentInstance->SetItemUniqueID(FGuid::NewGuid());
 	EquipmentInstance->SetSlotTag(GetInventoryTag());
 	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
@@ -123,6 +124,7 @@ UInvSys_InventoryItemInstance* UInvSys_InventoryFragment_Equipment::EquipItemIns
 	 * todo::直接使用 SetInventoryComponent 是否会导致客户端同步失效？
 	 */
 	UInvSys_InventoryItemInstance* TargetItemInstance = ItemInstance;
+	check(GetInventoryComponent())
 	if (ItemInstance->GetInventoryComponent() != GetInventoryComponent())
 	{
 		TargetItemInstance = DuplicateObject(ItemInstance, GetInventoryComponent());

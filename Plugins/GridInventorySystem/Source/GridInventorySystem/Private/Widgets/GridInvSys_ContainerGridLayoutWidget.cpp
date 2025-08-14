@@ -37,7 +37,8 @@ void UGridInvSys_ContainerGridLayoutWidget::RefreshInventoryWidget(UInvSys_BaseI
 		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
 			TEXT("刷新容器布局控件 --- { 容器标签 = %s, 当前物品数量 = %d }"),
 			*GetInventoryObject()->GetInventoryObjectTag().ToString(), AllItemInstances.Num())
-		
+
+		// bug::与 Add 消息重复添加
 		for (UInvSys_InventoryItemInstance* TempItemInstance : AllItemInstances)
 		{
 			if (TempItemInstance)
@@ -87,6 +88,16 @@ void UGridInvSys_ContainerGridLayoutWidget::NativeConstruct()
 			// 	*Message.ItemInstance->GetName(),
 			// 	*Message.ItemInstance->GetItemDisplayName().ToString(),
 			// 	*GridItemInstance->GetItemPosition().ToString())
+			// todo::找到控件后复用？
+			UGridInvSys_InventoryItemInstance* GridItemInstance = Cast<UGridInvSys_InventoryItemInstance>(Message.ItemInstance);
+			UGridInvSys_ContainerGridItemWidget* GridItemWidget = FindGridItemWidgetByPos(GridItemInstance->GetItemPosition());
+			if (GridItemWidget)
+			{
+				if (GridItemWidget->GetItemInstance() == Message.ItemInstance)
+				{
+					GridItemWidget->RemoveItemInstance();
+				}
+			}
 			AddItemInstance(Message.ItemInstance);
 		}
 	};

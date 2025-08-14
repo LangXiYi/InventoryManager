@@ -28,12 +28,22 @@ public:
 	/** 刷新库存片段 */
 	virtual void RefreshInventoryFragment() {}
 
+	/** 模块内数据修改后必须调用该函数标记 */
+	virtual void MarkInventoryModuleDirty();
+
 public:
 	/**
 	 * Getter or Setter
 	 */
 
-	FORCEINLINE UInvSys_InventoryComponent* GetInventoryComponent() const;
+	bool HasAuthority() const;
+
+	ENetMode GetNetMode() const;
+
+	FORCEINLINE UInvSys_InventoryComponent* GetInventoryComponent() const
+	{
+		return InventoryComponent;
+	}
 
 	template<class T>
 	FORCEINLINE UInvSys_InventoryComponent* GetInventoryComponent() const
@@ -41,15 +51,20 @@ public:
 		return (T*)InventoryComponent;
 	}
 
-	FORCEINLINE FGameplayTag GetInventoryTag() const;
+	FORCEINLINE FGameplayTag GetInventoryTag() const
+	{
+		return InventoryTag;
+	}
 
-	FORCEINLINE UInvSys_BaseInventoryObject* GetInventoryObject() const;
+	FORCEINLINE UInvSys_BaseInventoryObject* GetInventoryObject() const
+	{
+		return InventoryObject;
+	}
 
-	FORCEINLINE bool HasAuthority() const;
-
-	FORCEINLINE ENetMode GetNetMode() const;
-
-	FORCEINLINE AActor* GetOwner() const;
+	FORCEINLINE AActor* GetOwner() const
+	{
+		return Owner_Private;
+	}
 
 	FORCEINLINE virtual bool IsSupportedForNetworking() const override { return true; }
 
@@ -60,6 +75,10 @@ public:
 
 	virtual bool ReplicateSubobjects(UActorChannel *Channel, FOutBunch *Bunch, FReplicationFlags *RepFlags);
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+public:
+	int32 InventoryModuleID = INDEX_NONE;
+	int32 InventoryModuleRepKey = INDEX_NONE;
 
 protected:
 	// 客户端该属性需要等待 InitInventoryObject 执行才能初始化
@@ -74,6 +93,9 @@ protected:
 
 	// UPROPERTY(EditDefaultsOnly, Category = "Inventory Fragment", meta = (ClampMin = 0))
 	int32 Priority;	// 执行 OnRefreshInventoryObject 时的优先级，数值越小的对象执行优先级越高
+
+	// Channel wants to go dormant (it will check during tick if it can go dormant)
+	bool bPendingDormancy = true;
 
 private:
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Fragment", meta = (AllowPrivateAccess))

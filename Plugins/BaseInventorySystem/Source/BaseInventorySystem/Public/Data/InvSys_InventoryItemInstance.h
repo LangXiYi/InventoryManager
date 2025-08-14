@@ -108,46 +108,76 @@ public:
 	}
 
 	/** 设置物品的定义类，保存了当前对象所有定义相关信息。 */
-	FORCEINLINE void SetItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> NewItemDef);
+	FORCEINLINE void SetItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> NewItemDef)
+	{
+		ItemDefinition = NewItemDef;
+	}
 
 	/** 设置物品的唯一ID，目前并未实际使用该属性。 */
-	FORCEINLINE void SetItemUniqueID(FGuid Guid);
+	FORCEINLINE void SetItemUniqueID(FGuid Guid)
+	{
+		ItemUniqueID = Guid;
+	}
+
 
 	/** 设置物品的库存标签，主要用来表示当前物品在库存组件中的位置。 */
-	FORCEINLINE void SetSlotTag(FGameplayTag Tag);
+	FORCEINLINE void SetSlotTag(FGameplayTag Tag)
+	{
+		InventoryObjectTag = Tag;
+	}
 
 	/** 设置物品的拖拽状态，同时广播该状态更新。 */
-	FORCEINLINE void SetIsDraggingItem(bool NewDragState);
+	void SetIsDraggingItem(bool NewDragState);
 
 	/** 判断当前物品是否处在拖拽状态 */
-	FORCEINLINE bool IsDraggingItemInstance() const;
+	FORCEINLINE bool IsDraggingItemInstance() const
+	{
+		return bIsDragging;
+	}
 
 	/** 获取物品的定义信息 */
-	FORCEINLINE TSubclassOf<UInvSys_InventoryItemDefinition> GetItemDefinition() const;
+	FORCEINLINE TSubclassOf<UInvSys_InventoryItemDefinition> GetItemDefinition() const
+	{
+		return ItemDefinition;
+	}
 
 	/** 获取物品当前所在的库存组件 */
 	template<class T = UInvSys_InventoryComponent>
 	FORCEINLINE T* GetInventoryComponent() const
 	{
-		check(InventoryComponent);
+		// check(InventoryComponent);
 		return (T*)InventoryComponent;
 	}
 
 	/** 获取物品的唯一ID */
-	FORCEINLINE const FGuid& GetItemUniqueID() const;
+	FORCEINLINE const FGuid& GetItemUniqueID() const
+	{
+		check(ItemUniqueID.IsValid());
+		return ItemUniqueID;
+	}
 
 	/** 获取物品的库存对象标签 */
-	FORCEINLINE const FGameplayTag& GetInventoryObjectTag() const;
+	FORCEINLINE const FGameplayTag& GetInventoryObjectTag() const
+	{
+		check(InventoryObjectTag.IsValid())
+		return InventoryObjectTag;
+	}
 
-	FORCEINLINE int32 GetItemRemainStackCount() const;
-	FORCEINLINE int32 GetItemMaxStackCount() const;
-	FORCEINLINE int32 GetItemStackCount() const;
+	int32 GetItemRemainStackCount() const;
+	int32 GetItemMaxStackCount() const;
+	int32 GetItemStackCount() const
+	{
+		return StackCount;
+	}
 
-	FORCEINLINE void SetItemStackCount(int32 NewStackCount);
+	FORCEINLINE void SetItemStackCount(int32 NewStackCount)
+	{
+		StackCount = NewStackCount;
+	}
 	
-	FORCEINLINE bool HasAuthority() const;
+	bool HasAuthority() const;
 
-	FORCEINLINE ENetMode GetNetMode() const;
+	ENetMode GetNetMode() const;
 
 	FORCEINLINE virtual bool IsSupportedForNetworking() const override { return true; }
 

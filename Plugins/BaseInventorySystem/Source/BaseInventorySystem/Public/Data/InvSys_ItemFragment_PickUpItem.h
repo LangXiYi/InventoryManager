@@ -12,9 +12,6 @@ class BASEINVENTORYSYSTEM_API UInvSys_ItemFragment_PickUpItem : public UInvSys_I
 {
 	GENERATED_BODY()
 public:
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment")
-	TSubclassOf<AActor> PickUpActor;
-
 	/** 拾取物品时优先放置的容器顺序 */
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Fragment")
 	TArray<FGameplayTag> ContainerPriority;

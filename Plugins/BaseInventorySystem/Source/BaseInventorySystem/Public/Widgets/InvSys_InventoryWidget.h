@@ -32,7 +32,10 @@ public:
 	 * Getter or Setter
 	 */
 
-	FORCEINLINE UInvSys_InventoryComponent* GetInventoryComponent() const;
+	FORCEINLINE UInvSys_InventoryComponent* GetInventoryComponent() const
+	{
+		return InventoryComponent.Get();
+	}
 
 	template<class T>
 	FORCEINLINE T* GetInventoryComponent() const
@@ -40,9 +43,9 @@ public:
 		return (T*)GetInventoryComponent();		
 	}
 
-	FORCEINLINE FGameplayTag GetSlotTag() const;
+	FGameplayTag GetSlotTag() const;
 
-	FORCEINLINE UInvSys_BaseInventoryObject* GetInventoryObject();
+	UInvSys_BaseInventoryObject* GetInventoryObject();
 
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Container Grid Layout", meta = (ExposeOnSpawn))

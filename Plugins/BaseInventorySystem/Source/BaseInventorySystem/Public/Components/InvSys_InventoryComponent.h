@@ -29,16 +29,24 @@ class BASEINVENTORYSYSTEM_API UInvSys_InventoryComponent : public UActorComponen
 public:
 	UInvSys_InventoryComponent(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
-	/** 构建库存对象列表，推荐在BeginPlay阶段就调用该函数 */
+	/**
+	 * 构建库存对象列表，推荐在 BeginPlay 阶段就调用该函数
+	 */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
 	virtual void ConstructInventoryObjects();
 
-	/** 仅本地控制器，由用户手动调用。===> CreateDisplayWidget */
+	/**
+	 * 创建库存显示控件
+	 */
 	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "Inventory Component")
 	virtual UInvSys_InventoryLayoutWidget* CreateDisplayWidget(APlayerController* NewPlayerController);
 
+	/**
+	 * 根据物品定义信息装备物品
+	 */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
-	UInvSys_InventoryItemInstance* EquipItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, FGameplayTag SlotTag);
+	UInvSys_InventoryItemInstance* EquipItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
+		FGameplayTag SlotTag, int32 StackCount = 1);
 
 	/**
 	 * 装备物品实例，当 PayloadItems 不为空且存在容器模块时，自动将 PayloadItems 的所有成员添加到该容器模块内。
@@ -46,15 +54,28 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
 	UInvSys_InventoryItemInstance* EquipItemInstance(UInvSys_InventoryItemInstance* ItemInstance, FGameplayTag SlotTag);
 
+	/**
+	 * 卸下装备模块的装备
+	 */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
 	bool UnEquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
 
-	bool UnEquipItemInstance(const FGameplayTag& InventoryTag);
+	/**
+	 * 卸下对应标签的装备模块的装备
+	 */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
+	bool UnEquipItemInstanceByTag(const FGameplayTag& InventoryTag);
 
-	UFUNCTION(BlueprintCallable, Category = "Inventory Component")
+	/**
+	 * 目标物品是否在组件内被装备？
+	 */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory Component")
 	bool IsEquippedItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
 
-	UFUNCTION(BlueprintCallable, Category = "Inventory Component")
+	/**
+	 * 对应标签的装备模块是否已经装备物品？
+	 */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory Component")
 	bool HasEquippedItemInstance(FGameplayTag InventoryTag);
 
 	/**
@@ -63,14 +84,22 @@ public:
 	 */
 	template<class T, class... ArgList>
 	T* AddItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
-		FGameplayTag InventoryObjectTag,	int32 StackCount, const ArgList&... Args)
+		FGameplayTag InventoryTag, int32 StackCount, const ArgList&... Args)
 	{
-		auto ContainerFragment = FindInventoryFragment<UInvSys_InventoryFragment_Container>(InventoryObjectTag);
-		if (ContainerFragment != nullptr)
+		if (IsValidInventoryTag(InventoryTag) == false)
 		{
-			return ContainerFragment->AddItemDefinition<T>(ItemDef, StackCount, Args...);
+			UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning,
+				TEXT("%hs Falied, Is not valid tag %s."), __FUNCTION__, *InventoryTag.ToString())
+			return nullptr;
 		}
-		return nullptr;
+		auto ContainerFragment = FindInventoryModule<UInvSys_InventoryFragment_Container>(InventoryTag);
+		if (ContainerFragment == nullptr)
+		{
+			UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning,
+				TEXT("%hs Falied, ContainerFragment not find by %s."), __FUNCTION__, *InventoryTag.ToString())
+			return nullptr;
+		}
+		return ContainerFragment->AddItemDefinition<T>(ItemDef, StackCount, Args...);
 	}
 
 	/**
@@ -80,7 +109,7 @@ public:
 	template<class T, class... ArgList>
 	T* AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const ArgList&... Args)
 	{
-		auto ContainerFragment = FindInventoryFragment<UInvSys_InventoryFragment_Container>(SlotTag);
+		auto ContainerFragment = FindInventoryModule<UInvSys_InventoryFragment_Container>(SlotTag);
 		if (ContainerFragment != nullptr)
 		{
 			return ContainerFragment->AddItemInstance<T>(InItemInstance, Args...);
@@ -90,6 +119,9 @@ public:
 
 	/** 移除指定物品 */
 	bool RemoveItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
+
+	/** 移除指定标签下的物品实例 */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
 	bool RemoveItemInstance(UInvSys_InventoryItemInstance* ItemInstance, FGameplayTag InventoryTag);
 
 	/**
@@ -99,7 +131,7 @@ public:
 	template<class T, class... ArgList>
 	void UpdateItemInstance(UInvSys_InventoryItemInstance* ItemInstance, FGameplayTag SlotTag, const ArgList&... Args)
 	{
-		auto ContainerFragment = FindInventoryFragment<UInvSys_InventoryFragment_Container>(SlotTag);
+		auto ContainerFragment = FindInventoryModule<UInvSys_InventoryFragment_Container>(SlotTag);
 		if (ContainerFragment != nullptr)
 		{
 			ContainerFragment->UpdateItemInstance<T>(ItemInstance, Args...);
@@ -107,28 +139,37 @@ public:
 	}
 
 	/** 修改物品堆叠数量 */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
 	void UpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance, int32 NewStackCount);
 
 	/** 修改物品拖拽状态 */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
 	void UpdateItemDragState(UInvSys_InventoryItemInstance* ItemInstance, const FGameplayTag& InventoryTag, bool NewState);
+
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
+	bool ContainsItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
 
 	/**
 	 * 拖拽并在容器中删除该物品
 	 * 注意：从容器内移除后，需要在其他位置手动同步该物品实例，否则属性修改不会同步值客户端。
 	 */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
 	bool DragAndRemoveItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
 
 	/**
 	 * 拖拽物品会将背包内的该物品锁住，必须在放下或取消拖拽后取消该锁定！！
 	 * 可以通过 UInvSys_InventoryItemInstance::SetIsDraggingItem 修改锁定状态。
 	 */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
 	bool DragItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
 
 	/** 取消拖拽物品 */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
 	void CancelDragItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
 
 	/**
-	 * 放下物品存在两种不同执行流程：
+	 * 放下物品
+	 * 存在两种不同执行流程：
 	 * 第一种：修改对象属性值；
 	 * 第二种：修改容器成员
 	 *		A、将对象从原有的容器内取出后放置到新容器内。
@@ -138,25 +179,20 @@ public:
 	bool DropItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args);
 
 	/**  丢弃物品到世界 */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
 	AInvSys_PickableItems* DiscardItemInstance(UInvSys_InventoryItemInstance* InItemInstance, const FTransform& Transform);
 
 protected:
 	/** 创建所有库存对象后被调用 */
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCosmetic, Category = "Inventory Component")
 	void OnConstructInventoryObjects();
-
-	UFUNCTION(BlueprintImplementableEvent, BlueprintCosmetic, Category = "Inventory Component")
-	void OnEquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
-	
-	UFUNCTION(BlueprintImplementableEvent, BlueprintCosmetic, Category = "Inventory Component")
-	void OnUnEquipItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
 	
 public:
 	/**
 	 * Getter Or Setter
 	 **/
 	template<class T>
-	T* FindInventoryFragment(FGameplayTag Tag) const
+	T* FindInventoryModule(FGameplayTag Tag) const
 	{
 		if (InventoryObjectMap.Contains(Tag))
 		{
@@ -173,12 +209,14 @@ public:
 		const TSoftClassPtr<UInvSys_InventoryContentMapping>& InInventoryContent,
 		const TSubclassOf<UInvSys_InventoryLayoutWidget>& InLayoutWidget);
 
+	bool IsValidInventoryTag(const FGameplayTag& InventoryTag) const;
+
 	/** Returns true if the owner's role is ROLE_Authority */
-	FORCEINLINE bool HasAuthority() const;
+	bool HasAuthority() const;
 
-	FORCEINLINE bool IsLocalController() const;
+	bool IsLocalController() const;
 
-	FORCEINLINE APlayerController* GetPlayerController() const;
+	APlayerController* GetPlayerController() const;
 
 	UInvSys_InventoryObjectContent* GetInventoryObjectContent(int32 Index) const;
 
@@ -192,7 +230,7 @@ protected:
 	virtual bool ReplicateSubobjects(class UActorChannel* Channel, class FOutBunch* Bunch, FReplicationFlags* RepFlags) override;
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-	
+
 protected:
 	/** [Replication] 库存对象列表，由 InventoryContentMapping 管理，支持配置背包、装备槽或其他类型 */
 	UPROPERTY(ReplicatedUsing = OnRep_InventoryObjectList, BlueprintReadOnly, Category = "Inventory Component")

@@ -8,6 +8,7 @@
 #include "Components/InventoryObject/Fragment/InvSys_BaseInventoryFragment.h"
 #include "Data/InvSys_InventoryContentMapping.h"
 #include "Engine/ActorChannel.h"
+#include "Kismet/KismetMathLibrary.h"
 #include "Net/UnrealNetwork.h"
 
 UInvSys_BaseInventoryObject::UInvSys_BaseInventoryObject()
@@ -55,20 +56,27 @@ void UInvSys_BaseInventoryObject::ConstructInventoryFragment(const TArray<UInvSy
 	}
 }
 
-void UInvSys_BaseInventoryObject::InitInventoryObject(UInvSys_InventoryObjectContent* InventoryObjectContent)
+void UInvSys_BaseInventoryObject::InitInventoryObject(UInvSys_InventoryComponent* InvComp, int32 InventoryObjectID)
 {
-	check(InventoryObjectContent)
-	if (InventoryObjectContent)
+	UInvSys_InventoryObjectContent* InventoryObjectContent = InvComp->GetInventoryObjectContent(InventoryObjectID);
+	if (InventoryObjectContent == nullptr)
 	{
-		// 对数组进行排序，确定内部片段的执行顺序
-		// InventoryObjectFragments.Sort();
-		// InventoryObjectContent->Fragments.Sort();
-		for (int i = 0; i < InventoryObjectContent->Fragments.Num(); ++i)
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, InventoryObjectContent is nullptr, Index = %d"), __FUNCTION__, Index);
+		return;
+	}
+	// 对数组进行排序，确定内部片段的执行顺序
+	// InventoryObjectFragments.Sort();
+	// InventoryObjectContent->Fragments.Sort();
+	for (int i = 0; i < InventoryObjectContent->Fragments.Num(); ++i)
+	{
+		if (InventoryObjectFragments[i] != nullptr)
 		{
-			if (InventoryObjectFragments[i] != nullptr)
-			{
-				InventoryObjectFragments[i]->InitInventoryFragment(InventoryObjectContent->Fragments[i]);
-			}
+			/**
+			 * 生成库存模块唯一ID
+			 * WARNING: 同一个 ActorChannel 内不得出现重复的 ID
+			 */
+			InventoryObjectFragments[i]->InventoryModuleID = InventoryObjectID * MAX_INVENTORY_MODULE + i;
+			InventoryObjectFragments[i]->InitInventoryFragment(InventoryObjectContent->Fragments[i]);
 		}
 	}
 }
