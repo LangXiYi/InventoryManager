@@ -92,6 +92,9 @@ public:
 	 * Getter or Setter
 	 */
 
+	UFUNCTION(Blueprintable, BlueprintPure, Category = "Inventory Item Instance")
+	bool HasEquipment();
+
 	/** 获取物品的名称 */
 	UFUNCTION(BlueprintPure)
 	FText GetItemDisplayName() const;
@@ -113,17 +116,10 @@ public:
 		ItemDefinition = NewItemDef;
 	}
 
-	/** 设置物品的唯一ID，目前并未实际使用该属性。 */
-	FORCEINLINE void SetItemUniqueID(FGuid Guid)
-	{
-		ItemUniqueID = Guid;
-	}
-
-
 	/** 设置物品的库存标签，主要用来表示当前物品在库存组件中的位置。 */
-	FORCEINLINE void SetSlotTag(FGameplayTag Tag)
+	FORCEINLINE void SetInventoryTag(FGameplayTag Tag)
 	{
-		InventoryObjectTag = Tag;
+		InventoryTag = Tag;
 	}
 
 	/** 设置物品的拖拽状态，同时广播该状态更新。 */
@@ -148,16 +144,10 @@ public:
 		return (T*)InventoryComponent;
 	}
 
-	/** 获取物品的唯一ID */
-	FORCEINLINE const FGuid& GetItemUniqueID() const
-	{
-		return ItemUniqueID;
-	}
-
 	/** 获取物品的库存对象标签 */
 	FORCEINLINE const FGameplayTag& GetInventoryObjectTag() const
 	{
-		return InventoryObjectTag;
+		return InventoryTag;
 	}
 
 	int32 GetItemRemainStackCount() const;
@@ -197,16 +187,13 @@ public:
 
 protected:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory Item Instance", meta = (ExposeOnSpawn))
-	int32 StackCount = 0;
-
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory Item Instance", meta = (ExposeOnSpawn))
 	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDefinition = nullptr;
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory Item Instance")
-	FGuid ItemUniqueID = FGuid();
+	FGameplayTag InventoryTag;
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory Item Instance")
-	FGameplayTag InventoryObjectTag;
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory Item Instance", meta = (ExposeOnSpawn))
+	int32 StackCount = 0;
 
 	UPROPERTY(ReplicatedUsing = OnRep_IsDragging, BlueprintReadOnly, Category = "Inventory Item Instance")
 	bool bIsDragging = false;

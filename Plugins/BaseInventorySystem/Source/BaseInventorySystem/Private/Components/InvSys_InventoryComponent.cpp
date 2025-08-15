@@ -7,6 +7,7 @@
 #include "Engine/ActorChannel.h"
 #include "Engine/AssetManager.h"
 #include "BaseInventorySystem.h"
+#include "InvSys_InventorySystemConfig.h"
 #include "Items/InvSys_PickableItems.h"
 #include "Data/InvSys_InventoryContentMapping.h"
 #include "Data/InvSys_InventoryItemInstance.h"
@@ -15,6 +16,9 @@
 #include "Widgets/InvSys_InventoryLayoutWidget.h"
 #include "Components/InventoryObject/Fragment/InvSys_InventoryModule_Display.h"
 #include "Components/InventoryObject/Fragment/InvSys_InventoryModule_Equipment.h"
+#include "Kismet/GameplayStatics.h"
+#include "Library/InvSys_InventorySystemLibrary.h"
+#include "Widgets/InvSys_InventoryHUD.h"
 
 UInvSys_InventoryComponent::UInvSys_InventoryComponent(const FObjectInitializer& ObjectInitializer)
 	:Super(ObjectInitializer)
@@ -94,35 +98,60 @@ bool UInvSys_InventoryComponent::IsValidInventoryTag(const FGameplayTag& Invento
 
 UInvSys_InventoryLayoutWidget* UInvSys_InventoryComponent::CreateDisplayWidget(APlayerController* NewPlayerController)
 {
-	if (bDisplayWidgetIsValid)
+	if (LayoutWidget && IsValid(LayoutWidget))
 	{
 		return LayoutWidget;
 	}
-	if (NewPlayerController && NewPlayerController->IsLocalController() && LayoutWidgetClass)
+	if (NewPlayerController == nullptr || NewPlayerController->IsLocalController() == false)
 	{
-		bDisplayWidgetIsValid = true;
-		// 创建布局控件后，收集所有的 TagSlot 供后续控件插入正确位置。
-		LayoutWidget = CreateWidget<UInvSys_InventoryLayoutWidget>(NewPlayerController, LayoutWidgetClass);
-		check(LayoutWidget)
-		
-		for (int Index = 0; Index < InventoryObjectList.Num(); ++Index)
+		return nullptr;
+	}
+	if (LayoutWidgetClass == nullptr)
+	{
+		return nullptr;
+	}
+
+	UInvSys_InventoryControllerComponent* PlayerInvComp = UInvSys_InventorySystemLibrary::GetPlayerInventoryComponent(GetWorld());
+	if (PlayerInvComp == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, Player Inventory Component is nullptr."), __FUNCTION__);
+		return nullptr;
+	}
+	UInvSys_InventoryHUD* InventoryHUD = PlayerInvComp->GetInventoryHUD();
+
+	// 创建布局控件后，收集所有的 TagSlot 供后续控件插入正确位置。
+	LayoutWidget = CreateWidget<UInvSys_InventoryLayoutWidget>(NewPlayerController, LayoutWidgetClass);
+	check(LayoutWidget)
+	// 将库存布局加入HUD
+	InventoryHUD->AddWidget(LayoutWidget, InventoryLayoutTag);
+	
+	for (int Index = 0; Index < InventoryObjectList.Num(); ++Index)
+	{
+		UInvSys_BaseInventoryObject* InvObj = InventoryObjectList[Index];
+		if (InvObj == nullptr)
 		{
-			UInvSys_BaseInventoryObject* InvObj = InventoryObjectList[Index];
-			if (InvObj == nullptr)
-			{
-				checkNoEntry();
-				continue;
-			}
-			auto DisplayWidgetFragment = InvObj->FindInventoryFragment<UInvSys_InventoryModule_Display>();
-			if (DisplayWidgetFragment)
-			{
-				// 将库存对象的控件插入对应位置的插槽。
-				// todo::LayoutWidget改为InventoryHUD，修改AddWidget的逻辑，根据标签逐级查找合适的槽位
-				UUserWidget* DisplayWidget = DisplayWidgetFragment->CreateDisplayWidget(NewPlayerController);
-				LayoutWidget->AddWidget(DisplayWidget, InvObj->GetInventoryObjectTag());
-			}
+			checkNoEntry();
+			continue;
+		}
+		auto DisplayWidgetFragment = InvObj->FindInventoryFragment<UInvSys_InventoryModule_Display>();
+		if (DisplayWidgetFragment)
+		{
+			// 将库存对象的控件插入对应位置的插槽。
+			// todo::LayoutWidget改为InventoryHUD，修改AddWidget的逻辑，根据标签逐级查找合适的槽位
+			UUserWidget* DisplayWidget = DisplayWidgetFragment->CreateDisplayWidget(NewPlayerController);
+			// LayoutWidget->AddWidget(DisplayWidget, InvObj->GetInventoryObjectTag());
+			InventoryHUD->AddWidget(DisplayWidget, InvObj->GetInventoryObjectTag());
+
 		}
 	}
+	if (const UInvSys_InventorySystemConfig* InventorySystemConfig = GetDefault<UInvSys_InventorySystemConfig>())
+	{
+		if (InventorySystemConfig->AutoClearIdleInventoryWidget)
+		{
+			LayoutWidget->OnVisibilityChanged.AddDynamic(this, &UInvSys_InventoryComponent::OnInventoryVisibilityChanged);
+		}
+	}
+	
 	return LayoutWidget;
 }
 
@@ -146,7 +175,6 @@ void UInvSys_InventoryComponent::UpdateItemDragState(UInvSys_InventoryItemInstan
                                                      const FGameplayTag& InventoryTag, bool NewState)
 {
 	auto ContainerFragment = FindInventoryModule<UInvSys_InventoryModule_Container>(InventoryTag);
-	check(ContainerFragment)
 	if (ContainerFragment)
 	{
 		ContainerFragment->UpdateItemInstanceDragState(ItemInstance, NewState);
@@ -491,8 +519,34 @@ bool UInvSys_InventoryComponent::RemoveItemInstance(UInvSys_InventoryItemInstanc
 	return ContainerFragment->RemoveItemInstance(ItemInstance);
 }
 
-UInvSys_InventoryModule* UInvSys_InventoryComponent::FindInventoryFragment(FGameplayTag Tag,
-                                                                                       TSubclassOf<UInvSys_InventoryModule> OutClass) const
+void UInvSys_InventoryComponent::OnInventoryVisibilityChanged(ESlateVisibility InVisibility)
+{
+	switch (InVisibility)
+	{
+	case ESlateVisibility::Visible:
+	case ESlateVisibility::HitTestInvisible:
+	case ESlateVisibility::SelfHitTestInvisible:
+		// 取消计时器
+		GetWorld()->GetTimerManager().ClearTimer(ClearInventoryWidgetTimerHandle);
+		break;
+	case ESlateVisibility::Collapsed:
+	case ESlateVisibility::Hidden:
+		const UInvSys_InventorySystemConfig* InventorySystemConfig = GetDefault<UInvSys_InventorySystemConfig>();
+		int32 InRate = InventorySystemConfig ? InventorySystemConfig->ClearIdleInventoryWidgetTime : 90.f;
+		// 超过五分钟未显示用户控件则直接移除控件
+		GetWorld()->GetTimerManager().SetTimer(ClearInventoryWidgetTimerHandle, [this]()
+		{
+			LayoutWidget->RemoveFromParent();
+			LayoutWidget->ConditionalBeginDestroy();
+			LayoutWidget = nullptr;
+			UE_LOG(LogInventorySystem, Log, TEXT("Clear Inventory Widget..."))
+		}, InRate, false);
+		break;
+	}
+}
+
+UInvSys_InventoryModule* UInvSys_InventoryComponent::FindInventoryFragment(
+	FGameplayTag Tag, TSubclassOf<UInvSys_InventoryModule> OutClass) const
 {
 	if (IsValidInventoryTag(Tag))
 	{

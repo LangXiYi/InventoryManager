@@ -117,6 +117,7 @@ bool UGridInvSys_EquipmentSlotWidget::NativeOnDrop(const FGeometry& InGeometry, 
 			if (EquipItemFragment->SupportEquipSlot.HasTagExact(SlotTag))
 			{
 				ICC->Server_EquipItemInstance(InventoryComponent.Get(), PayLoadItemInstance, SlotTag);
+				ICC->Server_CancelDragItemInstance(PayLoadItemInstance);
 				return true;
 			}
 		}

@@ -86,6 +86,15 @@ void UInvSys_InventoryItemInstance::PostReplicatedChange()
 	// UE_LOG(LogInventorySystem, Error, TEXT("PostRepNotifies -- Change"))
 }
 
+bool UInvSys_InventoryItemInstance::HasEquipment()
+{
+	if (InventoryComponent)
+	{
+		return InventoryComponent->IsEquippedItemInstance(this);
+	}
+	return false;
+}
+
 bool UInvSys_InventoryItemInstance::HasAuthority() const
 {
 	check(Owner_Private)
@@ -104,9 +113,8 @@ void UInvSys_InventoryItemInstance::GetLifetimeReplicatedProps(TArray<FLifetimeP
 
 	DOREPLIFETIME(UInvSys_InventoryItemInstance, StackCount);
 	DOREPLIFETIME(UInvSys_InventoryItemInstance, bIsDragging);
-	DOREPLIFETIME(UInvSys_InventoryItemInstance, ItemUniqueID);
 	DOREPLIFETIME(UInvSys_InventoryItemInstance, ItemDefinition);
-	DOREPLIFETIME(UInvSys_InventoryItemInstance, InventoryObjectTag);
+	DOREPLIFETIME(UInvSys_InventoryItemInstance, InventoryTag);
 }
 
 void UInvSys_InventoryItemInstance::OnRep_IsDragging()

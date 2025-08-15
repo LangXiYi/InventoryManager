@@ -14,6 +14,93 @@ UGridInvSys_GridInventoryControllerComponent::UGridInvSys_GridInventoryControlle
 {
 }
 
+void UGridInvSys_GridInventoryControllerComponent::Server_SwapItemInstance_Implementation(
+	UInvSys_InventoryItemInstance* From, UInvSys_InventoryItemInstance* To)
+{
+	UGridInvSys_InventoryItemInstance* FromItemInstance = Cast<UGridInvSys_InventoryItemInstance>(From);
+	UGridInvSys_InventoryItemInstance* ToItemInstance = Cast<UGridInvSys_InventoryItemInstance>(To);
+	if (FromItemInstance == nullptr || ToItemInstance == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstance is nullptr."), __FUNCTION__)
+		return;
+	}
+
+	if (FromItemInstance == ToItemInstance)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, FromItemInstance == ToItemInstance."), __FUNCTION__)
+		return;
+	}
+
+	if (FromItemInstance->PayloadItems.IsEmpty() == false)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, FromItemInstance->PayloadItems.Num = %d."), __FUNCTION__, FromItemInstance->PayloadItems.Num())
+		return;
+	}
+
+	if (ToItemInstance->PayloadItems.IsEmpty() == false)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ToItemInstance->PayloadItems.Num = %d."), __FUNCTION__, FromItemInstance->PayloadItems.Num())
+		return;
+	}
+
+	// 互换它们的位置
+	UInvSys_InventoryComponent* FromInvComp = FromItemInstance->GetInventoryComponent();
+	UInvSys_InventoryComponent* ToInvComp = ToItemInstance->GetInventoryComponent();
+	if (FromInvComp == nullptr || ToInvComp == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, InventoryComponent is nullptr."), __FUNCTION__)
+		return;
+	}
+
+	// 两物品实例大小相同
+	if (FromItemInstance->GetItemSize() == ToItemInstance->GetItemSize())
+	{
+		// 这里需要提前缓存ToItem的位置信息，避免在第一次添加执行完成后修改FromItem到To位置时的数据被污染。
+		FGameplayTag FromItemTag = FromItemInstance->GetInventoryObjectTag();
+		FGridInvSys_ItemPosition FromItemPosition = FromItemInstance->GetItemPosition();
+		
+		FGameplayTag ToItemTag = ToItemInstance->GetInventoryObjectTag();
+		FGridInvSys_ItemPosition ToItemPosition = ToItemInstance->GetItemPosition();
+
+		FromInvComp->RemoveItemInstance(FromItemInstance);
+		ToInvComp->RemoveItemInstance(ToItemInstance);
+
+		FromInvComp->AddItemInstance<UGridInvSys_InventoryItemInstance>(ToItemInstance, FromItemTag, FromItemPosition);
+		ToInvComp->AddItemInstance<UGridInvSys_InventoryItemInstance>(FromItemInstance, ToItemTag, ToItemPosition);
+	}
+}
+
+void UGridInvSys_GridInventoryControllerComponent::Server_UnEquipItemInstance_Implementation(
+	UInvSys_InventoryItemInstance* ItemInstance)
+{
+	if (ItemInstance == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstance is nullptr."), __FUNCTION__)
+		return;
+	}
+	UGridInvSys_InventoryComponent* InvComp = ItemInstance->GetInventoryComponent<UGridInvSys_InventoryComponent>();
+	if (InvComp == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, InvComp is nullptr."), __FUNCTION__)
+		return;
+	}
+	if (InvComp->IsEquippedItemInstance(ItemInstance) == false)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, IsEquippedItemInstance == false."), __FUNCTION__)
+		return;
+	}
+	FGridInvSys_ItemPosition OutPosition = InvComp->FindAvailablePosition(ItemInstance->GetItemDefinition(),
+		{ItemInstance->GetInventoryObjectTag()});
+	if (OutPosition.IsValid() == false)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, Not Find Empty Position."), __FUNCTION__)
+		return;
+	}
+	
+	InvComp->UnEquipItemInstance(ItemInstance);
+	InvComp->AddItemInstanceToContainerPos(ItemInstance, OutPosition);
+}
+
 void UGridInvSys_GridInventoryControllerComponent::Server_SplitItemInstance_Implementation(
 	UInvSys_InventoryItemInstance* ItemInstance, int32 SplitSize)
 {
@@ -52,20 +139,6 @@ void UGridInvSys_GridInventoryControllerComponent::Server_CancelOccupied_Impleme
 		if (InvComp)
 		{
 			InvComp->CancelOccupied((UGridInvSys_InventoryItemInstance*)ItemInstance);
-		}
-	}
-}
-
-void UGridInvSys_GridInventoryControllerComponent::Server_RemoveItemInstance_Implementation(UInvSys_InventoryItemInstance* ItemInstance)
-{
-	check(ItemInstance)
-	if (ItemInstance)
-	{
-		UInvSys_InventoryComponent* InvComp = ItemInstance->GetInventoryComponent();
-		check(InvComp)
-		if (InvComp)
-		{
-			InvComp->RemoveItemInstance(ItemInstance);
 		}
 	}
 }
@@ -155,60 +228,6 @@ void UGridInvSys_GridInventoryControllerComponent::Server_UpdateItemInstancePosi
 	}
 }
 
-void UGridInvSys_GridInventoryControllerComponent::Server_SwapItemInstance_Implementation(
-	UGridInvSys_InventoryItemInstance* FromItemInstance, UGridInvSys_InventoryItemInstance* ToItemInstance)
-{
-	if (FromItemInstance == nullptr || ToItemInstance == nullptr)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstance is nullptr."), __FUNCTION__)
-		return;
-	}
-
-	if (FromItemInstance == ToItemInstance)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, FromItemInstance == ToItemInstance."), __FUNCTION__)
-		return;
-	}
-
-	if (FromItemInstance->PayloadItems.IsEmpty() == false)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, FromItemInstance->PayloadItems.Num = %d."), __FUNCTION__, FromItemInstance->PayloadItems.Num())
-		return;
-	}
-
-	if (ToItemInstance->PayloadItems.IsEmpty() == false)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ToItemInstance->PayloadItems.Num = %d."), __FUNCTION__, FromItemInstance->PayloadItems.Num())
-		return;
-	}
-
-	// 互换它们的位置
-	UInvSys_InventoryComponent* FromInvComp = FromItemInstance->GetInventoryComponent();
-	UInvSys_InventoryComponent* ToInvComp = ToItemInstance->GetInventoryComponent();
-	if (FromInvComp == nullptr || ToInvComp == nullptr)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, InventoryComponent is nullptr."), __FUNCTION__)
-		return;
-	}
-
-	// 两物品实例大小相同
-	if (FromItemInstance->GetItemSize() == ToItemInstance->GetItemSize())
-	{
-		// 这里需要提前缓存ToItem的位置信息，避免在第一次添加执行完成后修改FromItem到To位置时的数据被污染。
-		FGameplayTag FromItemTag = FromItemInstance->GetInventoryObjectTag();
-		FGridInvSys_ItemPosition FromItemPosition = FromItemInstance->GetItemPosition();
-		
-		FGameplayTag ToItemTag = ToItemInstance->GetInventoryObjectTag();
-		FGridInvSys_ItemPosition ToItemPosition = ToItemInstance->GetItemPosition();
-
-		FromInvComp->RemoveItemInstance(FromItemInstance);
-		ToInvComp->RemoveItemInstance(ToItemInstance);
-
-		FromInvComp->AddItemInstance<UGridInvSys_InventoryItemInstance>(ToItemInstance, FromItemTag, FromItemPosition);
-		ToInvComp->AddItemInstance<UGridInvSys_InventoryItemInstance>(FromItemInstance, ToItemTag, ToItemPosition);
-	}
-}
-
 void UGridInvSys_GridInventoryControllerComponent::Server_TryDropItemInstance_Implementation(
 	UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance,
 	const FGridInvSys_ItemPosition& InPos)
@@ -220,11 +239,12 @@ void UGridInvSys_GridInventoryControllerComponent::Server_TryDropItemInstance_Im
 		{
 			auto ContainerModlue = GridInvComp->FindInventoryModule<UGridInvSys_InventoryModule_Container>(InPos.EquipSlotTag);
 			FIntPoint ItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSizeFrom(InItemInstance, InPos.Direction);
-			if (ContainerModlue && ContainerModlue->IsUnoccupiedInSquareRange(InPos.GridID, InPos.Position, ItemSize))
+			// if (ContainerModlue && ContainerModlue->IsUnoccupiedInSquareRange(InPos.GridID, InPos.Position, ItemSize))
+			if (ContainerModlue && ContainerModlue->CheckItemPosition(InItemInstance, InPos, true))
 			{
-				DropItemInstance<UGridInvSys_InventoryItemInstance>(InvComp, InItemInstance, InPos.EquipSlotTag, InPos);
+				InvComp->DropItemInstance<UGridInvSys_InventoryItemInstance>(InItemInstance, InPos.EquipSlotTag, InPos);
 			}
 		}
 	}
-	CancelDragItemInstance(InItemInstance);
+	CancelDragItemInstance();
 }

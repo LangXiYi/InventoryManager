@@ -104,7 +104,8 @@ bool UGridInvSys_InventoryModule_Container::IsUnoccupiedInSquareRange(
 	{
 		for (int Y = 0; Y < ItemSize.Y; ++Y)
 		{
-			if (ToPosition.X + X > MaxGridHeight || ToPosition.Y + Y > MaxGridWidth)
+			if (ToPosition.X < 0 || ToPosition.Y < 0 ||
+				ToPosition.X + X > MaxGridHeight || ToPosition.Y + Y > MaxGridWidth)
 			{
 				// UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Error,
 				// 	TEXT("[ToPosition.X + X](%d) > [MaxGridWidth](%d) || [ToPosition.Y + Y](%d) > [MaxGridHeight](%d)"),
@@ -130,44 +131,29 @@ TArray<int32> UGridInvSys_InventoryModule_Container::GetItemGridOccupiedIndexes(
 	UGridInvSys_InventoryItemInstance* ItemInstance) const
 {
 	TArray<int32> OutArray;
-	if (ItemInstance == nullptr)
+	if (ItemInstance)
 	{
-		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, 物品实例为空."), __FUNCTION__)
-		return OutArray;
-	}
-	if (ItemInstance->GetInventoryComponent() != GetInventoryComponent())
-	{
-		// 容器组件不同
-		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, 物品实例的库存组件与当前片段的库存组件不同."), __FUNCTION__)
-		return OutArray;
-	}
-	if (ItemInstance->GetInventoryObjectTag() != InventoryTag)
-	{
-		// 容器片段不同
-		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, 物品实例的标签 %s 与当前片段的标签 %s 不同."), __FUNCTION__,
-			*ItemInstance->GetInventoryObjectTag().ToString(), *InventoryTag.ToString())
-		return OutArray;
-	}
-	if (ContainsItem(ItemInstance) == false)
-	{
-		UE_LOG(LogInventorySystem, Warning, TEXT("%hs Falied, 物品实例在 %s 内不存在."), __FUNCTION__,
-			*InventoryTag.ToString())
-		return OutArray;
-	}
-	FGridInvSys_ItemPosition ItemPosition = ItemInstance->GetItemPosition();
-
-	FIntPoint ItemSize = ItemInstance->GetItemSize();
-	FIntPoint ContainerSize = ContainerGridSize[ItemPosition.GridID];
-	FIntPoint Position = ItemPosition.Position;
-	OutArray.Reset(ItemSize.X * ItemSize.Y);
-	for (int i = 0; i < ItemSize.X ; ++i)
-	{
-		for (int j = 0; j < ItemSize.Y; ++j)
+		if (ItemInstance->GetInventoryComponent() == GetInventoryComponent() && ItemInstance->GetInventoryObjectTag() == InventoryTag)
 		{
-			int32 Index = (Position.X + i) * ContainerSize.Y + Position.Y + j;
-			if (OccupiedGrid[ItemPosition.GridID].IsValidIndex(Index))
+			if (ContainsItem(ItemInstance))
 			{
-				OutArray.Add(Index);
+				FGridInvSys_ItemPosition ItemPosition = ItemInstance->GetItemPosition();
+
+				FIntPoint ItemSize = ItemInstance->GetItemSize();
+				FIntPoint ContainerSize = ContainerGridSize[ItemPosition.GridID];
+				FIntPoint Position = ItemPosition.Position;
+				OutArray.Reset(ItemSize.X * ItemSize.Y);
+				for (int i = 0; i < ItemSize.X ; ++i)
+				{
+					for (int j = 0; j < ItemSize.Y; ++j)
+					{
+						int32 Index = (Position.X + i) * ContainerSize.Y + Position.Y + j;
+						if (OccupiedGrid[ItemPosition.GridID].IsValidIndex(Index))
+						{
+							OutArray.Add(Index);
+						}
+					}
+				}
 			}
 		}
 	}
@@ -198,7 +184,8 @@ bool UGridInvSys_InventoryModule_Container::CheckItemPosition(
 	{
 		for (int Y = 0; Y < ItemSize.Y; ++Y)
 		{
-			if (NewPosition.Position.X + X > ContainerSize.Y || NewPosition.Position.Y + Y > ContainerSize.X)
+			if (NewPosition.Position.X < 0 || NewPosition.Position.Y < 0 ||
+				NewPosition.Position.X + X >= ContainerSize.X || NewPosition.Position.Y + Y >= ContainerSize.Y)
 			{
 				UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Error,
 					TEXT("[ToPosition.X + X](%d) > [MaxGridWidth](%d) || [ToPosition.Y + Y](%d) > [MaxGridHeight](%d)"),

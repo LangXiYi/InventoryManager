@@ -18,15 +18,19 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_GridInventoryControllerComponent : pub
 public:
 	UGridInvSys_GridInventoryControllerComponent();
 
+public:
 	/**
 	 * RPC Function
 	 **/
 
-	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_AddItemInstancesToContainerPos(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance, FGridInvSys_ItemPosition InPos);
+	virtual void Server_UnEquipItemInstance_Implementation(UInvSys_InventoryItemInstance* ItemInstance) override;
+
+	virtual void Server_SplitItemInstance_Implementation(UInvSys_InventoryItemInstance* ItemInstance, int32 SplitSize) override;
+
+	virtual void Server_SwapItemInstance_Implementation(UInvSys_InventoryItemInstance* FromItemInstance, UInvSys_InventoryItemInstance* ToItemInstance) override;
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_RemoveItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
+	void Server_AddItemInstancesToContainerPos(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance, FGridInvSys_ItemPosition InPos);
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_CancelOccupied(UInvSys_InventoryItemInstance* ItemInstance);
@@ -34,12 +38,6 @@ public:
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_TryDropItemInstance(UInvSys_InventoryComponent* InvComp,
 		UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos);
-
-	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_SplitItemInstance(UInvSys_InventoryItemInstance* ItemInstance, int32 SplitSize);
-
-	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void Server_SwapItemInstance(UGridInvSys_InventoryItemInstance* FromItemInstance, UGridInvSys_InventoryItemInstance* ToItemInstance);
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void Server_SwapItemInstances(UInvSys_InventoryComponent* ToInvComp,

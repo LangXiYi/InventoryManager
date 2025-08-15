@@ -6,7 +6,7 @@
 #include "InvSys_InventoryWidget.h"
 #include "InvSys_InventoryLayoutWidget.generated.h"
 
-class UInvSys_TagSlot;
+class UInvSys_InventorySlot;
 
 UCLASS()
 class BASEINVENTORYSYSTEM_API UInvSys_InventoryLayoutWidget : public UUserWidget
@@ -14,13 +14,13 @@ class BASEINVENTORYSYSTEM_API UInvSys_InventoryLayoutWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	UInvSys_TagSlot* FindTagSlot(FGameplayTag InSlotTag);
+	UInvSys_InventorySlot* FindTagSlot(FGameplayTag InSlotTag);
 
 	virtual void NativeOnInitialized() override;
 
-	virtual void AddWidget(UUserWidget* Widget, const FGameplayTag& Tag);
+	virtual UPanelSlot* AddWidget(UUserWidget* Widget, const FGameplayTag& Tag);
 
 protected:
 	UPROPERTY(Transient)
-	TMap<FGameplayTag, UInvSys_TagSlot*> TagSlots;
+	TMap<FGameplayTag, UInvSys_InventorySlot*> InventoryWidgetMapping;
 };

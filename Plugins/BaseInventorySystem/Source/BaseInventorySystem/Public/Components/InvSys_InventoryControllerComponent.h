@@ -26,32 +26,7 @@ public:
 
 	UInvSys_InventoryHUD* GetInventoryHUD() const;
 
-	/**
-	 * 由于放置逻辑可能存在其他不确定的属性，所以这里没有办法提前定义 RPC 函数，需要子类实现自定义的 Server RPC
-	 * void Server_TryDropItemInstance(InvComp, ItemInstance, SlotTag...);
-	 */
-	template<class T, class... Arg>
-	bool DropItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args);
-
-	/**
-	 * 由于放置逻辑可能存在其他不确定的属性，所以这里没有办法提前定义 RPC 函数，需要子类实现自定义的 Server RPC
-	 * void Server_TryDropItemInstance(InvComp, ItemInstance, SlotTag...);
-	 */
-	template<class T, class... Arg>
-	T* DropAndAddItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args);
-
 	void CancelDragItemInstance();
-	void CancelDragItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
-
-	/**
-	 * 堆叠两个完全相同的物品
-	 */
-	bool SuperposeItemInstance(UInvSys_InventoryItemInstance* ItemInstanceA, UInvSys_InventoryItemInstance* ItemInstanceB);
-
-	/**
-	 * 指定标签下的装备模块是否以及装备了物品
-	 */
-	bool HasEquipItemInstance(UInvSys_InventoryComponent* InvComp, FGameplayTag InventoryTag);
 
 public:
 	/**
@@ -65,9 +40,21 @@ public:
 	void Server_EquipItemInstance(UInvSys_InventoryComponent* InvComp,UInvSys_InventoryItemInstance* ItemInstance, FGameplayTag InventoryTag);
 
 	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
-	void Server_UnEquipItemInstance(UInvSys_InventoryComponent* InvComp, FGameplayTag InventoryTag);
+	void Server_UnEquipItemInstanceByTag(UInvSys_InventoryComponent* InvComp, FGameplayTag InventoryTag);
 
-	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component", meta = (AdvancedDisplay = bIsAutoEquip))
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
+	void Server_UnEquipItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
+
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
+	void Server_RemoveItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
+
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
+	void Server_SplitItemInstance(UInvSys_InventoryItemInstance* ItemInstance, int32 SplitSize);
+
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
+	void Server_SwapItemInstance(UInvSys_InventoryItemInstance* FromItemInstance, UInvSys_InventoryItemInstance* ToItemInstance);
+
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
 	void Server_PickupItemInstance(UInvSys_InventoryComponent* InvComp, AInvSys_PickableItems* PickableItems, bool bIsAutoEquip = true);
 
 	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
@@ -77,16 +64,16 @@ public:
 	void Server_CancelDragItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
 
 	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
-	void Server_DragAndRemoveItemInstance(UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance);
-
-	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
 	void Server_DropItemInstanceToWorld(UInvSys_InventoryItemInstance* InItemInstance);
 
 	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
 	void Server_SuperposeItemInstance(UInvSys_InventoryItemInstance* FromItemInstance, UInvSys_InventoryItemInstance* ToItemInstance);
 
 protected:
-	FORCEINLINE bool HasAuthority() const;
+	bool HasAuthority() const;
+
+	UFUNCTION(BlueprintPure, Category = "Player Inventory Component")
+	APlayerController* GetPlayerController() const;
 
 	void SetDraggingItemInstance(UInvSys_InventoryItemInstance* NewDragItemInstance);
 
@@ -104,31 +91,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Player Inventory Component")
 	UInvSys_InventoryHUD* InventoryHUD = nullptr;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Player Inventory Component")
+private:
+	UPROPERTY(BlueprintReadOnly, Category = "Player Inventory Component", meta = (AllowPrivateAccess))
 	TObjectPtr<APlayerController> Controller;
 };
-
-template <class T, class ... Arg>
-bool UInvSys_InventoryControllerComponent::DropItemInstance(UInvSys_InventoryComponent* InvComp,
-	UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args)
-{
-	bool bIsSuccess = false;
-	if (InvComp)
-	{
-		bIsSuccess = InvComp->DropItemInstance<T>(InItemInstance, SlotTag, Args...);
-	}
-	CancelDragItemInstance(InItemInstance);
-	return bIsSuccess;
-}
-
-template <class T, class ... Arg>
-T* UInvSys_InventoryControllerComponent::DropAndAddItemInstance(UInvSys_InventoryComponent* InvComp,
-	UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const Arg&... Args)
-{
-	if (DraggingItemInstance.IsValid() && DraggingItemInstance == InItemInstance && InvComp)
-	{
-		SetDraggingItemInstance(nullptr);
-		return InvComp->AddItemInstance<T>(InItemInstance, SlotTag, Args...);
-	}
-	return nullptr;
-}

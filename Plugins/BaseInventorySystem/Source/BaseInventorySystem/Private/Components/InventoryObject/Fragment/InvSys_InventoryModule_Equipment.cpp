@@ -81,8 +81,7 @@ UInvSys_InventoryItemInstance* UInvSys_InventoryModule_Equipment::EquipItemDefin
 	EquipmentInstance = TempItemInstance;
 	EquipmentInstance->SetItemDefinition(ItemDef);
 	EquipmentInstance->SetItemStackCount(StackCount);
-	EquipmentInstance->SetItemUniqueID(FGuid::NewGuid());
-	EquipmentInstance->SetSlotTag(GetInventoryTag());
+	EquipmentInstance->SetInventoryTag(GetInventoryTag());
 	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
 	{
 		OnRep_ItemInstance();
@@ -137,7 +136,7 @@ UInvSys_InventoryItemInstance* UInvSys_InventoryModule_Equipment::EquipItemInsta
 	}
 
 	EquipmentInstance = TargetItemInstance;
-	EquipmentInstance->SetSlotTag(GetInventoryTag());
+	EquipmentInstance->SetInventoryTag(GetInventoryTag());
 	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
 	{
 		OnRep_ItemInstance();

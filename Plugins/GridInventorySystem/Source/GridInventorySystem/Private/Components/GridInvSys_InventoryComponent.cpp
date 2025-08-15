@@ -67,25 +67,39 @@ bool UGridInvSys_InventoryComponent::FindEmptyPosition(UInvSys_InventoryItemInst
 bool UGridInvSys_InventoryComponent::FindEmptyPosition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDefinition,
 	FGridInvSys_ItemPosition& OutPosition)
 {
+	OutPosition = FindAvailablePosition(ItemDefinition);
+	return OutPosition.IsValid();
+}
+
+FGridInvSys_ItemPosition UGridInvSys_InventoryComponent::FindAvailablePosition(
+	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDefinition, const TArray<FGameplayTag>& Ignores)
+{
+	FGridInvSys_ItemPosition Result;
 	UInvSys_InventoryItemDefinition* CDO_ItemDefinition = ItemDefinition.GetDefaultObject();
 	if (CDO_ItemDefinition == nullptr)
 	{
 		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, CDO_ItemDefinition is nullptr."), __FUNCTION__)
-		return false;
+		return Result;
 	}
-	check(CDO_ItemDefinition)
 	TArray<FGameplayTag> OutContainerTags;
 	auto ContainerPriority = CDO_ItemDefinition->FindFragmentByClass<UInvSys_ItemFragment_PickUpItem>();
 	if (ContainerPriority && ContainerPriority->ContainerPriority.Num() > 0)
 	{
-		OutContainerTags = ContainerPriority->ContainerPriority; // 根据各个物品自定义的优先级，优先寻找对应物品
+		OutContainerTags = ContainerPriority->ContainerPriority;
 	}
 	else
 	{
 		OutContainerTags = DefaultContainerPriority;
 	}
+	check(OutContainerTags.IsEmpty() == false);
+
+	// 根据各个物品自定义的优先级寻找容器
 	for (FGameplayTag ContainerTag : OutContainerTags)
 	{
+		if (Ignores.Contains(ContainerTag))
+		{
+			continue;
+		}
 		UGridInvSys_InventoryModule_Container* ContainerFragment =
 			FindInventoryModule<UGridInvSys_InventoryModule_Container>(ContainerTag);
 
@@ -93,20 +107,20 @@ bool UGridInvSys_InventoryComponent::FindEmptyPosition(TSubclassOf<UInvSys_Inven
 		{
 			if (auto ItemSizeFragment = CDO_ItemDefinition->FindFragmentByClass<UGridInvSys_ItemFragment_GridItemSize>())
 			{
-				if (ContainerFragment->FindEmptyPosition(ItemSizeFragment->ItemSize, OutPosition))
+				if (ContainerFragment->FindEmptyPosition(ItemSizeFragment->ItemSize, Result))
 				{
-					OutPosition.Direction = EGridInvSys_ItemDirection::Horizontal;
-					return true;
+					Result.Direction = EGridInvSys_ItemDirection::Horizontal;
+					return Result;
 				}
-				if (ContainerFragment->FindEmptyPosition(FIntPoint(ItemSizeFragment->ItemSize.Y, ItemSizeFragment->ItemSize.X), OutPosition))
+				if (ContainerFragment->FindEmptyPosition(FIntPoint(ItemSizeFragment->ItemSize.Y, ItemSizeFragment->ItemSize.X), Result))
 				{
-					OutPosition.Direction = EGridInvSys_ItemDirection::Vertical;
-					return true;
+					Result.Direction = EGridInvSys_ItemDirection::Vertical;
+					return Result;
 				}
 			}
 		}
 	}
-	return false;
+	return Result;
 }
 
 void UGridInvSys_InventoryComponent::UpdateItemInstancePosition(UInvSys_InventoryItemInstance* ItemInstance,

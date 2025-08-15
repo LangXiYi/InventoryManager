@@ -142,24 +142,8 @@ void FInvSys_ContainerList::GetAllItems(TArray<UInvSys_InventoryItemInstance*>& 
 	}
 }
 
-UInvSys_InventoryItemInstance* FInvSys_ContainerList::FindItemInstance(FGuid ItemUniqueID) const
-{
-	for (FInvSys_ContainerEntry Entry : Entries)
-	{
-		UInvSys_InventoryItemInstance* ItemInstance = Entry.Instance;
-		if (ItemInstance != nullptr)
-		{
-			if (ItemUniqueID == ItemInstance->GetItemUniqueID())
-			{
-				return ItemInstance;
-			}
-		}
-	}
-	return nullptr;
-}
-
-UInvSys_InventoryItemInstance* FInvSys_ContainerList::FindItemInstance(
-	const TSubclassOf<UInvSys_InventoryItemDefinition>& ItemDefinition) const
+void FInvSys_ContainerList::FindItemInstance(const TSubclassOf<UInvSys_InventoryItemDefinition>& ItemDefinition,
+	TArray<UInvSys_InventoryItemInstance*>& OutArray) const
 {
 	for (FInvSys_ContainerEntry Entry : Entries)
 	{
@@ -168,11 +152,10 @@ UInvSys_InventoryItemInstance* FInvSys_ContainerList::FindItemInstance(
 		{
 			if (ItemDefinition == ItemInstance->GetItemDefinition())
 			{
-				return ItemInstance;
+				OutArray.Add(ItemInstance);
 			}
 		}
 	}
-	return nullptr;
 }
 
 int32 FInvSys_ContainerList::FindEntryIndex(UInvSys_InventoryItemInstance* ItemInstance)

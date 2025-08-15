@@ -29,4 +29,10 @@ public:
 	// 服务器等待合批处理的时间，该值越小则服务器发送给客户端的频率就越快。
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Inventory System Config", meta=(ClampMin = 0.01663f))
 	float ServerWaitBatchTime = 0.1f;
+
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Inventory System Config")
+	bool AutoClearIdleInventoryWidget = true;
+
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Inventory System Config", meta=(ClampMin = 30.f, EditCondition = AutoClearIdleInventoryWidget))
+	float ClearIdleInventoryWidgetTime = 90.f;
 };

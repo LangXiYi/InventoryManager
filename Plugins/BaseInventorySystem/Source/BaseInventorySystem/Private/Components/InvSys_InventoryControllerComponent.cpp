@@ -46,53 +46,62 @@ void UInvSys_InventoryControllerComponent::InitializeComponent()
 	check(Controller)
 }
 
-void UInvSys_InventoryControllerComponent::CancelDragItemInstance(UInvSys_InventoryItemInstance* ItemInstance)
+void UInvSys_InventoryControllerComponent::CancelDragItemInstance()
 {
-	if (ItemInstance)
+	if (DraggingItemInstance.Get())
 	{
-		if (UInvSys_InventoryComponent* InvComp = ItemInstance->GetInventoryComponent())
+		if (UInvSys_InventoryComponent* InvComp = DraggingItemInstance->GetInventoryComponent())
 		{
-			InvComp->CancelDragItemInstance(ItemInstance);
+			InvComp->CancelDragItemInstance(DraggingItemInstance.Get());
 		}
 	}
 	SetDraggingItemInstance(nullptr);
 }
 
-void UInvSys_InventoryControllerComponent::CancelDragItemInstance()
+void UInvSys_InventoryControllerComponent::Server_SplitItemInstance_Implementation(
+	UInvSys_InventoryItemInstance* ItemInstance, int32 SplitSize)
 {
-	CancelDragItemInstance(DraggingItemInstance.Get());
+	// InvComp->SplitItemInstance<UInvSys_InventoryItemInstance>(ItemInstance, SplitSize, InventoryTag, Args...);
+	checkNoEntry();
 }
 
-bool UInvSys_InventoryControllerComponent::SuperposeItemInstance(
-	UInvSys_InventoryItemInstance* ItemInstanceA, UInvSys_InventoryItemInstance* ItemInstanceB)
+void UInvSys_InventoryControllerComponent::Server_RemoveItemInstance_Implementation(
+	UInvSys_InventoryItemInstance* ItemInstance)
 {
-	if (ItemInstanceA == nullptr || ItemInstanceB == nullptr)
+	if (ItemInstance)
+	{
+		UInvSys_InventoryComponent* InvComp = ItemInstance->GetInventoryComponent();
+		check(InvComp)
+		if (InvComp)
+		{
+			InvComp->RemoveItemInstance(ItemInstance);
+		}
+	}
+}
+
+void UInvSys_InventoryControllerComponent::Server_UnEquipItemInstance_Implementation(
+	UInvSys_InventoryItemInstance* ItemInstance)
+{
+	if (ItemInstance == nullptr)
 	{
 		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstance is nullptr."), __FUNCTION__)
-		return false;
+		return;
 	}
-	if (ItemInstanceA == ItemInstanceB)
+	UInvSys_InventoryComponent* InvComp = ItemInstance->GetInventoryComponent();
+	if (InvComp == nullptr)
 	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, FromItemInstance == ToItemInstance."), __FUNCTION__)
-		return false;
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, InvComp is nullptr."), __FUNCTION__)
+		return;
 	}
-	UInvSys_InventoryComponent* ToInvComp = ItemInstanceA->GetInventoryComponent();
-	if (ToInvComp == nullptr)
+	
+	if (InvComp->IsEquippedItemInstance(ItemInstance))
 	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ToInvComp is nullptr."), __FUNCTION__)
-		return false;
+		InvComp->UnEquipItemInstance(ItemInstance);
 	}
-	return ToInvComp->SuperposeItemInstance(ItemInstanceA, ItemInstanceB);
-}
-
-bool UInvSys_InventoryControllerComponent::HasEquipItemInstance(UInvSys_InventoryComponent* InvComp,
-	FGameplayTag InventoryTag)
-{
-	return InvComp->HasEquippedItemInstance(InventoryTag);
 }
 
 void UInvSys_InventoryControllerComponent::Server_PickupItemInstance_Implementation(UInvSys_InventoryComponent* InvComp,
-	AInvSys_PickableItems* PickableItems, bool bIsAutoEquip)
+                                                                                    AInvSys_PickableItems* PickableItems, bool bIsAutoEquip)
 {
 	if (PickableItems)
 	{
@@ -104,7 +113,7 @@ void UInvSys_InventoryControllerComponent::Server_PickupItemInstance_Implementat
 	}
 }
 
-void UInvSys_InventoryControllerComponent::Server_UnEquipItemInstance_Implementation(
+void UInvSys_InventoryControllerComponent::Server_UnEquipItemInstanceByTag_Implementation(
 	UInvSys_InventoryComponent* InvComp, FGameplayTag InventoryTag)
 {
 	if (InvComp == nullptr)
@@ -123,28 +132,10 @@ void UInvSys_InventoryControllerComponent::Server_UnEquipItemInstance_Implementa
 	}
 }
 
-void UInvSys_InventoryControllerComponent::Server_DragAndRemoveItemInstance_Implementation(
-	UInvSys_InventoryComponent* InvComp, UInvSys_InventoryItemInstance* InItemInstance)
-{
-	check(InvComp)
-	check(InItemInstance)
-	bool bIsSuccessDragItem = false;
-	if (InvComp && InItemInstance)
-	{
-		bIsSuccessDragItem = InvComp->DragAndRemoveItemInstance(InItemInstance);
-		if (bIsSuccessDragItem)
-		{
-			SetDraggingItemInstance(InItemInstance);
-		}
-	}
-	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG && bIsSuccessDragItem == false, LogInventorySystem, Warning,
-		TEXT("尝试拽起物品实例失败！！"))
-}
-
 void UInvSys_InventoryControllerComponent::Server_CancelDragItemInstance_Implementation(UInvSys_InventoryItemInstance* InItemInstance)
 {
-	check(InItemInstance)
-	CancelDragItemInstance(InItemInstance);
+	check(DraggingItemInstance == nullptr || DraggingItemInstance == InItemInstance)
+	CancelDragItemInstance();
 }
 
 void UInvSys_InventoryControllerComponent::Server_EquipItemDefinition_Implementation(
@@ -189,6 +180,11 @@ void UInvSys_InventoryControllerComponent::Server_EquipItemInstance_Implementati
 	if (ItemInstance == nullptr)
 	{
 		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstance is nullptr."), __FUNCTION__)
+		return;
+	}
+	if (ItemInstance != DraggingItemInstance)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstance != DraggingItemInstance."), __FUNCTION__)
 		return;
 	}
 	UInvSys_InventoryComponent* OldInvComp = ItemInstance->GetInventoryComponent();
@@ -330,10 +326,21 @@ void UInvSys_InventoryControllerComponent::Server_SuperposeItemInstance_Implemen
 	ToInvComp->SuperposeItemInstance(FromItemInstance, ToItemInstance);
 }
 
+void UInvSys_InventoryControllerComponent::Server_SwapItemInstance_Implementation(
+	UInvSys_InventoryItemInstance* FromItemInstance, UInvSys_InventoryItemInstance* ToItemInstance)
+{
+	checkNoEntry();
+}
+
 bool UInvSys_InventoryControllerComponent::HasAuthority() const
 {
 	ensure(GetOwner());
 	return GetOwner() ? GetOwner()->HasAuthority() : false;
+}
+
+APlayerController* UInvSys_InventoryControllerComponent::GetPlayerController() const
+{
+	return Controller;
 }
 
 void UInvSys_InventoryControllerComponent::SetDraggingItemInstance(UInvSys_InventoryItemInstance* NewDragItemInstance)

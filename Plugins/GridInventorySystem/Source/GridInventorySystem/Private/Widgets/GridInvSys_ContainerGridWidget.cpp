@@ -156,13 +156,12 @@ void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeEqual(
 		if (FromItemInstance->GetItemDefinition() == ToItemInstance->GetItemDefinition())
 		{
 			PlayerInvComp->Server_SuperposeItemInstance(FromItemInstance, ToItemInstance);
-			PlayerInvComp->Server_CancelDragItemInstance(ItemInstance);
 		}
 		else
 		{
 			PlayerInvComp->Server_SwapItemInstance(FromItemInstance, ToItemInstance);
-			PlayerInvComp->Server_CancelDragItemInstance(ItemInstance);
 		}
+		PlayerInvComp->Server_CancelDragItemInstance(ItemInstance);
 	}
 }
 
@@ -233,17 +232,29 @@ void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeGreaterThan_Compon
 		FIntPoint RelativePosition;
 		RelativePosition.X = TempItemPos.Position.X - DropPosition.Position.X;
 		RelativePosition.Y = TempItemPos.Position.Y - DropPosition.Position.Y;
+
+		EGridInvSys_ItemDirection HoveredItemDirection = HoveredItemInstance->GetItemPosition().Direction;
 		// 如果物品原始的方向与当前方向不同，则需要对物品位置进行旋转
 		if (FromItemPosition.Direction != DropPosition.Direction)
 		{
 			int32 TempPos = RelativePosition.X;
 			RelativePosition.X = RelativePosition.Y;
 			RelativePosition.Y = TempPos;
+			switch (HoveredItemDirection)
+			{
+			case EGridInvSys_ItemDirection::Horizontal:
+				HoveredItemDirection = EGridInvSys_ItemDirection::Vertical;
+				break;
+			case EGridInvSys_ItemDirection::Vertical:
+				HoveredItemDirection = EGridInvSys_ItemDirection::Horizontal;
+				break;
+			default: ;
+			}
 		}
 
 		// 计算被覆盖的物品实例的大小 & 拖拽前目标物品的大小
-		FIntPoint TargetOccupiedItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSize(HoveredItemInstance);
-		FIntPoint PreDragItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSizeFrom(GridItemInstance, FromItemPosition.Direction);	
+		FIntPoint TargetOccupiedItemSize = HoveredItemInstance->GetItemSize(HoveredItemDirection);
+		FIntPoint PreDragItemSize = GridItemInstance->GetItemSize(FromItemPosition.Direction);
 		// 转换为对角坐标
 		FIntPoint DiagonalPosition;
 		DiagonalPosition.X = (PreDragItemSize.X - RelativePosition.X - TargetOccupiedItemSize.X);
@@ -261,7 +272,7 @@ void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeGreaterThan_Compon
 		TempItemPos.Position = DiagonalPosition;
 		TempItemPos.EquipSlotTag = FromItemPosition.EquipSlotTag;
 		TempItemPos.GridID = FromItemPosition.GridID;
-		// TempItemPos.Direction; // 方向保持不变。
+		TempItemPos.Direction = HoveredItemDirection;
 		NewItemPositions.Add(TempItemPos);
 	}
 	PlayerInvComp->Server_SwapItemInstances(InventoryComponent.Get(), GridItemInstance, DropPosition, AllHoveredItemInstances, NewItemPositions);
@@ -334,13 +345,24 @@ EGridInvSys_DropType UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer
 	/***
 	 * 【【【 前置条件 】】】
 	 * 1、物品在容器范围内
-	 * 2、范围内的所有物品都在物品实例的覆盖范围下
+	 * 2、拖拽的物品不能是正在装备的物品
+	 * 3、范围内的所有物品都在物品实例的覆盖范围下
 	 */
 	FIntPoint TargetItemSize = GridItemInstance->GetItemSize(ItemDirection);
 	if (!IsInContainer(ToPosition, TargetItemSize))
 	{
 		return EGridInvSys_DropType::None;
 	}
+
+	if (InventoryComponent.Get())
+	{
+		// todo::如何支持拖拽已经装备的物品？如何确保装备的容器内的物品能被正确放置到？
+		if (InventoryComponent->IsEquippedItemInstance(ItemInstance))
+		{
+			return EGridInvSys_DropType::None;
+		}
+	}
+
 	TArray<UGridInvSys_InventoryItemInstance*> OutItemInstances;
 	GetAllHoveredItemInstances(OutItemInstances, ToPosition, TargetItemSize);
 	for (UGridInvSys_InventoryItemInstance* HoveredItemInstance : OutItemInstances) 
@@ -363,6 +385,11 @@ EGridInvSys_DropType UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer
 		}
 	}
 	OutItemInstances.Empty();
+
+	/***
+	 * 拖拽的物品与当前容器一致
+	 */
+	
 
 	/***
 	 * 目标位置未被其他物品占据 & 足够容纳物品实例
@@ -454,7 +481,8 @@ EGridInvSys_DropType UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer
 		// 需要判断拖拽物品与目标位置的物品是否再同一容器布局内，若不在同一容器则返回False
 		FIntPoint Position;
 		
-		TArray<UWidget*> Ignores = ToGridItemWidget->GetOccupiedGridItems();
+		TArray<UWidget*> Ignores;
+		GetContainerGridItems(Ignores, ToGridItemInstance->GetItemPosition().Position, ToGridItemInstance->GetItemSize());
 		TArray<UWidget*> NotIgnores;
 		GetContainerGridItems(NotIgnores, ToPosition, TargetItemSize);
 		// 被From占据的网格不会被忽略
@@ -661,162 +689,6 @@ bool UGridInvSys_ContainerGridWidget::TryDropItemFromContainer(UInvSys_Inventory
 		return false;
 	}
 	return true;
-#if 0
-	FIntPoint FromTargetItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSizeFrom(ItemInstance, DropPosition.Direction);
-	
-	// UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("尝试放下物品至位置：%s"), *DropPosition.ToString())
-
-	// IsCanDrop == true 所以可以直接将 From 的位置修改为目标位置并记录下来。
-	UGridInvSys_ContainerGridItemWidget* ToGridItemWidget = GetGridItemWidget(DropPosition.Position);
-	UGridInvSys_InventoryItemInstance* ToGridItemInstance = ToGridItemWidget->GetItemInstance<UGridInvSys_InventoryItemInstance>();
-
-	// 获取 From 在容器内占据的所有网格
-	// 目标位置未被其他物品占领
-	if (ToGridItemInstance == nullptr && HasEnoughFreeSpace(DropPosition.Position, FromTargetItemSize)) 
-	{
-		PlayerInvComp->Server_TryDropItemInstance(InventoryComponent.Get(), ItemInstance, DropPosition);
-		return true;
-	}
-
-	FIntPoint ToTargetItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSize(ToGridItemInstance);
-	// To 的位置已经被其他物品占领，但 From 与 To 的大小一致且 To 的位置是物品的左上角
-	if (FromTargetItemSize == ToTargetItemSize &&
-		ToGridItemWidget->GetOriginGridItemWidget() == ToGridItemWidget)
-	{
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("[Try Drop Item] From 与 To 的大小一致且 To 的位置是物品的左上角"))
-		// 交换双方位置
-		UInvSys_InventoryItemInstance* ToItemInstance = ToGridItemWidget->GetItemInstance();
-		check(ToItemInstance)
-		PlayerInvComp->Server_SwapItemInstance(ItemInstance, ToItemInstance);
-		return true;
-	}
-
-	/***
-	 * 物品实例不在当前容器内 & 物品实例的大小 >= 占据目标位置的物品的大小
-	 */
-
-	// 不同容器下的物品交换 且  拖拽的物品大小 >= 放置位置的物品的大小
-	if (GridInvComp != this->GetInventoryComponent() || GridItemInstance->GetSlotTag() != this->GetSlotTag())
-	{
-		if (FromTargetItemSize.X >= ToTargetItemSize.X &&
-			FromTargetItemSize.Y >= ToTargetItemSize.Y)
-		{
-			UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("[Try Drop Item] 不同容器下的物品交换To 位置可以容纳 From 对象"))
-			TArray<UGridInvSys_InventoryItemInstance*> AllHoveredItemInstances;
-			GetAllHoveredItemInstances(AllHoveredItemInstances, DropPosition.Position, FromTargetItemSize);
-			for (UGridInvSys_InventoryItemInstance* HoveredItemInstance : AllHoveredItemInstances)
-			{
-				FGridInvSys_ItemPosition TempItemPos = HoveredItemInstance->GetItemPosition();
-				FGridInvSys_ItemPosition FromItemPosition = GridItemInstance->GetItemPosition();
-				// ToPosition TempPos.Pos 计算相对坐标
-				FIntPoint RelativePosition;
-				RelativePosition.X = TempItemPos.Position.X - DropPosition.Position.X;
-				RelativePosition.Y = TempItemPos.Position.Y - DropPosition.Position.Y;
-				// 如果物品原始的方向与当前方向不同，则需要对物品位置进行旋转
-				if (FromItemPosition.Direction != DropPosition.Direction)
-				{
-					int32 TempPos = RelativePosition.X;
-					RelativePosition.X = RelativePosition.Y;
-					RelativePosition.Y = TempPos;
-				}
-				// 计算最终在From容器中的坐标
-				FIntPoint TargetPosition = FromItemPosition.Position;
-				TargetPosition.X += RelativePosition.X;
-				TargetPosition.Y += RelativePosition.Y;
-	
-				// 更新数据
-				TempItemPos.Position = TargetPosition;
-				TempItemPos.EquipSlotTag = FromItemPosition.EquipSlotTag;
-				TempItemPos.GridID = FromItemPosition.GridID;
-				// TempItemPos.Direction; // 方向保持不变。
-				PlayerInvComp->Server_UpdateItemInstancePosition(ItemInstance->GetInventoryComponent(), HoveredItemInstance, TempItemPos);
-			}
-			PlayerInvComp->Server_TryDropItemInstance(InventoryComponent.Get(), ItemInstance, DropPosition);
-			return true;
-		}
-		// return false;
-	}
-	// 相同容器下物品交换 且 拖拽的物品大小 >= 放置位置的物品的大小
-	if (FromTargetItemSize.X >= ToTargetItemSize.X && FromTargetItemSize.Y >= ToTargetItemSize.Y)
-	{
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
-			TEXT("[Try Drop Item] 相同容器下交换，To 的位置已经被其他物品占领，且拖拽的物品大小 >= 放置位置的物品的大小"))
-		TArray<UGridInvSys_InventoryItemInstance*> AllHoveredItemInstances;
-		GetAllHoveredItemInstances(AllHoveredItemInstances, DropPosition.Position, FromTargetItemSize);
-
-		TArray<FGridInvSys_ItemPosition> NewItemPositions;
-		for (UGridInvSys_InventoryItemInstance* HoveredItemInstance : AllHoveredItemInstances)
-		{
-			// 计算相对坐标
-			FGridInvSys_ItemPosition TempItemPos = HoveredItemInstance->GetItemPosition();
-			FGridInvSys_ItemPosition FromItemPosition = GridItemInstance->GetItemPosition();
-			FIntPoint RelativePosition;
-			RelativePosition.X = TempItemPos.Position.X - DropPosition.Position.X;
-			RelativePosition.Y = TempItemPos.Position.Y - DropPosition.Position.Y;
-			// 如果物品原始的方向与当前方向不同，则需要对物品位置进行旋转
-			if (FromItemPosition.Direction != DropPosition.Direction)
-			{
-				int32 TempPos = RelativePosition.X;
-				RelativePosition.X = RelativePosition.Y;
-				RelativePosition.Y = TempPos;
-			}
-
-			// 计算被覆盖的物品实例的大小 & 拖拽前目标物品的大小
-			FIntPoint TargetOccupiedItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSize(HoveredItemInstance);
-			FIntPoint PreDragItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSizeFrom(GridItemInstance, FromItemPosition.Direction);	
-			// 转换为对角坐标
-			FIntPoint DiagonalPosition;
-			DiagonalPosition.X = (PreDragItemSize.X - RelativePosition.X - TargetOccupiedItemSize.X);
-			DiagonalPosition.Y = (PreDragItemSize.Y - RelativePosition.Y - TargetOccupiedItemSize.Y);
-			DiagonalPosition.X = DiagonalPosition.X + FromItemPosition.Position.X;
-			DiagonalPosition.Y = DiagonalPosition.Y + FromItemPosition.Position.Y;
-
-			// 如果这个物品的新位置处于 ItemPositionData.Position + TargetItemSize 的范围内，则返回False
-			if (IsInRange(DiagonalPosition, TargetOccupiedItemSize, DropPosition.Position, FromTargetItemSize))
-			{
-				UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("交换位置失败，拖拽的物品与目标物品会发生重叠！！"))
-				return false;
-			}
-			// 更新数据
-			TempItemPos.Position = DiagonalPosition;
-			TempItemPos.EquipSlotTag = FromItemPosition.EquipSlotTag;
-			TempItemPos.GridID = FromItemPosition.GridID;
-			// TempItemPos.Direction; // 方向保持不变。
-			NewItemPositions.Add(TempItemPos);
-		}
-		for (int i = 0; i < AllHoveredItemInstances.Num(); ++i)
-		{
-			PlayerInvComp->Server_UpdateItemInstancePosition(
-				InventoryComponent.Get(), AllHoveredItemInstances[i], NewItemPositions[i]);
-		}
-		PlayerInvComp->Server_TryDropItemInstance(InventoryComponent.Get(), ItemInstance, DropPosition);
-		return true;
-	}
-	else // from size 小于 to size & 可能在同一容器或不同容器
-	{
-		// 获得需要被忽略的网格
-		TArray<UWidget*> Ignores = ToGridItemWidget->GetOccupiedGridItems();
-		TArray<UWidget*> NotIgnores;
-		GetContainerGridItems(NotIgnores, DropPosition.Position, FromTargetItemSize);
-		GetContainerGridItems(Ignores, ToGridItemWidget->GetOriginPosition(), ToTargetItemSize, NotIgnores);
-		NotIgnores.Empty();
-
-		// 在容器内查找其他可以放置该物品的位置，From占据的网格会被视为空闲。
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log, TEXT("[%d] To 的位置已经被其他物品占领，且拖拽的物品大小 < 放置位置的物品的大小"), Ignores.Num())
-		// 查找 To 物品 可以放置的位置
-		FIntPoint ValidPosition;
-		if (FindValidPosition(ToTargetItemSize, ValidPosition, Ignores))
-		{
-			// 计算 To 物品在From容器下的位置
-			FGridInvSys_ItemPosition TempItemData = ToGridItemInstance->GetItemPosition();
-			TempItemData.Position = ValidPosition;
-			PlayerInvComp->Server_UpdateItemInstancePosition(GetInventoryComponent(), ToGridItemInstance, TempItemData);
-			PlayerInvComp->Server_TryDropItemInstance(GetInventoryComponent(), ItemInstance, DropPosition);
-			return true;
-		}
-	}
-	return false;
-#endif
 }
 
 void UGridInvSys_ContainerGridWidget::ShowDragGridEffect(FIntPoint Position, FIntPoint Size, bool bIsRight)

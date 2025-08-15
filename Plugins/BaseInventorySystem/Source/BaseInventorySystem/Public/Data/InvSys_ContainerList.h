@@ -165,11 +165,9 @@ public:
 	/** 获取当前容器的所有物品实例，然后将其转换为指定类型。 */
 	void GetAllItems(TArray<UInvSys_InventoryItemInstance*>& OutArray) const;
 
-	/** 根据物品的唯一ID查找物品 */
-	UInvSys_InventoryItemInstance* FindItemInstance(FGuid ItemUniqueID) const;
-
-	/** 根据物品的唯一ID查找物品 */
-	UInvSys_InventoryItemInstance* FindItemInstance(const TSubclassOf<UInvSys_InventoryItemDefinition>& ItemDefinition) const;
+	/** 根据物品的定义查找物品 */
+	void FindItemInstance(const TSubclassOf<UInvSys_InventoryItemDefinition>& ItemDefinition,
+		TArray<UInvSys_InventoryItemInstance*>& OutArray) const;
 
 	/** 获取物品实例在当前容器内的索引 */
 	int32 FindEntryIndex(UInvSys_InventoryItemInstance* ItemInstance);
@@ -245,8 +243,7 @@ T* FInvSys_ContainerList::AddDefinition(TSubclassOf<UInvSys_InventoryItemDefinit
 	// Result->SetInventoryComponent(InventoryFragment->GetInventoryComponent());
 	Result->SetItemDefinition(ItemDef);
 	Result->SetItemStackCount(StackCount);
-	Result->SetItemUniqueID(FGuid::NewGuid());
-	Result->SetSlotTag(InventoryFragment->GetInventoryTag());
+	Result->SetInventoryTag(InventoryFragment->GetInventoryTag());
 
 	for (const UInvSys_InventoryItemFragment* Fragment : GetDefault<UInvSys_InventoryItemDefinition>(ItemDef)->GetFragments())
 	{
@@ -288,7 +285,7 @@ T* FInvSys_ContainerList::AddInstance(UInvSys_InventoryItemInstance* ItemInstanc
 	ItemInstance->ConditionalBeginDestroy();//标记目标待删除
 
 	// 更新物品的基础信息
-	TargetItemInstance->SetSlotTag(InventoryFragment->GetInventoryTag());
+	TargetItemInstance->SetInventoryTag(InventoryFragment->GetInventoryTag());
 	TargetItemInstance->SetIsDraggingItem(false);
 	// Instance->SetInventoryComponent(InventoryFragment->GetInventoryComponent());
 

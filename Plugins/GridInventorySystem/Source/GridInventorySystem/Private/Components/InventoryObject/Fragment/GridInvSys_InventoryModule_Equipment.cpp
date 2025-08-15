@@ -52,8 +52,7 @@ UInvSys_InventoryItemInstance* UGridInvSys_InventoryModule_Equipment::EquipItemD
 	EquipmentInstance = TempItemInstance;
 	EquipmentInstance->SetItemDefinition(ItemDef);
 	EquipmentInstance->SetItemStackCount(StackCount);
-	EquipmentInstance->SetItemUniqueID(FGuid::NewGuid());
-	EquipmentInstance->SetSlotTag(GetInventoryTag());
+	EquipmentInstance->SetInventoryTag(GetInventoryTag());
 	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
 	{
 		OnRep_ItemInstance();

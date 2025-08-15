@@ -1,10 +1,16 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Widgets/Components/InvSys_TagSlot.h"
+#include "Widgets/Components/InvSys_InventorySlot.h"
 
 
-TSharedRef<SWidget> UInvSys_TagSlot::RebuildWidget()
+void UInvSys_InventorySlot::AddInventorySlotChild(UWidget* Widget)
+{
+	// todo::
+	AddChild(Widget);
+}
+
+TSharedRef<SWidget> UInvSys_InventorySlot::RebuildWidget()
 {
 	MyBox = SNew(SBox);
 
@@ -16,7 +22,7 @@ TSharedRef<SWidget> UInvSys_TagSlot::RebuildWidget()
 			.VAlign(VAlign_Center)
 			[
 				SNew(STextBlock)
-				.Text(FText::FromName(SlotTag.GetTagName()))
+				.Text(FText::FromName(InventoryTag.GetTagName()))
 			]
 		);
 	}

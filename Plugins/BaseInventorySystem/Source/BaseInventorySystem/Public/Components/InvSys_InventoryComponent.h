@@ -163,6 +163,9 @@ protected:
 	/** 创建所有库存对象后被调用 */
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCosmetic, Category = "Inventory Component")
 	void OnConstructInventoryObjects();
+
+	UFUNCTION()
+	virtual void OnInventoryVisibilityChanged(ESlateVisibility InVisibility);
 	
 public:
 	/**
@@ -211,8 +214,8 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Component")
 	TSoftClassPtr<class UInvSys_InventoryContentMapping> InventoryObjectContent;
 
-	/** [Client] 库存对象是否已经更新？限制初始化函数只执行一次。 */
-	bool bDisplayWidgetIsValid;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Component")
+	FGameplayTag InventoryLayoutTag;
 
 	/** 库存组件的展示菜单 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Component")
@@ -220,6 +223,9 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Component")
 	TObjectPtr<UInvSys_InventoryLayoutWidget> LayoutWidget;
+
+private:
+	FTimerHandle ClearInventoryWidgetTimerHandle;
 };
 
 template <class T, class ... ArgList>
