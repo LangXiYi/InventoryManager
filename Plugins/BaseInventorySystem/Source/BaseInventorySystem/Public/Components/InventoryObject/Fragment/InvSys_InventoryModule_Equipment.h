@@ -42,7 +42,7 @@ public:
 
 	virtual bool UnEquipItemInstance();
 
-	UFUNCTION(BlueprintPure, Category = "Inventory Fragment|Equipment")
+	UFUNCTION(BlueprintPure, Category = "Inventory Module|Equipment")
 	bool HasEquipmentItems() const;
 
 	UInvSys_InventoryItemInstance* GetEquipItemInstance() const;
@@ -60,11 +60,11 @@ protected:
 	// UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Fragment")
 	// FGameplayTag SupportEquipTag;
 
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_ItemInstance, Category = "Inventory Fragment")
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_ItemInstance, Category = "Inventory Module|Equipment")
 	TObjectPtr<UInvSys_InventoryItemInstance> EquipmentInstance;
 	UFUNCTION()
 	void OnRep_ItemInstance();
 	
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Fragment")
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory Module|Equipment")
 	TWeakObjectPtr<UInvSys_InventoryItemInstance> LastItemInstance;
 };

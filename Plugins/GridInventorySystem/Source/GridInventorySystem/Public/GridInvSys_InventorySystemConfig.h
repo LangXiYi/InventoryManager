@@ -23,8 +23,5 @@ public:
 
 public:
 	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category = "Inventory System Config")
-	TSubclassOf<UGridInvSys_DragItemWidget> DraggingWidgetClass = nullptr;
-
-	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category = "Inventory System Config")
 	int32 ItemDrawSize = 128;
 };

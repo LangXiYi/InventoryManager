@@ -19,7 +19,8 @@ class BASEINVENTORYSYSTEM_API UInvSys_InventoryWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	virtual void RefreshInventoryWidget(UInvSys_BaseInventoryObject* NewInventoryObject);
+	UFUNCTION(BlueprintCallable, Category = "Inventory Widget")
+	virtual void InitInventoryWidget(UInvSys_BaseInventoryObject* NewInventoryObject);
 
 protected:
 	virtual void NativeConstruct() override;
@@ -55,5 +56,8 @@ protected:
 	TWeakObjectPtr<UInvSys_InventoryComponent> InventoryComponent;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Container Grid Layout")
-	FGameplayTag SlotTag;
+	FGameplayTag InventoryTag;
+
+private:
+	bool bInitInventoryWidget = false;
 };

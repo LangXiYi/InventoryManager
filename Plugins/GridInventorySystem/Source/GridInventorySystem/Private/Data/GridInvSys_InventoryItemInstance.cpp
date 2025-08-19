@@ -38,14 +38,6 @@ void UGridInvSys_InventoryItemInstance::InitItemInstanceProps(const FGridInvSys_
 	// 初始化物品实例时 LastItemPosition 与当前位置一致，直到下次更新
 	SetItemPosition(NewItemPosition, bIsBroadcast);
 }
-
-void UGridInvSys_InventoryItemInstance::RemoveFromInventory()
-{
-	Super::RemoveFromInventory();
-
-	// SetItemPosition(FGridInvSys_ItemPosition());
-}
-
 void UGridInvSys_InventoryItemInstance::SetItemPosition(const FGridInvSys_ItemPosition& NewItemPosition, bool bIsBroadcast)
 {
 	LastItemPosition = ItemPosition;

@@ -82,13 +82,13 @@ public:
 
 protected:
 	// 客户端该属性需要等待 InitInventoryObject 执行才能初始化
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Fragment")
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory Module")
 	TObjectPtr<UInvSys_BaseInventoryObject> InventoryObject;
 
 	// 客户端该属性需要等待 InitInventoryObject 执行才能初始化
 	// 客户端同步装备时会广播一次，该广播会获取当前的标签，但此时该属性为 None
 	// UPROPERTY(BlueprintReadOnly, Replicated, Category = "Inventory Fragment")
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Fragment")
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory Module")
 	FGameplayTag InventoryTag;
 
 	// UPROPERTY(EditDefaultsOnly, Category = "Inventory Fragment", meta = (ClampMin = 0))
@@ -98,9 +98,9 @@ protected:
 	bool bPendingDormancy = true;
 
 private:
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Fragment", meta = (AllowPrivateAccess))
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory Module", meta = (AllowPrivateAccess))
 	TObjectPtr<UInvSys_InventoryComponent> InventoryComponent;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Fragment", meta = (AllowPrivateAccess))
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory Module", meta = (AllowPrivateAccess))
 	AActor* Owner_Private;
 };

@@ -9,14 +9,16 @@
 #include "Blueprint/WidgetTree.h"
 #include "Components/InvSys_InventoryComponent.h"
 
-void UInvSys_InventoryWidget::RefreshInventoryWidget(UInvSys_BaseInventoryObject* NewInventoryObject)
+void UInvSys_InventoryWidget::InitInventoryWidget(UInvSys_BaseInventoryObject* NewInventoryObject)
 {
+	bInitInventoryWidget = true;
 	check(NewInventoryObject)
 	if (NewInventoryObject)
 	{
 		InventoryObject = NewInventoryObject;
-		SlotTag = InventoryObject->GetInventoryObjectTag();
+		InventoryTag = InventoryObject->GetInventoryObjectTag();
 		InventoryComponent = InventoryObject->GetInventoryComponent();
+
 	}
 	OnRefreshWidget();
 }
@@ -24,7 +26,11 @@ void UInvSys_InventoryWidget::RefreshInventoryWidget(UInvSys_BaseInventoryObject
 void UInvSys_InventoryWidget::NativeConstruct()
 {
 	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG && InventoryObject == nullptr, LogInventorySystem, Error,
-		TEXT("你必须在执行 Construct 函数前调用 RefreshInventoryWidget 初始化属性."))
+		TEXT("你必须在执行 Construct 函数前初始化 InventoryObject 属性."))
+	if (InventoryObject && bInitInventoryWidget == false)
+	{
+		InitInventoryWidget(InventoryObject);
+	}
 	Super::NativeConstruct();
 }
 

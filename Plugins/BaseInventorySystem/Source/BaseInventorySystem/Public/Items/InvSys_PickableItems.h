@@ -79,13 +79,13 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 protected:
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Pickable Items")
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Pickable Items")
 	TObjectPtr<USceneComponent> SceneComponent;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Pickable Items")
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Pickable Items")
 	TObjectPtr<UStaticMeshComponent> ItemMesh;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Pickable Items")
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Pickable Items")
 	TObjectPtr<USphereComponent> SphereCollision;
 
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_PickableItemInstance, Category = "Pickable Items", meta = (ExposeOnSpawn))

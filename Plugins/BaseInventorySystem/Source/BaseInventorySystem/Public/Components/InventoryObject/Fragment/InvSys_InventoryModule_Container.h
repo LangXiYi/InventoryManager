@@ -17,7 +17,7 @@ class BASEINVENTORYSYSTEM_API UInvSys_InventoryModule_Container : public UInvSys
 public:
 	UInvSys_InventoryModule_Container();
 
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Fragment|Container")
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Module|Container")
 	virtual void RefreshInventoryFragment() override;
 
 	/**
@@ -25,9 +25,17 @@ public:
 	 * 注意：可变参数列表要求目标类型必须实现 InitItemInstanceProps 函数，且参数类型一致。
 	 */
 	template<class T, class... ArgList>
-	T* AddItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, const ArgList&... Args)
+	T* AddItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
+		int32 StackCount, const ArgList&... Args)
 	{
-		T* ItemInstance = ContainerList.AddDefinition<T>(ItemDef, StackCount, Args...);
+		return AddItemDefinition<T>(T::StaticClass(), ItemDef, StackCount, Args...);
+	}
+
+	template<class T, class... ArgList>
+	T* AddItemDefinition(UClass* ItemInstanceClass, TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
+		int32 StackCount, const ArgList&... Args)
+	{
+		T* ItemInstance = ContainerList.AddDefinition<T>(ItemInstanceClass, ItemDef, StackCount, Args...);
 		OnContainerPostAdd(ItemInstance);
 		MarkItemInstanceDirty(ItemInstance);
 		return ItemInstance;
@@ -52,7 +60,7 @@ public:
 	 * @param StackableItems 输出物品实例 
 	 * @return 所有物品实例可用的堆叠数量
 	 */
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Fragment|Container")
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Module|Container")
 	int32 FindStackableItemInstances(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
 	                                 TArray<UInvSys_InventoryItemInstance*>& StackableItems);
 
@@ -81,27 +89,27 @@ public:
 		}
 	}
 
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Fragment|Container")
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Module|Container")
 	void UpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance, int32 NewStackCount);
 
 	/** 更新物品的拖拽状态 */
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Fragment|Container")
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Module|Container")
 	void UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance, bool NewState);
 
 	/** 移除所有物品 */
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Fragment|Container")
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Module|Container")
 	void RemoveAllItemInstance();
 
 	/** 移除指定物品 */
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Fragment|Container")
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Module|Container")
 	bool RemoveItemInstance(UInvSys_InventoryItemInstance* InItemInstance);
 
 	/** 获取当前容器内的所有物品 */
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Fragment|Container")
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Module|Container")
 	bool ContainsItem(UInvSys_InventoryItemInstance* ItemInstance) const;
 
 	/** 获取当前容器内的所有物品 */
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Fragment|Container")
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Module|Container")
 	void GetAllItemInstance(TArray<UInvSys_InventoryItemInstance*>& OutArray) const;
 
 	/** 标记指定物品为脏 */

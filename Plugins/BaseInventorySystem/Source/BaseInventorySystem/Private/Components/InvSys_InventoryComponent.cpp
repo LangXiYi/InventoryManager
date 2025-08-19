@@ -118,6 +118,7 @@ UInvSys_InventoryLayoutWidget* UInvSys_InventoryComponent::CreateDisplayWidget(A
 		return nullptr;
 	}
 	UInvSys_InventoryHUD* InventoryHUD = PlayerInvComp->GetInventoryHUD();
+	check(InventoryHUD)
 
 	// 创建布局控件后，收集所有的 TagSlot 供后续控件插入正确位置。
 	LayoutWidget = CreateWidget<UInvSys_InventoryLayoutWidget>(NewPlayerController, LayoutWidgetClass);
@@ -137,21 +138,19 @@ UInvSys_InventoryLayoutWidget* UInvSys_InventoryComponent::CreateDisplayWidget(A
 		if (DisplayWidgetFragment)
 		{
 			// 将库存对象的控件插入对应位置的插槽。
-			// todo::LayoutWidget改为InventoryHUD，修改AddWidget的逻辑，根据标签逐级查找合适的槽位
 			UUserWidget* DisplayWidget = DisplayWidgetFragment->CreateDisplayWidget(NewPlayerController);
 			// LayoutWidget->AddWidget(DisplayWidget, InvObj->GetInventoryObjectTag());
 			InventoryHUD->AddWidget(DisplayWidget, InvObj->GetInventoryObjectTag());
-
 		}
 	}
-	if (const UInvSys_InventorySystemConfig* InventorySystemConfig = GetDefault<UInvSys_InventorySystemConfig>())
-	{
-		if (InventorySystemConfig->AutoClearIdleInventoryWidget)
-		{
-			LayoutWidget->OnVisibilityChanged.AddDynamic(this, &UInvSys_InventoryComponent::OnInventoryVisibilityChanged);
-		}
-	}
-	
+	// 自动清除隐藏的控件，todo::提取到DisplayWidget模块中？
+	// if (const UInvSys_InventorySystemConfig* InventorySystemConfig = GetDefault<UInvSys_InventorySystemConfig>())
+	// {
+	// 	if (InventorySystemConfig->AutoClearInventoryWidget)
+	// 	{
+	// 		LayoutWidget->OnVisibilityChanged.AddDynamic(this, &UInvSys_InventoryComponent::OnInventoryVisibilityChanged);
+	// 	}
+	// }
 	return LayoutWidget;
 }
 
@@ -302,68 +301,6 @@ AInvSys_PickableItems* UInvSys_InventoryComponent::DiscardItemInstance(
 		return PickableItems;
 	}
 	return nullptr;
-}
-
-bool UInvSys_InventoryComponent::SuperposeItemInstance(UInvSys_InventoryItemInstance* From, UInvSys_InventoryItemInstance* To)
-{
-	if (From == nullptr || To == nullptr)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstance is nullptr."), __FUNCTION__)
-		return false;
-	}
-
-	if (From == To)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, FromItemInstance == ToItemInstance."), __FUNCTION__)
-		return false;
-	}
-
-	if (From->PayloadItems.IsEmpty() == false)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstanceA->PayloadItems.Num = %d."), __FUNCTION__, From->PayloadItems.Num())
-		return false;
-	}
-
-	if (To->PayloadItems.IsEmpty() == false)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstanceB->PayloadItems.Num = %d."), __FUNCTION__, To->PayloadItems.Num())
-		return false;
-	}
-
-	UInvSys_InventoryComponent* FromInvComp = From->GetInventoryComponent();
-	UInvSys_InventoryComponent* ToInvComp = To->GetInventoryComponent();
-	if (FromInvComp == nullptr || ToInvComp == nullptr)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, InventoryComponent is nullptr."), __FUNCTION__)
-		return false;
-	}
-
-	// 两物品定义一致，且允许堆叠时，自动堆叠物品
-	if (From->GetItemDefinition() == To->GetItemDefinition())
-	{
-		if (auto BaseItemFragment = From->FindFragmentByClass<UInvSys_ItemFragment_BaseItem>())
-		{
-			const int32 MaxStackCount = BaseItemFragment->MaxStackCount;
-			const int32 FromItemStackCount = From->GetItemStackCount();
-			const int32 ToItemStackCount = To->GetItemStackCount();
-			const int32 NewItemStackCount = FromItemStackCount + ToItemStackCount;
-			PreSuperposeItemInstance(From, To);
-			if (NewItemStackCount <= MaxStackCount)
-			{
-				// 完全堆叠，FromItemInstance 全部转移至 ToItemInstance 
-				ToInvComp->UpdateItemStackCount(To, NewItemStackCount);
-				FromInvComp->RemoveItemInstance(From);
-			}
-			else
-			{
-				ToInvComp->UpdateItemStackCount(To, MaxStackCount);
-				FromInvComp->UpdateItemStackCount(From, NewItemStackCount - MaxStackCount);
-			}
-			PostSuperposeItemInstance(From, To);
-			return true;
-		}
-	}
-	return false;
 }
 
 UInvSys_InventoryItemInstance* UInvSys_InventoryComponent::EquipItemDefinition(
@@ -532,14 +469,16 @@ void UInvSys_InventoryComponent::OnInventoryVisibilityChanged(ESlateVisibility I
 	case ESlateVisibility::Collapsed:
 	case ESlateVisibility::Hidden:
 		const UInvSys_InventorySystemConfig* InventorySystemConfig = GetDefault<UInvSys_InventorySystemConfig>();
-		int32 InRate = InventorySystemConfig ? InventorySystemConfig->ClearIdleInventoryWidgetTime : 90.f;
+		int32 InRate = InventorySystemConfig ? InventorySystemConfig->ClearInventoryWidgetTime : 90.f;
 		// 超过五分钟未显示用户控件则直接移除控件
 		GetWorld()->GetTimerManager().SetTimer(ClearInventoryWidgetTimerHandle, [this]()
 		{
-			LayoutWidget->RemoveFromParent();
+			UInvSys_InventoryHUD* InventoryHUD = UInvSys_InventorySystemLibrary::GetInventoryHUD(GetWorld());
+			checkf(InventoryHUD, TEXT("Inventory HUD is nullptr."))
+			InventoryHUD->RemoveWidget(InventoryLayoutTag);
 			LayoutWidget->ConditionalBeginDestroy();
 			LayoutWidget = nullptr;
-			UE_LOG(LogInventorySystem, Log, TEXT("Clear Inventory Widget..."))
+			checkf(LayoutWidget == nullptr, TEXT("LayoutWidget is not nullptr."))
 		}, InRate, false);
 		break;
 	}

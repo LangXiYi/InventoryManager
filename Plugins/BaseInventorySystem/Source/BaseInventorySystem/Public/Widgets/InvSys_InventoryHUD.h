@@ -24,13 +24,22 @@ public:
 	virtual void NativeOnInitialized() override;
 
 	UFUNCTION(BlueprintCallable, Category = "Inventory HUD")
-	void AddWidget(UUserWidget* NewWidget, const FGameplayTag& InventoryTag);
+	void AddWidget(UUserWidget* NewWidget, FGameplayTag InventoryTag);
 
-	template<class T>
-	T* FindInventoryWidget(FGameplayTag InventoryTag);
+	UFUNCTION(BlueprintCallable, Category = "Inventory HUD")
+	void RemoveWidget(const FGameplayTag& InventoryTag);
 
 	UFUNCTION(BlueprintCallable, BlueprintPure = false, Category = "Inventory HUD")
-	UWidget* FindInventoryWidget(FGameplayTag InventoryTag, TSubclassOf<UWidget> WidgetClass);
+	UInvSys_InventorySlot* FindInventorySlot(FGameplayTag InventoryTag) const;
+
+	template<class T>
+	T* FindInventoryWidget(FGameplayTag InventoryTag) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure = false, Category = "Inventory HUD", meta =(DeterminesOutputType = WidgetClass))
+	UUserWidget* FindInventoryWidget(FGameplayTag InventoryTag, TSubclassOf<UUserWidget> WidgetClass);
+
+	UFUNCTION(BlueprintCallable, BlueprintPure = false, Category = "Inventory HUD", meta =(DeterminesOutputType = WidgetClass))
+	UUserWidget* FindAndCreateInventoryWidget(FGameplayTag InventoryTag, TSubclassOf<UUserWidget> WidgetClass);
 
 	UFUNCTION(BlueprintCallable, Category = "Inventory HUD")
 	void DisplayInventoryItemActionList(UInvSys_InventoryItemInstance* ItemInstance);
@@ -45,19 +54,18 @@ protected:
 private:
 	UPROPERTY()
 	TMap<FGameplayTag, UInvSys_InventorySlot*> InventoryWidgetMapping;
+
+	UPROPERTY()
+	TSet<FGameplayTag> DefaultInventoryWidgets;
 };
 
 template <class T>
-T* UInvSys_InventoryHUD::FindInventoryWidget(FGameplayTag InventoryTag)
+T* UInvSys_InventoryHUD::FindInventoryWidget(FGameplayTag InventoryTag) const
 {
-	if (InventoryTag.IsValid() == false)
+	UInvSys_InventorySlot* InventorySlot = FindInventorySlot(InventoryTag);
+	if (InventorySlot)
 	{
-		return nullptr;
+		return InventorySlot->GetInventorySlotChild<T>();
 	}
-	if (InventoryWidgetMapping.Contains(InventoryTag))
-	{
-		return (T*)InventoryWidgetMapping[InventoryTag];
-	}
-	FGameplayTag ParentInventoryTag = InventoryTag;
-	return FindInventoryWidget<T>(ParentInventoryTag);
+	return nullptr;
 }

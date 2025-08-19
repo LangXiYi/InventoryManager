@@ -4,6 +4,7 @@
 #include "Components/InvSys_InventoryControllerComponent.h"
 
 #include "Components/InvSys_InventoryComponent.h"
+#include "Components/InventoryObject/Fragment/InvSys_InventoryModule_QuickBar.h"
 #include "Data/InvSys_ItemFragment_BaseItem.h"
 #include "Data/InvSys_ItemFragment_EquipItem.h"
 #include "Items/InvSys_PickableItems.h"
@@ -307,29 +308,47 @@ void UInvSys_InventoryControllerComponent::GetLifetimeReplicatedProps(TArray<FLi
 void UInvSys_InventoryControllerComponent::Server_SuperposeItemInstance_Implementation(
 	UInvSys_InventoryItemInstance* FromItemInstance, UInvSys_InventoryItemInstance* ToItemInstance)
 {
-	if (FromItemInstance == nullptr || ToItemInstance == nullptr)
+	if (FromItemInstance == nullptr)
 	{
 		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstance is nullptr."), __FUNCTION__)
 		return;
 	}
-	if (FromItemInstance == ToItemInstance)
+	// todo:: if BaseItemFragment->bAllowSuperpose == true
+	ToItemInstance->SuperposeItemInstance(FromItemInstance);
+	if (FromItemInstance->GetItemStackCount() <= 0)
 	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, FromItemInstance == ToItemInstance."), __FUNCTION__)
-		return;
+		FromItemInstance->RemoveAndDestroyFromInventory();
+		FromItemInstance->ConditionalBeginDestroy();
 	}
-	UInvSys_InventoryComponent* ToInvComp = ToItemInstance->GetInventoryComponent();
-	if (ToInvComp == nullptr)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ToInvComp is nullptr."), __FUNCTION__)
-		return;
-	}
-	ToInvComp->SuperposeItemInstance(FromItemInstance, ToItemInstance);
 }
 
 void UInvSys_InventoryControllerComponent::Server_SwapItemInstance_Implementation(
 	UInvSys_InventoryItemInstance* FromItemInstance, UInvSys_InventoryItemInstance* ToItemInstance)
 {
 	checkNoEntry();
+}
+
+void UInvSys_InventoryControllerComponent::Server_UpdateQuickBarItemReference_Implementation(
+	UInvSys_InventoryComponent* InvComp, FGameplayTag InventoryTag, UInvSys_InventoryItemInstance* ItemInstance,
+	int32 Index)
+{
+	if (InvComp)
+	{
+		auto QuickBarModule = InvComp->FindInventoryModule<UInvSys_InventoryModule_QuickBar>(InventoryTag);
+		if (QuickBarModule)
+		{
+			QuickBarModule->UpdateQuickBarItemReference(ItemInstance, Index);
+		}
+	}
+}
+
+void UInvSys_InventoryControllerComponent::Server_UseItemInstance_Implementation(
+	UInvSys_InventoryItemInstance* ItemInstance)
+{
+	if (ItemInstance)
+	{
+		ItemInstance->UseItemInstance();
+	}
 }
 
 bool UInvSys_InventoryControllerComponent::HasAuthority() const

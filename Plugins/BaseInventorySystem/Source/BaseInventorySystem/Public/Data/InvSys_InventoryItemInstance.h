@@ -7,6 +7,7 @@
 #include "GameplayTagContainer.h"
 #include "InvSys_InventoryItemInstance.generated.h"
 
+class UInvSys_InventoryModule;
 class UInvSys_InventoryComponent;
 class UInvSys_InventoryItemFragment;
 class UInvSys_InventoryItemDefinition;
@@ -39,7 +40,7 @@ DECLARE_DYNAMIC_DELEGATE_OneParam(FOnDragItemInstance, bool, bIsDragging);
  * 库存内容项
  * 注意：修改类成员属性后需要调用 MarkItemInstanceDirty 标记修改！！！
  */
-UCLASS(BlueprintType)
+UCLASS(Abstract, BlueprintType, Blueprintable)
 class BASEINVENTORYSYSTEM_API UInvSys_InventoryItemInstance : public UObject
 {
 	GENERATED_BODY()
@@ -49,6 +50,15 @@ class BASEINVENTORYSYSTEM_API UInvSys_InventoryItemInstance : public UObject
 
 public:
 	UInvSys_InventoryItemInstance();
+
+	virtual void InitInventoryItemInstance() {}
+
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Item Instance")
+	void UseItemInstance();
+
+	// 如果物品可以被使用请重载该函数并返回 true
+	UFUNCTION(BlueprintCallable, Category = "Inventory Item Instance")
+	bool IsUsableItemInstance() const { return bIsUsableItemInstance; }
 
 	/**
 	 * 如果在 AddItemDefinition/ItemInstance 时传入了特定类型的属性
@@ -70,9 +80,10 @@ public:
 	virtual void PostRepNotifies() override;
 
 	/**
-	 * 当物品从库存中删除时触发
+	 * 将物品从库存中删除并销毁该物品实例
 	 */
-	virtual void RemoveFromInventory() {}
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Item Instance")
+	virtual void RemoveAndDestroyFromInventory();
 
 	/**
 	 * 当物品在从某一容器转移至另一容器内时触发
@@ -86,6 +97,14 @@ protected:
 	virtual void PostReplicatedAdd();
 	virtual void PostReplicatedChange();
 	// Custom FastArrayItem API End -----
+
+	// 物品被使用后调用的函数，需要 IsUsableItemInstance 返回 true
+	virtual void NativeOnUseItemInstance();
+
+	UFUNCTION(BlueprintImplementableEvent, BlueprintAuthorityOnly, Category = "Inventory Item Instance")
+	void OnUseItemInstance();
+
+	// todo:: Custom Display Widget? 
 
 public:
 	/**
@@ -117,10 +136,7 @@ public:
 	}
 
 	/** 设置物品的库存标签，主要用来表示当前物品在库存组件中的位置。 */
-	FORCEINLINE void SetInventoryTag(FGameplayTag Tag)
-	{
-		InventoryTag = Tag;
-	}
+	void SetInventoryTag(FGameplayTag Tag);
 
 	/** 设置物品的拖拽状态，同时广播该状态更新。 */
 	void SetIsDraggingItem(bool NewDragState);
@@ -157,14 +173,23 @@ public:
 		return StackCount;
 	}
 
-	FORCEINLINE void SetItemStackCount(int32 NewStackCount)
-	{
-		StackCount = NewStackCount;
-	}
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Item Instance")
+	void SetItemStackCount(int32 NewStackCount);
+
+	void SuperposeItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
+
+	/**
+	 * 预处理物品堆叠数量改变
+	 * @param ItemInstance 物品来源
+	 * @param DeltaStackCount 来源物品将要减少的数量
+	 */
+	virtual void PreUpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance, int32 DeltaStackCount) {}
 	
 	bool HasAuthority() const;
 
 	ENetMode GetNetMode() const;
+
+	void MarkItemInstanceDirty();
 
 	FORCEINLINE virtual bool IsSupportedForNetworking() const override { return true; }
 
@@ -189,8 +214,10 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory Item Instance", meta = (ExposeOnSpawn))
 	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDefinition = nullptr;
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory Item Instance")
+	UPROPERTY(ReplicatedUsing = OnRep_InventoryTag, BlueprintReadOnly, Category = "Inventory Item Instance")
 	FGameplayTag InventoryTag;
+	UFUNCTION()
+	void OnRep_InventoryTag();
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory Item Instance", meta = (ExposeOnSpawn))
 	int32 StackCount = 0;
@@ -203,10 +230,16 @@ protected:
 	/* 根据 FastArray 的处理函数更新该标记，并在 RepNotify 同步完成后根据该标记调用自定义的处理函数 */
 	EInvSys_ReplicateState ReplicateState = EInvSys_ReplicateState::None;
 
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item Instance")
+	bool bIsUsableItemInstance = false;
+
 private:
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Item Instance", meta = (AllowPrivateAccess))
 	TObjectPtr<UInvSys_InventoryComponent> InventoryComponent = nullptr;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Item Instance", meta = (AllowPrivateAccess))
 	TObjectPtr<AActor> Owner_Private;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory Item Instance", meta = (AllowPrivateAccess))
+	TObjectPtr<UInvSys_InventoryModule_Container> ContainerModule;
 };

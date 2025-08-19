@@ -25,31 +25,57 @@ UGridInvSys_InventoryComponent::UGridInvSys_InventoryComponent()
 	DefaultContainerPriority.Add(FGameplayTag::RequestGameplayTag("Inventory.Container.SafeBox"));
 }
 
-void UGridInvSys_InventoryComponent::AddItemDefinitionToContainerPos(
+UInvSys_InventoryItemInstance* UGridInvSys_InventoryComponent::AddItemDefinitionToContainerPos(
 	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, FGridInvSys_ItemPosition Pos)
 {
 	if (IsValidInventoryTag(Pos.EquipSlotTag) == false)
 	{
 		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("%hs Falied, EquipSlotTag Is not valid %s"), __FUNCTION__, *Pos.EquipSlotTag.ToString())
-		return;
+		return nullptr;
 	}
 	UGridInvSys_InventoryModule_Container* ContainerFragment =
 		FindInventoryModule<UGridInvSys_InventoryModule_Container>(Pos.EquipSlotTag);
 	if (ContainerFragment == nullptr)
 	{
 		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("无有效的容器片段: %s"), *Pos.ToString())
-		return;
+		return nullptr;
 	}
 
 	FIntPoint ItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemDefinitionSizeFrom(ItemDef, Pos.Direction);
 	if (ContainerFragment->IsUnoccupiedInSquareRange(Pos.GridID, Pos.Position, ItemSize))
 	{
-		AddItemDefinition<UGridInvSys_InventoryItemInstance>(ItemDef, Pos.EquipSlotTag, StackCount, Pos);
+		return AddItemDefinition<UGridInvSys_InventoryItemInstance>(ItemDef, Pos.EquipSlotTag, StackCount, Pos);
 	}
+	return nullptr;
+}
+
+UInvSys_InventoryItemInstance* UGridInvSys_InventoryComponent::AddItemDefinitionToPos(
+	TSubclassOf<UInvSys_InventoryItemInstance> ItemInstanceClass,
+	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, FGridInvSys_ItemPosition Pos)
+{
+	if (IsValidInventoryTag(Pos.EquipSlotTag) == false)
+	{
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("%hs Falied, EquipSlotTag Is not valid %s"), __FUNCTION__, *Pos.EquipSlotTag.ToString())
+		return nullptr;
+	}
+	UGridInvSys_InventoryModule_Container* ContainerFragment =
+		FindInventoryModule<UGridInvSys_InventoryModule_Container>(Pos.EquipSlotTag);
+	if (ContainerFragment == nullptr)
+	{
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("无有效的容器片段: %s"), *Pos.ToString())
+		return nullptr;
+	}
+
+	FIntPoint ItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemDefinitionSizeFrom(ItemDef, Pos.Direction);
+	if (ContainerFragment->IsUnoccupiedInSquareRange(Pos.GridID, Pos.Position, ItemSize))
+	{
+		return AddItemDefinition<UGridInvSys_InventoryItemInstance>(ItemInstanceClass, ItemDef, Pos.EquipSlotTag, StackCount, Pos);
+	}
+	return nullptr;
 }
 
 void UGridInvSys_InventoryComponent::AddItemInstanceToContainerPos(UInvSys_InventoryItemInstance* InItemInstance,
-	const FGridInvSys_ItemPosition& InPos)
+                                                                   const FGridInvSys_ItemPosition& InPos)
 {
 	AddItemInstance<UGridInvSys_InventoryItemInstance>(InItemInstance, InPos.EquipSlotTag, InPos);
 }

@@ -440,25 +440,37 @@ EGridInvSys_DropType UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer
 		// TODO::转移的位置不在物品实例的覆盖范围内
 		TArray<UGridInvSys_InventoryItemInstance*> AllOccupiedObjects;
 		GetAllHoveredItemInstances(AllOccupiedObjects, ToPosition, TargetItemSize);
-		for (UGridInvSys_InventoryItemInstance* OccupiedItemInstance : AllOccupiedObjects)
+		for (UGridInvSys_InventoryItemInstance* HoveredItemInstance : AllOccupiedObjects)
 		{
 			// 计算相对坐标
-			FGridInvSys_ItemPosition TempItemPos = OccupiedItemInstance->GetItemPosition();
+			FGridInvSys_ItemPosition TempItemPos = HoveredItemInstance->GetItemPosition();
 			FGridInvSys_ItemPosition FromItemPosition = GridItemInstance->GetItemPosition();
 			FIntPoint RelativePosition;
 			RelativePosition.X = TempItemPos.Position.X - ToPosition.X;
 			RelativePosition.Y = TempItemPos.Position.Y - ToPosition.Y;
+
+			EGridInvSys_ItemDirection HoveredItemDirection = HoveredItemInstance->GetItemPosition().Direction;
 			// 如果物品原始的方向与当前方向不同，则需要对物品位置进行旋转
 			if (FromItemPosition.Direction != ItemDirection)
 			{
 				int32 TempPos = RelativePosition.X;
 				RelativePosition.X = RelativePosition.Y;
 				RelativePosition.Y = TempPos;
+				switch (HoveredItemDirection)
+				{
+				case EGridInvSys_ItemDirection::Horizontal:
+					HoveredItemDirection = EGridInvSys_ItemDirection::Vertical;
+					break;
+				case EGridInvSys_ItemDirection::Vertical:
+					HoveredItemDirection = EGridInvSys_ItemDirection::Horizontal;
+					break;
+				default: ;
+				}
 			}
 
 			// 计算被覆盖的物品实例的大小 & 拖拽前目标物品的大小
-			FIntPoint TargetOccupiedItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSize(OccupiedItemInstance);
-			FIntPoint PreDragItemSize = UGridInvSys_CommonFunctionLibrary::CalculateItemInstanceSizeFrom(GridItemInstance, FromItemPosition.Direction);	
+			FIntPoint TargetOccupiedItemSize = HoveredItemInstance->GetItemSize(HoveredItemDirection);
+			FIntPoint PreDragItemSize = GridItemInstance->GetItemSize(FromItemPosition.Direction);	
 			// 转换为对角坐标
 			FIntPoint DiagonalPosition;
 			DiagonalPosition.X = (PreDragItemSize.X - RelativePosition.X - TargetOccupiedItemSize.X);
@@ -467,7 +479,9 @@ EGridInvSys_DropType UGridInvSys_ContainerGridWidget::IsCanDropItemFromContainer
 			DiagonalPosition.Y = DiagonalPosition.Y + FromItemPosition.Position.Y;
 
 			// 如果这个物品的新位置处于 ItemPositionData.Position + TargetItemSize 的范围内，则返回False
-			if (IsInRange(DiagonalPosition, TargetOccupiedItemSize, ToPosition, TargetItemSize))
+			if (IsInRangePosition(DiagonalPosition, ToPosition, TargetItemSize) ||
+				IsInRangePosition(FIntPoint(DiagonalPosition.X + TargetOccupiedItemSize.X - 1,
+					DiagonalPosition.Y + TargetOccupiedItemSize.Y - 1), ToPosition, TargetItemSize))
 			{
 				return EGridInvSys_DropType::None;
 			}
@@ -517,7 +531,12 @@ void UGridInvSys_ContainerGridWidget::NativePreConstruct()
 	if (IsDesignTime())
 	{
 		// SizeBox设置大小
-		NativeConstruct();
+		int32 ItemDrawSize = GetDefault<UGridInvSys_InventorySystemConfig>()->ItemDrawSize;
+		if (SizeBox)
+		{
+			SizeBox->SetWidthOverride(ItemDrawSize * ContainerGridSize.Y);
+			SizeBox->SetHeightOverride(ItemDrawSize * ContainerGridSize.X);
+		}
 
 		if (SizeBox != GetRootWidget())
 		{
@@ -634,7 +653,7 @@ bool UGridInvSys_ContainerGridWidget::NativeOnDrop(const FGeometry& InGeometry, 
 		// if (IsCanDropItemFromContainer(DragItemInstance, TargetSlotPosition, ItemDirection))
 		{
 			FGridInvSys_ItemPosition DropPosition;
-			DropPosition.EquipSlotTag = SlotTag;
+			DropPosition.EquipSlotTag = InventoryTag;
 			DropPosition.GridID = ContainerGridID;
 			DropPosition.Position = TargetSlotPosition;
 			DropPosition.Direction = ItemDirection;

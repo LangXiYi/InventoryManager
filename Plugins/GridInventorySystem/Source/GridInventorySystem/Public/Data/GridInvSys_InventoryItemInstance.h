@@ -45,8 +45,6 @@ public:
 
 	void InitItemInstanceProps(const FGridInvSys_ItemPosition& NewItemPosition, bool bIsBroadcast);
 
-	virtual void RemoveFromInventory() override;
-	
 	void SetItemPosition(const FGridInvSys_ItemPosition& NewItemPosition, bool bIsBroadcast = true);
 
 	FGridInvSys_ItemPosition GetItemPosition() const

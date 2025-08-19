@@ -12,6 +12,7 @@ UE_DEFINE_GAMEPLAY_TAG(Inventory_Message_EquipItem, "Inventory.Message.EquipItem
 UE_DEFINE_GAMEPLAY_TAG(Inventory_Message_UnEquipItem, "Inventory.Message.UnEquipItem");
 
 UE_DEFINE_GAMEPLAY_TAG(Inventory_Message_DragItem, "Inventory.Message.DragItem");
+UE_DEFINE_GAMEPLAY_TAG(Inventory_Message_QuickBarChanged, "Inventory.Message.QuickBarChanged");
 
 #define LOCTEXT_NAMESPACE "FBaseInventorySystemModule"
 

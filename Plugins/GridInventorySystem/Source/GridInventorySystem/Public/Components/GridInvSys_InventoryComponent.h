@@ -29,8 +29,12 @@ public:
 
 	// 可根据项目需要资源扩展该函数
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
-	void AddItemDefinitionToContainerPos(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, FGridInvSys_ItemPosition Pos);
+	UInvSys_InventoryItemInstance* AddItemDefinitionToContainerPos(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, FGridInvSys_ItemPosition Pos);
 
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
+	UInvSys_InventoryItemInstance* AddItemDefinitionToPos(TSubclassOf<UInvSys_InventoryItemInstance> ItemInstanceClass,
+		TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, FGridInvSys_ItemPosition Pos);
+	
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
 	void AddItemInstanceToContainerPos(UInvSys_InventoryItemInstance* InItemInstance, const FGridInvSys_ItemPosition& InPos);
 

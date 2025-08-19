@@ -96,7 +96,7 @@ void UInvSys_InventoryModule_Container::UpdateItemStackCount(
 }
 
 void UInvSys_InventoryModule_Container::UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance,
-                                                                      bool NewState)
+                                                                    bool NewState)
 {
 	if (ContainsItem(ItemInstance))
 	{

@@ -14,9 +14,9 @@
 #include "Library/InvSys_InventorySystemLibrary.h"
 #include "Widgets/GridInvSys_DragItemWidget.h"
 
-void UGridInvSys_EquipmentSlotWidget::RefreshInventoryWidget(UInvSys_BaseInventoryObject* NewInventoryObject)
+void UGridInvSys_EquipmentSlotWidget::InitInventoryWidget(UInvSys_BaseInventoryObject* NewInventoryObject)
 {
-	Super::RefreshInventoryWidget(NewInventoryObject);
+	Super::InitInventoryWidget(NewInventoryObject);
 	check(InventoryObject)
 	auto EquipFragment = InventoryObject->FindInventoryFragment<UInvSys_InventoryModule_Equipment>();
 	if (EquipFragment)
@@ -114,9 +114,9 @@ bool UGridInvSys_EquipmentSlotWidget::NativeOnDrop(const FGeometry& InGeometry, 
 		if (EquipItemFragment)
 		{
 			// 判断目标物品是否支持在该槽位装备
-			if (EquipItemFragment->SupportEquipSlot.HasTagExact(SlotTag))
+			if (EquipItemFragment->SupportEquipSlot.HasTagExact(InventoryTag))
 			{
-				ICC->Server_EquipItemInstance(InventoryComponent.Get(), PayLoadItemInstance, SlotTag);
+				ICC->Server_EquipItemInstance(InventoryComponent.Get(), PayLoadItemInstance, InventoryTag);
 				ICC->Server_CancelDragItemInstance(PayLoadItemInstance);
 				return true;
 			}

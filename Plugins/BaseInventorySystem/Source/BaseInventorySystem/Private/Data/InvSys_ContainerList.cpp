@@ -119,7 +119,6 @@ bool FInvSys_ContainerList::RemoveEntry(UInvSys_InventoryItemInstance* Instance)
 			{
 				BroadcastRemoveEntryMessage(Instance);
 			}
-			Entry.Instance->RemoveFromInventory();
 			EntryIt.RemoveCurrent(); //这里Remove后，Entry的值会同步改变
 			MarkArrayDirty();
 			return true;

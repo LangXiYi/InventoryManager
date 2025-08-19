@@ -39,9 +39,9 @@ public:
 	}
 
 protected:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Fragment")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Module|Display")
 	TSubclassOf<UInvSys_InventoryWidget> DisplayWidgetClass;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Fragment")
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory Module|Display")
 	TObjectPtr<UInvSys_InventoryWidget> DisplayWidget = nullptr;
 };

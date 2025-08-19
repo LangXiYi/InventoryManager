@@ -11,9 +11,9 @@
 #include "Widgets/GridInvSys_ContainerGridItemWidget.h"
 #include "Widgets/GridInvSys_ContainerGridWidget.h"
 
-void UGridInvSys_ContainerGridLayoutWidget::RefreshInventoryWidget(UInvSys_BaseInventoryObject* NewInventoryObject)
+void UGridInvSys_ContainerGridLayoutWidget::InitInventoryWidget(UInvSys_BaseInventoryObject* NewInventoryObject)
 {
-	Super::RefreshInventoryWidget(NewInventoryObject);
+	Super::InitInventoryWidget(NewInventoryObject);
 
 	// 初始化容器布局内的所有容器
 	ContainerGridWidgets.Empty();
@@ -23,7 +23,7 @@ void UGridInvSys_ContainerGridLayoutWidget::RefreshInventoryWidget(UInvSys_BaseI
 		if (UInvSys_BaseInventoryObject* InvObj = GetInventoryObject())
 		{
 			ContainerGridWidgets[i]->ContainerGridID = i;
-			ContainerGridWidgets[i]->RefreshInventoryWidget(InvObj);
+			ContainerGridWidgets[i]->InitInventoryWidget(InvObj);
 		}
 	}
 
@@ -151,7 +151,7 @@ void UGridInvSys_ContainerGridLayoutWidget::NativeDestruct()
 UGridInvSys_ContainerGridItemWidget* UGridInvSys_ContainerGridLayoutWidget::FindGridItemWidgetByPos(const FGridInvSys_ItemPosition& ItemPosition) const
 {
 	UGridInvSys_ContainerGridItemWidget* Result = nullptr;
-	if (SlotTag == ItemPosition.EquipSlotTag)
+	if (InventoryTag == ItemPosition.EquipSlotTag)
 	{
 		if (ContainerGridWidgets.IsValidIndex(ItemPosition.GridID))
 		{
@@ -276,7 +276,7 @@ void UGridInvSys_ContainerGridLayoutWidget::AddItemInstanceTo(
 		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("物品添加失败，物品实例与当前控件的库存组件不一致"))
 		return;
 	}
-	if (SlotTag != InPosition.EquipSlotTag)
+	if (InventoryTag != InPosition.EquipSlotTag)
 	{
 		check(false)
 		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("物品添加失败，物品实例与当前控件的标签不一致"))

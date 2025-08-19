@@ -7,6 +7,7 @@
 #include "Components/InvSys_InventoryComponent.h"
 #include "Data/InvSys_InventoryItemDefinition.h"
 #include "Data/InvSys_ItemFragment_BaseItem.h"
+#include "GameFramework/GameplayMessageSubsystem.h"
 #include "Net/UnrealNetwork.h"
 
 UInvSys_InventoryItemInstance::UInvSys_InventoryItemInstance()
@@ -23,6 +24,19 @@ UInvSys_InventoryItemInstance::UInvSys_InventoryItemInstance()
 	}
 	ReplicateState = EInvSys_ReplicateState::PostAdd;
 
+}
+
+void UInvSys_InventoryItemInstance::UseItemInstance()
+{
+	if (IsUsableItemInstance())
+	{
+		NativeOnUseItemInstance();
+	}
+}
+
+void UInvSys_InventoryItemInstance::NativeOnUseItemInstance()
+{
+	OnUseItemInstance();
 }
 
 void UInvSys_InventoryItemInstance::PostDuplicate(bool bDuplicateForPIE)
@@ -64,6 +78,31 @@ void UInvSys_InventoryItemInstance::PostRepNotifies()
 	}
 }
 
+void UInvSys_InventoryItemInstance::RemoveAndDestroyFromInventory()
+{
+	if (InventoryComponent)
+	{
+		auto EquipmentModule = InventoryComponent->FindInventoryModule<UInvSys_InventoryModule_Equipment>(InventoryTag);
+		if (EquipmentModule)
+		{
+			if (EquipmentModule->GetEquipItemInstance() == this)
+			{
+				EquipmentModule->UnEquipItemInstance();
+				return;
+			}
+		}
+		
+		if (ContainerModule)
+		{
+			if (ContainerModule->ContainsItem(this))
+			{
+				ContainerModule->RemoveItemInstance(this);
+			}
+		}
+		ConditionalBeginDestroy();
+	}
+}
+
 void UInvSys_InventoryItemInstance::PreReplicatedRemove()
 {
 	ReplicateState = EInvSys_ReplicateState::None;
@@ -95,6 +134,50 @@ bool UInvSys_InventoryItemInstance::HasEquipment()
 	return false;
 }
 
+void UInvSys_InventoryItemInstance::SetItemStackCount(int32 NewStackCount)
+{
+	StackCount = NewStackCount;
+	MarkItemInstanceDirty();
+}
+
+void UInvSys_InventoryItemInstance::SuperposeItemInstance(UInvSys_InventoryItemInstance* ItemInstance)
+{
+	if (ItemInstance == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstance is nullptr."), __FUNCTION__)
+		return;
+	}
+	if (ItemInstance == this)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstance == this."), __FUNCTION__)
+		return;
+	}
+	if (GetItemDefinition() != ItemInstance->GetItemDefinition())
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, This ItemDefinition != FromItemInstance->ItemDefinition."), __FUNCTION__)
+		return;
+	}
+	int32 MaxStackCount = GetItemMaxStackCount();
+	int32 FromItemStackCount = ItemInstance->GetItemStackCount();
+	// 剩余可堆叠数量与 FromInstanceStackCount 之间取最小值
+	int32 DeltaStackCount = FMath::Min(MaxStackCount - StackCount, FromItemStackCount);
+
+	/**
+	 * 在修改堆叠数量前先处理其他属性
+	 * 比如物品新鲜度，需要在堆叠时将新鲜度按平均值重新计算
+	 *		A: FreshTime = 10  StackCount = 1
+	 *		B: FreshTime 5 StackCount = 4
+	 *		将物品B全部加入物品A中，最终物品A的新鲜度为：(10 + 5 * 4) / 5 = 6
+	 */
+	PreUpdateItemStackCount(ItemInstance, DeltaStackCount);
+
+	// 更新当前物品实例的数量
+	SetItemStackCount(StackCount + DeltaStackCount);
+
+	FromItemStackCount = FromItemStackCount - DeltaStackCount;
+	ItemInstance->SetItemStackCount(FromItemStackCount - DeltaStackCount);
+}
+
 bool UInvSys_InventoryItemInstance::HasAuthority() const
 {
 	check(Owner_Private)
@@ -107,6 +190,14 @@ ENetMode UInvSys_InventoryItemInstance::GetNetMode() const
 	return Owner_Private->GetNetMode();
 }
 
+void UInvSys_InventoryItemInstance::MarkItemInstanceDirty()
+{
+	if (ContainerModule)
+	{
+		ContainerModule->MarkItemInstanceDirty(this);
+	}
+}
+
 void UInvSys_InventoryItemInstance::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	UObject::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -117,11 +208,28 @@ void UInvSys_InventoryItemInstance::GetLifetimeReplicatedProps(TArray<FLifetimeP
 	DOREPLIFETIME(UInvSys_InventoryItemInstance, InventoryTag);
 }
 
+void UInvSys_InventoryItemInstance::OnRep_InventoryTag()
+{
+	if (InventoryComponent)
+	{
+		ContainerModule = InventoryComponent->FindInventoryModule<UInvSys_InventoryModule_Container>(InventoryTag);
+	}
+}
+
 void UInvSys_InventoryItemInstance::OnRep_IsDragging()
 {
 	if (OnDragItemInstance.IsBound())
 	{
 		OnDragItemInstance.Execute(bIsDragging);
+	}
+}
+
+void UInvSys_InventoryItemInstance::SetInventoryTag(FGameplayTag Tag)
+{
+	InventoryTag = Tag;
+	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
+	{
+		OnRep_InventoryTag();
 	}
 }
 

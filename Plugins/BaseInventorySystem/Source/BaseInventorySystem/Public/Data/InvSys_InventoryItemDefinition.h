@@ -10,7 +10,7 @@ class UInvSys_InventoryItemInstance;
 
 
 // Represents a fragment of an item definition
-UCLASS(DefaultToInstanced, EditInlineNew, Abstract)
+UCLASS(Abstract, Blueprintable, DefaultToInstanced, EditInlineNew)
 class BASEINVENTORYSYSTEM_API UInvSys_InventoryItemFragment : public UObject
 {
 	GENERATED_BODY()

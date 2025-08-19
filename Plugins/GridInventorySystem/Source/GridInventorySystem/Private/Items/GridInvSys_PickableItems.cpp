@@ -85,7 +85,8 @@ bool AGridInvSys_PickableItems::PickupItem(UInvSys_InventoryComponent* InvComp, 
 			}
 			if (bIsSuccessEquip == false && PickableItemInstance->PayloadItems.IsEmpty() == false)
 			{
-				// todo::目标物品内部存在其他物品且不能直接装备，所以需要尝试将该物品以及内部物品一起添加到背包中
+				// 目标物品内部存在其他物品且不能直接装备
+				// todo::尝试将该物品以及内部物品一起添加到背包中
 				return false;
 			}
 		}
@@ -103,7 +104,22 @@ bool AGridInvSys_PickableItems::PickupItem(UInvSys_InventoryComponent* InvComp, 
 		TArray<UInvSys_InventoryItemInstance*> StackableItems;
 		Container->FindStackableItemInstances(PickableItemInstance, StackableItems);
 
-		for (int i = 0; ItemStackCount > 0; ++i)
+		for (UInvSys_InventoryItemInstance* StackableItem : StackableItems)
+		{
+			if (ItemStackCount <= 0)
+			{
+				break;
+			}
+			StackableItem->SuperposeItemInstance(PickableItemInstance);
+
+			ItemStackCount = PickableItemInstance->GetItemStackCount();
+			if (ItemStackCount <= 0)
+			{
+				PickableItemInstance->RemoveAndDestroyFromInventory();
+				PickableItemInstance->ConditionalBeginDestroy();
+			}
+		}
+		/*for (int i = 0; ItemStackCount > 0; ++i)
 		{
 			if (StackableItems.IsValidIndex(i) == false)
 			{
@@ -112,7 +128,7 @@ bool AGridInvSys_PickableItems::PickupItem(UInvSys_InventoryComponent* InvComp, 
 
 			/*
 			 * 循环遍历，直到 ItemStackCount == 0 或是 StackableItems 遍历完成
-			 */
+			 #1#
 
 			int32 StackCount = StackableItems[i]->GetItemStackCount();
 			int32 IncreaseStackCount = MaxStackCount - StackCount;
@@ -120,14 +136,14 @@ bool AGridInvSys_PickableItems::PickupItem(UInvSys_InventoryComponent* InvComp, 
 			{
 				IncreaseStackCount = ItemStackCount;
 			}
-			// todo::如果是食物具有新鲜度属性的，可以在这里处理。
 			GridInvComp->UpdateItemStackCount(StackableItems[i], StackCount + IncreaseStackCount);
 			// 更新结束条件: 当前值 - 增量
-			ItemStackCount -= IncreaseStackCount;
-		}
+			ItemStackCount = IncreaseStackCount;
+		}*/
 	}
 	// 库存内所有同类物品的堆叠数量已经达到最大值，若此时仍有剩余数量，则会添加新的物品实例到容器内
-	while (ItemStackCount > 0)
+	// while (ItemStackCount > 0)
+	if (ItemStackCount > 0)
 	{
 		/*
 		 * 循环遍历，直到 ItemStackCount == 0
@@ -145,12 +161,20 @@ bool AGridInvSys_PickableItems::PickupItem(UInvSys_InventoryComponent* InvComp, 
 		// UE_LOG(LogInventorySystem, Warning, TEXT("找到有效位置 %s"), *NewPosition.ToString())
 		int32 NewStackCount = ItemStackCount > MaxStackCount ? MaxStackCount : ItemStackCount;
 		// todo::除了位置你是否还有其他需要添加的属性？
-		GridInvComp->AddItemDefinitionToContainerPos(PickableItemInstance->GetItemDefinition(), NewStackCount, NewPosition);
-
+		// GridInvComp->AddItemDefinitionToContainerPos(PickableItemInstance->GetItemDefinition(), NewStackCount, NewPosition);
+		// UInvSys_InventoryItemInstance* NewItemInstance = GridInvComp->AddItemDefinitionToPos(
+		// 	PickableItemInstance->GetClass(),
+		// 	PickableItemInstance->GetItemDefinition(),
+		// 	NewStackCount, NewPosition);
+		GridInvComp->AddItemInstanceToContainerPos(PickableItemInstance, NewPosition);
 		// 更新结束条件: 当前值 - 增量
 		ItemStackCount -= NewStackCount;
 	}
-	SetItemStackCount(ItemStackCount); // 所有修改操作完成后，更新物品实例的堆叠数量
+	// SetItemStackCount(ItemStackCount); // 所有修改操作完成后，更新物品实例的堆叠数量
+	// if (ItemStackCount <= 0)
+	// {
+	// 	PickableItemInstance->ConditionalBeginDestroy();
+	// }
 	return true;
 }
 

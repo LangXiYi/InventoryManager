@@ -147,7 +147,12 @@ public:
 	 * 注意：可变参数列表要求目标类型必须实现 InitItemInstanceProps 函数，且参数类型一致。
 	 */
 	template<class T, class... Arg>
-	T* AddDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount, const Arg&... Args);
+	T* AddDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
+		int32 StackCount, const Arg&... Args);
+
+	template<class T, class... Arg>
+	T* AddDefinition(UClass* ItemInstanceClass, TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
+		int32 StackCount, const Arg&... Args);
 
 	/**
 	 * 将其他物品实例添加到当前容器内，添加过程中会广播添加事件。
@@ -225,12 +230,19 @@ private:
 };
 
 template <class T, class ... Arg>
-T* FInvSys_ContainerList::AddDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount,
-	const Arg&... Args)
+T* FInvSys_ContainerList::AddDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
+	int32 StackCount, const Arg&... Args)
+{
+	return AddDefinition<T>(T::StaticClass(), ItemDef, StackCount, Args...);
+}
+
+template <class T, class ... Arg>
+T* FInvSys_ContainerList::AddDefinition(UClass* ItemInstanceClass, TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
+	int32 StackCount, const Arg&... Args)
 {
 	check(ItemDef)
-	check(InventoryFragment)
-	check(InventoryFragment->HasAuthority());
+		check(InventoryFragment)
+		check(InventoryFragment->HasAuthority());
 	if (ItemDef == nullptr)
 	{
 		UE_LOG(LogInventorySystem, Error, TEXT("AddDefinition Falied, Item definition is nullptr."))
@@ -238,12 +250,13 @@ T* FInvSys_ContainerList::AddDefinition(TSubclassOf<UInvSys_InventoryItemDefinit
 	}
 
 	FInvSys_ContainerEntry& NewEntry = Entries.AddDefaulted_GetRef();
-	T* Result = NewObject<T>(InventoryFragment->GetInventoryComponent());
+	T* Result = NewObject<T>(InventoryFragment->GetInventoryComponent(), ItemInstanceClass);
 	check(Result)
 	// Result->SetInventoryComponent(InventoryFragment->GetInventoryComponent());
 	Result->SetItemDefinition(ItemDef);
 	Result->SetItemStackCount(StackCount);
 	Result->SetInventoryTag(InventoryFragment->GetInventoryTag());
+	Result->InitInventoryItemInstance();
 
 	for (const UInvSys_InventoryItemFragment* Fragment : GetDefault<UInvSys_InventoryItemDefinition>(ItemDef)->GetFragments())
 	{
@@ -279,29 +292,34 @@ T* FInvSys_ContainerList::AddInstance(UInvSys_InventoryItemInstance* ItemInstanc
 		UE_LOG(LogInventorySystem, Error, TEXT("AddInstance Falied, 传入的物品实例的类型不匹配."))
 		return nullptr;
 	}
-	T* TargetItemInstance = Cast<T>(ItemInstance);
-	// todo::使用对象池获取新对象，能否优化深度拷贝对象带来的消耗？
-	TargetItemInstance = DuplicateObject<T>(TargetItemInstance, InventoryFragment->GetInventoryComponent());
-	ItemInstance->ConditionalBeginDestroy();//标记目标待删除
+	T* Result = Cast<T>(ItemInstance);
+	if (Result->GetInventoryComponent() != GetInventoryComponent())
+	{
+		// todo::使用对象池获取新对象，能否优化深度拷贝对象带来的消耗？
+		// 子类转父类后通过 DuplicateObject 复制，不会导致子类信息丢失
+		Result = DuplicateObject<T>(Result, InventoryFragment->GetInventoryComponent());
+		ItemInstance->ConditionalBeginDestroy();//标记目标待删除
+	}
 
 	// 更新物品的基础信息
-	TargetItemInstance->SetInventoryTag(InventoryFragment->GetInventoryTag());
-	TargetItemInstance->SetIsDraggingItem(false);
-	// Instance->SetInventoryComponent(InventoryFragment->GetInventoryComponent());
+	Result->SetInventoryTag(InventoryFragment->GetInventoryTag());
+	Result->SetIsDraggingItem(false);
+	// Result->SetInventoryComponent(InventoryFragment->GetInventoryComponent());
+	Result->InitInventoryItemInstance();
 
 	//执行可变参数模板，将参数列表中的值赋予目标对象。
-	int32 Arr[] = {0, (InitItemInstanceProps<T>(TargetItemInstance, Args, false), 0)...};
+	int32 Arr[] = {0, (InitItemInstanceProps<T>(Result, Args, false), 0)...};
 
 	FInvSys_ContainerEntry& NewEntry = Entries.AddDefaulted_GetRef();
-	NewEntry.Instance = TargetItemInstance;
+	NewEntry.Instance = Result;
 
 	MarkItemDirty(NewEntry);
 
 	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
 	{
-		TargetItemInstance->BroadcastAddItemInstanceMessage();
+		Result->BroadcastAddItemInstanceMessage();
 	}
-	return TargetItemInstance;
+	return Result;
 }
 
 template<>

@@ -18,17 +18,19 @@ void UInvSys_InventoryHUD::NativeOnInitialized()
 			if (Widget->IsA<UInvSys_InventorySlot>())
 			{
 				UInvSys_InventorySlot* InventorySlot = Cast<UInvSys_InventorySlot>(Widget);
+				DefaultInventoryWidgets.Add(InventorySlot->GetInventoryTag());
 				InventoryWidgetMapping.Add(InventorySlot->GetInventoryTag(), InventorySlot);
 			}
 		});
 	}
 }
 
-void UInvSys_InventoryHUD::AddWidget(UUserWidget* NewWidget, const FGameplayTag& InventoryTag)
+void UInvSys_InventoryHUD::AddWidget(UUserWidget* NewWidget, FGameplayTag InventoryTag)
 {
 	// 完全匹配标签的控件，直接加入插槽即可
 	if (InventoryWidgetMapping.Contains(InventoryTag))
 	{
+		check(InventoryWidgetMapping[InventoryTag]->HasAnyChildren() == false)
 		InventoryWidgetMapping[InventoryTag]->AddInventorySlotChild(NewWidget);
 		return;
 	}
@@ -40,22 +42,84 @@ void UInvSys_InventoryHUD::AddWidget(UUserWidget* NewWidget, const FGameplayTag&
 		if (InventoryWidgetMapping.Contains(ParentInventoryTag))
 		{
 			auto LayoutWidget = InventoryWidgetMapping[ParentInventoryTag]->GetInventorySlotChild<UInvSys_InventoryLayoutWidget>();
-			checkf(LayoutWidget, TEXT("布局不存在，却为其添加子控件。"));
-			UPanelSlot* PanelSlot = LayoutWidget->AddWidget(NewWidget, InventoryTag);
-			if (PanelSlot && PanelSlot->Parent->IsA<UInvSys_InventorySlot>())
+			if (LayoutWidget)
 			{
-				UInvSys_InventorySlot* InventorySlot = Cast<UInvSys_InventorySlot>(PanelSlot->Parent);
-				InventoryWidgetMapping.Add(InventoryTag, InventorySlot);
+				UPanelSlot* PanelSlot = LayoutWidget->AddWidget(NewWidget, InventoryTag);
+				if (PanelSlot && PanelSlot->Parent->IsA<UInvSys_InventorySlot>())
+				{
+					UInvSys_InventorySlot* InventorySlot = Cast<UInvSys_InventorySlot>(PanelSlot->Parent);
+					InventoryWidgetMapping.Add(InventoryTag, InventorySlot);
+				}
+				break;
 			}
-			break;
 		}
 		ParentInventoryTag = ParentInventoryTag.RequestDirectParent();
 	}
 }
 
-UWidget* UInvSys_InventoryHUD::FindInventoryWidget(FGameplayTag InventoryTag, TSubclassOf<UWidget> WidgetClass)
+void UInvSys_InventoryHUD::RemoveWidget(const FGameplayTag& InventoryTag)
 {
-	return FindInventoryWidget<UWidget>(InventoryTag);
+	if (InventoryWidgetMapping.Contains(InventoryTag))
+	{
+		UE_LOG(LogInventorySystem, Log, TEXT("Begine Remove Inventory Widget From HUD ==============="))
+		UInvSys_InventorySlot* InventorySlot = InventoryWidgetMapping[InventoryTag];
+		InventorySlot->ClearChildren();
+		TArray<FGameplayTag> RemoveTags;
+		for (auto WidgetMapping : InventoryWidgetMapping)
+		{
+			if (WidgetMapping.Key == InventoryTag)
+			{
+				// 不会移除自身插槽，仅移除所有子集
+				continue;
+			}
+			if (WidgetMapping.Key.MatchesTag(InventoryTag))
+			{
+				RemoveTags.Add(WidgetMapping.Key);
+			}
+		}
+		for (const FGameplayTag& RemoveTag : RemoveTags)
+		{
+			UWidget* InventoryWidget = FindInventoryWidget<UWidget>(RemoveTag);
+			if (InventoryWidget)
+			{
+				InventoryWidget->RemoveFromParent();
+				InventoryWidget->ConditionalBeginDestroy();
+				InventoryWidget->ConditionalBeginDestroy();
+			}
+			InventoryWidgetMapping.Remove(RemoveTag);
+			UE_LOG(LogInventorySystem, Log, TEXT("\tRemove Inventory Widget %s"), *RemoveTag.ToString())
+		}
+	}
+}
+
+UInvSys_InventorySlot* UInvSys_InventoryHUD::FindInventorySlot(FGameplayTag InventoryTag) const
+{
+	if (InventoryTag.IsValid() == false)
+	{
+		return nullptr;
+	}
+	if (InventoryWidgetMapping.Contains(InventoryTag))
+	{
+		return InventoryWidgetMapping[InventoryTag];
+	}
+	return FindInventorySlot(InventoryTag.RequestDirectParent());
+}
+
+UUserWidget* UInvSys_InventoryHUD::FindInventoryWidget(FGameplayTag InventoryTag, TSubclassOf<UUserWidget> WidgetClass)
+{
+	return FindInventoryWidget<UUserWidget>(InventoryTag);
+}
+
+UUserWidget* UInvSys_InventoryHUD::FindAndCreateInventoryWidget(FGameplayTag InventoryTag, TSubclassOf<UUserWidget> WidgetClass)
+{
+	UUserWidget* InventoryWidget = FindInventoryWidget(InventoryTag, WidgetClass);
+	if (InventoryWidget == nullptr)
+	{
+		InventoryWidget = CreateWidget(this, WidgetClass);
+		AddWidget(InventoryWidget, InventoryTag);
+	}
+	check(InventoryWidget);
+	return InventoryWidget;
 }
 
 void UInvSys_InventoryHUD::DisplayInventoryItemActionList(UInvSys_InventoryItemInstance* ItemInstance)

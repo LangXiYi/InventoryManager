@@ -69,6 +69,12 @@ public:
 	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
 	void Server_SuperposeItemInstance(UInvSys_InventoryItemInstance* FromItemInstance, UInvSys_InventoryItemInstance* ToItemInstance);
 
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
+	void Server_UpdateQuickBarItemReference(UInvSys_InventoryComponent* InvComp, FGameplayTag InventoryTag, UInvSys_InventoryItemInstance* ItemInstance, int32 Index);
+
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
+	void Server_UseItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
+	
 protected:
 	bool HasAuthority() const;
 

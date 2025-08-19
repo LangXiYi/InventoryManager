@@ -24,20 +24,22 @@ void UInvSys_InventoryModule_Display::RefreshInventoryFragment()
 	// DisplayWidget->RefreshWidget();
 	if (DisplayWidget)
 	{
-		DisplayWidget->RefreshInventoryWidget(InventoryObject);
+		DisplayWidget->InitInventoryWidget(InventoryObject);
 	}
 }
 
 UInvSys_InventoryWidget* UInvSys_InventoryModule_Display::CreateDisplayWidget(APlayerController* PC)
 {
-	if (DisplayWidget == nullptr)
+	if (DisplayWidget && DisplayWidget->HasAnyFlags(EObjectFlags::RF_BeginDestroyed) == false)
 	{
-		if (PC != nullptr && PC->IsLocalController())
-		{
-			DisplayWidget = CreateWidget<UInvSys_InventoryWidget>(PC, DisplayWidgetClass);
-			DisplayWidget->RefreshInventoryWidget(InventoryObject);
-		}
+		return DisplayWidget;
 	}
-	check(DisplayWidget);
+
+	if (PC != nullptr && PC->IsLocalController())
+	{
+		DisplayWidget = CreateWidget<UInvSys_InventoryWidget>(PC, DisplayWidgetClass);
+		DisplayWidget->InitInventoryWidget(InventoryObject);
+		// todo::Default Visibility
+	}
 	return DisplayWidget;
 }

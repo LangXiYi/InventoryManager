@@ -86,12 +86,16 @@ public:
 	T* AddItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
 		FGameplayTag InventoryTag, int32 StackCount, const ArgList&... Args);
 
+	template<class T, class... ArgList>
+	T* AddItemDefinition(UClass* ItemInstanceClass, TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
+		FGameplayTag InventoryTag, int32 StackCount, const ArgList&... Args);
+
 	/**
 	 * 添加物品至当前容器
 	 * 注意：可变参数列表要求目标类型必须实现 InitItemInstanceProps 函数，且参数类型一致。
 	 */
 	template<class T, class... ArgList>
-	T* AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag, const ArgList&... Args);
+	T* AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag InventoryTag, const ArgList&... Args);
 
 	/** 移除指定物品 */
 	bool RemoveItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
@@ -154,10 +158,6 @@ public:
 	/**  丢弃物品到世界 */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
 	AInvSys_PickableItems* DiscardItemInstance(UInvSys_InventoryItemInstance* InItemInstance, const FTransform& Transform);
-
-	bool SuperposeItemInstance(UInvSys_InventoryItemInstance* From, UInvSys_InventoryItemInstance* To);
-	virtual void PreSuperposeItemInstance(UInvSys_InventoryItemInstance* From, UInvSys_InventoryItemInstance* To) {}
-	virtual void PostSuperposeItemInstance(UInvSys_InventoryItemInstance* From, UInvSys_InventoryItemInstance* To) {}
 
 protected:
 	/** 创建所有库存对象后被调用 */
@@ -232,27 +232,27 @@ template <class T, class ... ArgList>
 T* UInvSys_InventoryComponent::AddItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
 	FGameplayTag InventoryTag, int32 StackCount, const ArgList&... Args)
 {
-	if (IsValidInventoryTag(InventoryTag) == false)
-	{
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning,
-			TEXT("%hs Falied, Is not valid tag %s."), __FUNCTION__, *InventoryTag.ToString())
-		return nullptr;
-	}
-	auto ContainerFragment = FindInventoryModule<UInvSys_InventoryModule_Container>(InventoryTag);
-	if (ContainerFragment == nullptr)
-	{
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning,
-			TEXT("%hs Falied, ContainerFragment not find by %s."), __FUNCTION__, *InventoryTag.ToString())
-		return nullptr;
-	}
-	return ContainerFragment->AddItemDefinition<T>(ItemDef, StackCount, Args...);
+	return AddItemDefinition<T>(T::StaticClass(), ItemDef, InventoryTag, StackCount, Args...);
 }
 
 template <class T, class ... ArgList>
-T* UInvSys_InventoryComponent::AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag SlotTag,
+T* UInvSys_InventoryComponent::AddItemDefinition(UClass* ItemInstanceClass,
+	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, FGameplayTag InventoryTag, int32 StackCount,
 	const ArgList&... Args)
 {
-	auto ContainerFragment = FindInventoryModule<UInvSys_InventoryModule_Container>(SlotTag);
+	auto ContainerFragment = FindInventoryModule<UInvSys_InventoryModule_Container>(InventoryTag);
+	if (ContainerFragment != nullptr)
+	{
+		return ContainerFragment->AddItemDefinition<T>(ItemInstanceClass, ItemDef, StackCount, Args...);
+	}
+	return nullptr;
+}
+
+template <class T, class ... ArgList>
+T* UInvSys_InventoryComponent::AddItemInstance(UInvSys_InventoryItemInstance* InItemInstance, FGameplayTag InventoryTag,
+	const ArgList&... Args)
+{
+	auto ContainerFragment = FindInventoryModule<UInvSys_InventoryModule_Container>(InventoryTag);
 	if (ContainerFragment != nullptr)
 	{
 		return ContainerFragment->AddItemInstance<T>(InItemInstance, Args...);
@@ -261,10 +261,10 @@ T* UInvSys_InventoryComponent::AddItemInstance(UInvSys_InventoryItemInstance* In
 }
 
 template <class T, class ... ArgList>
-void UInvSys_InventoryComponent::UpdateItemInstance(UInvSys_InventoryItemInstance* ItemInstance, FGameplayTag SlotTag,
+void UInvSys_InventoryComponent::UpdateItemInstance(UInvSys_InventoryItemInstance* ItemInstance, FGameplayTag InventoryTag,
 	const ArgList&... Args)
 {
-	auto ContainerFragment = FindInventoryModule<UInvSys_InventoryModule_Container>(SlotTag);
+	auto ContainerFragment = FindInventoryModule<UInvSys_InventoryModule_Container>(InventoryTag);
 	if (ContainerFragment != nullptr)
 	{
 		ContainerFragment->UpdateItemInstance<T>(ItemInstance, Args...);
@@ -275,16 +275,22 @@ template <class T, class ... ArgList>
 T* UInvSys_InventoryComponent::SplitItemInstance(UInvSys_InventoryItemInstance* ItemInstance, int32 SplitCount,
 	FGameplayTag InventoryTag, const ArgList&... Args)
 {
-	if (ItemInstance)
+	if (ItemInstance == nullptr)
 	{
-		int32 ItemStackCount = ItemInstance->GetItemStackCount();
-		if (SplitCount < ItemStackCount)
+		return nullptr;
+	}	
+	int32 ItemStackCount = ItemInstance->GetItemStackCount();
+	if (SplitCount < ItemStackCount)
+	{
+		UInvSys_InventoryItemInstance* DuplicateItemInstance = DuplicateObject(ItemInstance, this);
+		if (DuplicateItemInstance)
 		{
-			T* SplitItemInstance = AddItemDefinition<T>(ItemInstance->GetItemDefinition(), InventoryTag, SplitCount, Args...);
-			if (SplitItemInstance != nullptr)
+			T* SplitItem = AddItemInstance<T>(DuplicateItemInstance, InventoryTag, Args...);
+			if (SplitItem != nullptr)
 			{
-				UpdateItemStackCount(ItemInstance, ItemStackCount - SplitCount);
-				return SplitItemInstance;
+				ItemInstance->SetItemStackCount(ItemStackCount - SplitCount);
+				SplitItem->SetItemStackCount(SplitCount);
+				return SplitItem;
 			}
 		}
 	}

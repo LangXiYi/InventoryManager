@@ -59,9 +59,9 @@ void UGridInvSys_EquipContainerSlotWidget::NativeDestruct()
 	// OnRemoveItemInstanceHandle.Unregister();
 }
 
-void UGridInvSys_EquipContainerSlotWidget::RefreshInventoryWidget(UInvSys_BaseInventoryObject* NewInventoryObject)
+void UGridInvSys_EquipContainerSlotWidget::InitInventoryWidget(UInvSys_BaseInventoryObject* NewInventoryObject)
 {
-	Super::RefreshInventoryWidget(NewInventoryObject);
+	Super::InitInventoryWidget(NewInventoryObject);
 	// 为什么不在这里调用 ContainerLayout 的 RefreshWidget？
 	// 因为在 EquipItemInstance 在 RefreshWidget中已经被调用了，为了避免重复调用，故只需要在 EquipItemInstance 中调用即可
 	// ContainerLayout->RefreshWidget();
@@ -78,7 +78,7 @@ void UGridInvSys_EquipContainerSlotWidget::EquipItemInstance(UInvSys_InventoryIt
 		{
 			ContainerLayout = CreateWidget<UGridInvSys_ContainerGridLayoutWidget>(this, ContainerLayoutFragment->ContainerLayout);
 			check(ContainerLayout)
-			ContainerLayout->RefreshInventoryWidget(GetInventoryObject());
+			ContainerLayout->InitInventoryWidget(GetInventoryObject());
 			NS_ContainerGridLayout->AddChild(ContainerLayout);
 		}
 	}

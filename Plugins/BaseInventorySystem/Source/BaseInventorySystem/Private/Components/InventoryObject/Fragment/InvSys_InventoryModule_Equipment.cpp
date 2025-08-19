@@ -153,7 +153,6 @@ bool UInvSys_InventoryModule_Equipment::UnEquipItemInstance()
 		return false;
 	}
 
-	EquipmentInstance->RemoveFromInventory();
 	EquipmentInstance = nullptr;
 	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
 	{
