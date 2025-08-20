@@ -18,7 +18,7 @@ void UGridInvSys_EquipmentSlotWidget::InitInventoryWidget(UInvSys_BaseInventoryO
 {
 	Super::InitInventoryWidget(NewInventoryObject);
 	check(InventoryObject)
-	auto EquipFragment = InventoryObject->FindInventoryFragment<UInvSys_InventoryModule_Equipment>();
+	auto EquipFragment = InventoryObject->FindInventoryModule<UInvSys_InventoryModule_Equipment>();
 	if (EquipFragment)
 	{
 		UInvSys_InventoryItemInstance* TargetItemInstance = EquipFragment->GetEquipItemInstance();

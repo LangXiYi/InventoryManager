@@ -18,20 +18,27 @@ void UInvSys_InventoryModule_QuickBar::InitInventoryFragment(UObject* PreEditFra
 {
 	Super::InitInventoryFragment(PreEditFragment);
 
-	auto ListenRemoveFunc = [this](FGameplayTag Tag, const FInvSys_InventoryItemChangedMessage& Message)
+	/*
+	 * 监听物品移除事件，当物品发生改变后移除绑定
+	 * todo::只要在容器内就不会移除快捷栏绑定？
+	 */
+	if (HasAuthority())
 	{
-		if (Message.InvComp == GetInventoryComponent() &&  QuickBarItemReferences.Contains(Message.ItemInstance))
+		auto ListenRemoveFunc = [this](FGameplayTag Tag, const FInvSys_InventoryItemChangedMessage& Message)
 		{
-			QuickBarItemReferences.Remove(Message.ItemInstance);
-			if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
+			if (Message.InvComp == GetInventoryComponent())
 			{
-				OnRep_QuickBarItemReferences();
+				int32 Index = QuickBarItemReferences.Find(Message.ItemInstance);
+				if (QuickBarItemReferences.IsValidIndex(Index))
+				{
+					UpdateQuickBarItemReference(nullptr, Index);
+				}
 			}
-		}
-	};
+		};
 
-	UGameplayMessageSubsystem& GameplayMessageSubsystem = UGameplayMessageSubsystem::Get(GetWorld());
-	GameplayMessageSubsystem.RegisterListener<FInvSys_InventoryItemChangedMessage>(Inventory_Message_RemoveItem, MoveTemp(ListenRemoveFunc));
+		UGameplayMessageSubsystem& GameplayMessageSubsystem = UGameplayMessageSubsystem::Get(GetWorld());
+		GameplayMessageSubsystem.RegisterListener<FInvSys_InventoryItemChangedMessage>(Inventory_Message_RemoveItem, MoveTemp(ListenRemoveFunc));
+	}
 }
 
 void UInvSys_InventoryModule_QuickBar::UpdateQuickBarItemReference(UInvSys_InventoryItemInstance* ItemReference,

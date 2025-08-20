@@ -72,16 +72,16 @@ bool AGridInvSys_PickableItems::PickupItem(UInvSys_InventoryComponent* InvComp, 
 				{
 					continue;
 				}
-				if (ItemStackCount <= MaxStackCount)
+				// if (ItemStackCount <= MaxStackCount)
 				{
 					// 将物品之间装备至目标位置
 					GridInvComp->EquipItemInstance(PickableItemInstance, InventoryTag);
 					return true;
 				}
 				// 仍然剩余部分物品，此时会继续循环查找可装备的槽位，若循环结束，则将剩余物品添加至容器内。
-				GridInvComp->EquipItemDefinition(PickableItemInstance->GetItemDefinition(), InventoryTag, MaxStackCount);
-				ItemStackCount -= MaxStackCount;
-				bIsSuccessEquip = true;
+				// GridInvComp->EquipItemDefinition(PickableItemInstance->GetItemDefinition(), InventoryTag, MaxStackCount);
+				// ItemStackCount -= MaxStackCount;
+				// bIsSuccessEquip = true;
 			}
 			if (bIsSuccessEquip == false && PickableItemInstance->PayloadItems.IsEmpty() == false)
 			{

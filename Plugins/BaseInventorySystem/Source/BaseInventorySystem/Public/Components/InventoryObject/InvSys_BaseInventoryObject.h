@@ -46,12 +46,12 @@ public:
 	void AddInventoryFragment(UInvSys_InventoryModule* NewFragment);
 
 	UFUNCTION(BlueprintCallable, BlueprintPure = false, meta = (DeterminesOutputType = OutClass))
-	UInvSys_InventoryModule* FindInventoryFragment(TSubclassOf<UInvSys_InventoryModule> OutClass);
+	UInvSys_InventoryModule* FindInventoryModule(TSubclassOf<UInvSys_InventoryModule> OutClass);
 
 	template<class FragmentType>
-	FragmentType* FindInventoryFragment()
+	FragmentType* FindInventoryModule()
 	{
-		for (UInvSys_InventoryModule* Fragment : InventoryObjectFragments)
+		for (UInvSys_InventoryModule* Fragment : InventoryModules)
 		{
 			check(Fragment)
 			if (Fragment && Fragment->IsA<FragmentType>())
@@ -96,7 +96,7 @@ protected:
 	FGameplayTag InventoryTag;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Replicated, Category = "Inventory Object")
-	TArray<UInvSys_InventoryModule*> InventoryObjectFragments;
+	TArray<UInvSys_InventoryModule*> InventoryModules;
 
 private:
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Object", meta = (AllowPrivateAccess))

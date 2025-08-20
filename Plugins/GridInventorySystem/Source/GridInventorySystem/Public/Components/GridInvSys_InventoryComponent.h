@@ -46,6 +46,8 @@ public:
 
 	/** 查找空闲的位置 */
 	FGridInvSys_ItemPosition FindAvailablePosition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDefinition, const TArray<FGameplayTag>& Ignores = {});
+	UFUNCTION(BlueprintCallable, Category = "Grid Inventory Component")
+	bool FindAvailablePosition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDefinition, FGameplayTag InventoryTag, FGridInvSys_ItemPosition& Pos);
 
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
 	void UpdateItemInstancePosition(UInvSys_InventoryItemInstance* ItemInstance, FGridInvSys_ItemPosition NewPosition);

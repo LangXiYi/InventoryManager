@@ -13,34 +13,30 @@
 
 UInvSys_BaseInventoryObject::UInvSys_BaseInventoryObject()
 {
-	UObject* MyOuter = GetOuter();
-	if (MyOuter && IsValid(MyOuter))
+	InventoryComponent = GetTypedOuter<UInvSys_InventoryComponent>();
+	if (InventoryComponent)
 	{
-		if (MyOuter->IsA<UInvSys_InventoryComponent>())
-		{
-			InventoryComponent = Cast<UInvSys_InventoryComponent>(MyOuter);
-			Owner_Private = InventoryComponent->GetOwner();
-		}
+		Owner_Private = InventoryComponent->GetOwner();
 	}
 }
 
 void UInvSys_BaseInventoryObject::PostRepNotifies()
 {
 	UObject::PostRepNotifies();
-	for (int i = 0; i < InventoryObjectFragments.Num(); ++i)
+	for (int i = 0; i < InventoryModules.Num(); ++i)
 	{
-		if (InventoryObjectFragments[i] != nullptr)
+		if (InventoryModules[i] != nullptr)
 		{
-			InventoryObjectFragments[i]->InventoryObject = this;
-			InventoryObjectFragments[i]->InventoryTag = GetInventoryObjectTag();
+			InventoryModules[i]->InventoryObject = this;
+			InventoryModules[i]->InventoryTag = GetInventoryObjectTag();
 		}
 	}
 }
 
 void UInvSys_BaseInventoryObject::ConstructInventoryFragment(const TArray<UInvSys_InventoryModule*>& Fragments)
 {
-	InventoryObjectFragments.Empty();
-	InventoryObjectFragments.Reserve(Fragments.Num());
+	InventoryModules.Empty();
+	InventoryModules.Reserve(Fragments.Num());
 	for (UInvSys_InventoryModule* Fragment : Fragments)
 	{
 		if (Fragment != nullptr)
@@ -51,7 +47,7 @@ void UInvSys_BaseInventoryObject::ConstructInventoryFragment(const TArray<UInvSy
 
 			TargetFragment->InventoryObject = this;
 			TargetFragment->InventoryTag = GetInventoryObjectTag();
-			InventoryObjectFragments.Emplace(TargetFragment);
+			InventoryModules.Emplace(TargetFragment);
 		}
 	}
 }
@@ -64,19 +60,16 @@ void UInvSys_BaseInventoryObject::InitInventoryObject(UInvSys_InventoryComponent
 		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, InventoryObjectContent is nullptr, Index = %d"), __FUNCTION__, InventoryObjectID);
 		return;
 	}
-	// 对数组进行排序，确定内部片段的执行顺序
-	// InventoryObjectFragments.Sort();
-	// InventoryObjectContent->Fragments.Sort();
 	for (int i = 0; i < InventoryObjectContent->Fragments.Num(); ++i)
 	{
-		if (InventoryObjectFragments[i] != nullptr)
+		if (InventoryModules[i] != nullptr)
 		{
 			/**
-			 * 生成库存模块唯一ID
+			 * 生成库存模块ID
 			 * WARNING: 同一个 ActorChannel 内不得出现重复的 ID
 			 */
-			InventoryObjectFragments[i]->InventoryModuleID = InventoryObjectID * MAX_INVENTORY_MODULE + i;
-			InventoryObjectFragments[i]->InitInventoryFragment(InventoryObjectContent->Fragments[i]);
+			InventoryModules[i]->InventoryModuleID = InventoryObjectID * MAX_INVENTORY_MODULE + i;
+			InventoryModules[i]->InitInventoryFragment(InventoryObjectContent->Fragments[i]);
 		}
 	}
 }
@@ -85,8 +78,8 @@ void UInvSys_BaseInventoryObject::RefreshInventoryObject()
 {
 	UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Log,
 		TEXT("[%s] 刷新库存对象及其所有片段 [%d]"),
-		HasAuthority() ? TEXT("Server"):TEXT("Client"), InventoryObjectFragments.Num())
-	for (UInvSys_InventoryModule* ObjectFragment : InventoryObjectFragments)
+		HasAuthority() ? TEXT("Server"):TEXT("Client"), InventoryModules.Num())
+	for (UInvSys_InventoryModule* ObjectFragment : InventoryModules)
 	{
 		ObjectFragment->RefreshInventoryFragment();
 	}
@@ -94,7 +87,7 @@ void UInvSys_BaseInventoryObject::RefreshInventoryObject()
 
 void UInvSys_BaseInventoryObject::RefreshInventoryFragment(TSubclassOf<UInvSys_InventoryModule> OutClass)
 {
-	UInvSys_InventoryModule* InventoryFragment = FindInventoryFragment(OutClass);
+	UInvSys_InventoryModule* InventoryFragment = FindInventoryModule(OutClass);
 	if (InventoryFragment)
 	{
 		InventoryFragment->RefreshInventoryFragment();
@@ -114,10 +107,10 @@ void UInvSys_BaseInventoryObject::AddInventoryFragment(UInvSys_InventoryModule* 
 	}*/
 }
 
-UInvSys_InventoryModule* UInvSys_BaseInventoryObject::FindInventoryFragment(
+UInvSys_InventoryModule* UInvSys_BaseInventoryObject::FindInventoryModule(
 	TSubclassOf<UInvSys_InventoryModule> OutClass)
 {
-	for (UInvSys_InventoryModule* Fragment : InventoryObjectFragments)
+	for (UInvSys_InventoryModule* Fragment : InventoryModules)
 	{
 		check(Fragment)
 		if (Fragment && Fragment->IsA(OutClass))
@@ -133,7 +126,7 @@ bool UInvSys_BaseInventoryObject::ReplicateSubobjects(UActorChannel* Channel, FO
 {
 	bool bWroteSomething = false;
 	UActorChannel::SetCurrentSubObjectOwner(GetInventoryComponent());
-	for (UInvSys_InventoryModule* Fragment : InventoryObjectFragments)
+	for (UInvSys_InventoryModule* Fragment : InventoryModules)
 	{
 		if (Fragment == nullptr || IsValid(Fragment) == false)
 		{
@@ -191,5 +184,5 @@ void UInvSys_BaseInventoryObject::GetLifetimeReplicatedProps(TArray<FLifetimePro
 	UObject::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME_CONDITION(UInvSys_BaseInventoryObject, InventoryTag, COND_None);
-	DOREPLIFETIME_CONDITION(UInvSys_BaseInventoryObject, InventoryObjectFragments, COND_None);
+	DOREPLIFETIME_CONDITION(UInvSys_BaseInventoryObject, InventoryModules, COND_None);
 }

@@ -14,7 +14,6 @@
 
 UInvSys_InventoryModule_Equipment::UInvSys_InventoryModule_Equipment()
 {
-	Priority = 10;
 }
 
 void UInvSys_InventoryModule_Equipment::RefreshInventoryFragment()

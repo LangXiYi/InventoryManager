@@ -9,14 +9,10 @@
 
 UInvSys_InventoryModule::UInvSys_InventoryModule()
 {
-	UObject* MyOuter = GetOuter();
-	if (MyOuter)
+	InventoryComponent = GetTypedOuter<UInvSys_InventoryComponent>();
+	if (InventoryComponent)
 	{
-		if (MyOuter->IsA<UInvSys_InventoryComponent>())
-		{
-			InventoryComponent = Cast<UInvSys_InventoryComponent>(MyOuter);
-			Owner_Private = InventoryComponent->GetOwner();
-		}
+		Owner_Private = InventoryComponent->GetOwner();
 	}
 }
 

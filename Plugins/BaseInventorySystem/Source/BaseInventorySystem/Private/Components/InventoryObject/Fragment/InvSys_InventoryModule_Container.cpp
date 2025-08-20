@@ -12,7 +12,6 @@
 
 UInvSys_InventoryModule_Container::UInvSys_InventoryModule_Container() : ContainerList(this)
 {
-	Priority = 20;
 }
 
 void UInvSys_InventoryModule_Container::RefreshInventoryFragment()
@@ -35,7 +34,7 @@ void UInvSys_InventoryModule_Container::RefreshInventoryFragment()
 	}
 }
 
-int32 UInvSys_InventoryModule_Container::FindStackableItemInstances(
+int32 UInvSys_InventoryModule_Container::FindStackableItemDefinition(
 	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, TArray<UInvSys_InventoryItemInstance*>& StackableItems)
 {
 	if (ItemDef == nullptr)
@@ -74,7 +73,7 @@ int32 UInvSys_InventoryModule_Container::FindStackableItemInstances(
 	return RemainCount;
 }
 
-int32 UInvSys_InventoryModule_Container::FindStackableItemInstances(TObjectPtr<UInvSys_InventoryItemInstance> ItemInstance,
+int32 UInvSys_InventoryModule_Container::FindStackableItemInstances(UInvSys_InventoryItemInstance* ItemInstance,
 	TArray<UInvSys_InventoryItemInstance*>& StackableItems)
 {
 	if (ItemInstance == nullptr)
@@ -82,27 +81,7 @@ int32 UInvSys_InventoryModule_Container::FindStackableItemInstances(TObjectPtr<U
 		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falid, ItemInstance is nullptr"), __FUNCTION__)
 		return 0;
 	}
-	return FindStackableItemInstances(ItemInstance->GetItemDefinition(), StackableItems);
-}
-
-void UInvSys_InventoryModule_Container::UpdateItemStackCount(
-	UInvSys_InventoryItemInstance* ItemInstance, int32 NewStackCount)
-{
-	if (ContainsItem(ItemInstance))
-	{
-		ItemInstance->SetItemStackCount(NewStackCount);
-		MarkItemInstanceDirty(ItemInstance);		
-	}
-}
-
-void UInvSys_InventoryModule_Container::UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance,
-                                                                    bool NewState)
-{
-	if (ContainsItem(ItemInstance))
-	{
-		ItemInstance->SetIsDraggingItem(NewState);
-		MarkItemInstanceDirty(ItemInstance);		
-	}
+	return FindStackableItemDefinition(ItemInstance->GetItemDefinition(), StackableItems);
 }
 
 void UInvSys_InventoryModule_Container::RemoveAllItemInstance()
@@ -146,10 +125,6 @@ void UInvSys_InventoryModule_Container::MarkItemInstanceDirty(UInvSys_InventoryI
 		FInvSys_ContainerEntry& ContainerEntry = ContainerList[Index];
 		ContainerList.MarkItemDirty(ContainerEntry);
 		MarkInventoryModuleDirty();
-	}
-	else
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("标记物品实例为脏失败，容器内不存在 %s"), *ItemInstance->GetName())
 	}
 }
 

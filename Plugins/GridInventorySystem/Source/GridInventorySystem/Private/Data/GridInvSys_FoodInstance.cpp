@@ -10,11 +10,6 @@ UGridInvSys_FoodInstance::UGridInvSys_FoodInstance()
 	bIsUsableItemInstance = true;
 }
 
-void UGridInvSys_FoodInstance::PostInitProperties()
-{
-	Super::PostInitProperties();
-}
-
 void UGridInvSys_FoodInstance::PreUpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance,
 	int32 DeltaStackCount)
 {
@@ -59,7 +54,6 @@ void UGridInvSys_FoodInstance::BeginDestroy()
 	UWorld* World = GetWorld();
 	if (World)
 	{
-		UE_LOG(LogInventorySystem, Log, TEXT("BeginDestory Food Item"));
 		World->GetTimerManager().ClearTimer(FreshTimerHandle);
 	}
 }
@@ -73,7 +67,6 @@ void UGridInvSys_FoodInstance::NativeOnUseItemInstance()
 	if (StackCount <= 0)
 	{
 		RemoveAndDestroyFromInventory();
-		ConditionalBeginDestroy();
 	}
 }
 

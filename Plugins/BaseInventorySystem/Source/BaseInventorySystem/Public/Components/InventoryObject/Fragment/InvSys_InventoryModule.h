@@ -68,11 +68,6 @@ public:
 
 	FORCEINLINE virtual bool IsSupportedForNetworking() const override { return true; }
 
-	FORCEINLINE bool operator<(const UInvSys_InventoryModule& Other) const
-	{
-		return this->Priority < Other.Priority;
-	}
-
 	virtual bool ReplicateSubobjects(UActorChannel *Channel, FOutBunch *Bunch, FReplicationFlags *RepFlags);
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -87,12 +82,8 @@ protected:
 
 	// 客户端该属性需要等待 InitInventoryObject 执行才能初始化
 	// 客户端同步装备时会广播一次，该广播会获取当前的标签，但此时该属性为 None
-	// UPROPERTY(BlueprintReadOnly, Replicated, Category = "Inventory Fragment")
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Module")
 	FGameplayTag InventoryTag;
-
-	// UPROPERTY(EditDefaultsOnly, Category = "Inventory Fragment", meta = (ClampMin = 0))
-	int32 Priority;	// 执行 OnRefreshInventoryObject 时的优先级，数值越小的对象执行优先级越高
 
 	// Channel wants to go dormant (it will check during tick if it can go dormant)
 	bool bPendingDormancy = true;

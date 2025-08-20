@@ -8,7 +8,6 @@
 
 UInvSys_InventoryModule_Display::UInvSys_InventoryModule_Display()
 {
-	Priority = 0;
 }
 
 void UInvSys_InventoryModule_Display::InitInventoryFragment(UObject* PreEditFragment)

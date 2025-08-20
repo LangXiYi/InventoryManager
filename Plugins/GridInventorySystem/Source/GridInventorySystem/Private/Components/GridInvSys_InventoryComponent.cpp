@@ -19,10 +19,6 @@ UGridInvSys_InventoryComponent::UGridInvSys_InventoryComponent()
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
-	DefaultContainerPriority.Add(FGameplayTag::RequestGameplayTag("Inventory.Container.Backpack"));
-	DefaultContainerPriority.Add(FGameplayTag::RequestGameplayTag("Inventory.Container.ChestRig"));
-	DefaultContainerPriority.Add(FGameplayTag::RequestGameplayTag("Inventory.Container.Pocket"));
-	DefaultContainerPriority.Add(FGameplayTag::RequestGameplayTag("Inventory.Container.SafeBox"));
 }
 
 UInvSys_InventoryItemInstance* UGridInvSys_InventoryComponent::AddItemDefinitionToContainerPos(
@@ -147,6 +143,37 @@ FGridInvSys_ItemPosition UGridInvSys_InventoryComponent::FindAvailablePosition(
 		}
 	}
 	return Result;
+}
+
+bool UGridInvSys_InventoryComponent::FindAvailablePosition(
+	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDefinition, FGameplayTag InventoryTag, FGridInvSys_ItemPosition& Pos)
+{
+	UInvSys_InventoryItemDefinition* CDO_ItemDefinition = ItemDefinition.GetDefaultObject();
+	if (CDO_ItemDefinition == nullptr)
+	{
+		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, CDO_ItemDefinition is nullptr."), __FUNCTION__)
+		return false;
+	}
+
+	UGridInvSys_InventoryModule_Container* ContainerFragment =
+		FindInventoryModule<UGridInvSys_InventoryModule_Container>(InventoryTag);
+	if (ContainerFragment)
+	{
+		if (auto ItemSizeFragment = CDO_ItemDefinition->FindFragmentByClass<UGridInvSys_ItemFragment_GridItemSize>())
+		{
+			if (ContainerFragment->FindEmptyPosition(ItemSizeFragment->ItemSize, Pos))
+			{
+				Pos.Direction = EGridInvSys_ItemDirection::Horizontal;
+				return true;
+			}
+			if (ContainerFragment->FindEmptyPosition(FIntPoint(ItemSizeFragment->ItemSize.Y, ItemSizeFragment->ItemSize.X), Pos))
+			{
+				Pos.Direction = EGridInvSys_ItemDirection::Vertical;
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 void UGridInvSys_InventoryComponent::UpdateItemInstancePosition(UInvSys_InventoryItemInstance* ItemInstance,

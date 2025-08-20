@@ -17,8 +17,6 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_FoodInstance : public UGridInvSys_Inve
 public:
 	UGridInvSys_FoodInstance();
 
-	virtual void PostInitProperties() override;
-
 	virtual void PreUpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance, int32 DeltaStackCount) override;
 
 	UFUNCTION(BlueprintCallable)

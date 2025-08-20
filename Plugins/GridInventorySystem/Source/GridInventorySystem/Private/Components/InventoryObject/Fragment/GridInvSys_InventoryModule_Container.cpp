@@ -377,7 +377,7 @@ void UGridInvSys_InventoryModule_Container::UpdateContainerData_FromWidget()
 {
 	if (InventoryObject)
 	{
-		auto DisplayFragment = InventoryObject->FindInventoryFragment<UInvSys_InventoryModule_Display>();
+		auto DisplayFragment = InventoryObject->FindInventoryModule<UInvSys_InventoryModule_Display>();
 		if (DisplayFragment)
 		{
 			// CreateDisplayWidget 函数执行时机是由玩家控制的，故这里直接获取显示控件可能会为空。

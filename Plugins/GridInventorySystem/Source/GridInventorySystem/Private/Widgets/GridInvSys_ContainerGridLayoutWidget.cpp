@@ -27,7 +27,7 @@ void UGridInvSys_ContainerGridLayoutWidget::InitInventoryWidget(UInvSys_BaseInve
 		}
 	}
 
-	auto ContainerFragment = InventoryObject->FindInventoryFragment<UInvSys_InventoryModule_Container>();
+	auto ContainerFragment = InventoryObject->FindInventoryModule<UInvSys_InventoryModule_Container>();
 	if (ContainerFragment)
 	{
 		RemoveAllItemInstance();
@@ -188,7 +188,7 @@ void UGridInvSys_ContainerGridLayoutWidget::GetAllContainerGridWidgets(TArray<UG
 
 void UGridInvSys_ContainerGridLayoutWidget::Debug_PrintContainerAllItems()
 {
-	auto ContainerFragment = InventoryObject->FindInventoryFragment<UInvSys_InventoryModule_Container>();
+	auto ContainerFragment = InventoryObject->FindInventoryModule<UInvSys_InventoryModule_Container>();
 	if (ContainerFragment)
 	{
 		TArray<UInvSys_InventoryItemInstance*> AllItemInstances;

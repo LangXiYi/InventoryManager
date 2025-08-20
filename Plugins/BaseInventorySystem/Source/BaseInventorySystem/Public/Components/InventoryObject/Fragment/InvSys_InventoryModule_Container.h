@@ -61,7 +61,7 @@ public:
 	 * @return 所有物品实例可用的堆叠数量
 	 */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Module|Container")
-	int32 FindStackableItemInstances(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
+	int32 FindStackableItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
 	                                 TArray<UInvSys_InventoryItemInstance*>& StackableItems);
 
 	/**
@@ -70,7 +70,8 @@ public:
 	 * @param StackableItems 输出物品实例 
 	 * @return 所有物品实例可用的堆叠数量
 	 */
-	int32 FindStackableItemInstances(TObjectPtr<UInvSys_InventoryItemInstance> ItemInstance,
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Module|Container")
+	int32 FindStackableItemInstances(UInvSys_InventoryItemInstance* ItemInstance,
 									 TArray<UInvSys_InventoryItemInstance*>& StackableItems);
 
 	/**
@@ -88,13 +89,6 @@ public:
 			MarkItemInstanceDirty(ItemInstance);
 		}
 	}
-
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Module|Container")
-	void UpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance, int32 NewStackCount);
-
-	/** 更新物品的拖拽状态 */
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Module|Container")
-	void UpdateItemInstanceDragState(UInvSys_InventoryItemInstance* ItemInstance, bool NewState);
 
 	/** 移除所有物品 */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Module|Container")

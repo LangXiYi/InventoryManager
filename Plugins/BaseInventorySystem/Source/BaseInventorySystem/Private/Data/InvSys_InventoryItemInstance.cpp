@@ -12,18 +12,11 @@
 
 UInvSys_InventoryItemInstance::UInvSys_InventoryItemInstance()
 {
-	UObject* MyOuter = GetOuter();
-	if (MyOuter)
+	InventoryComponent = GetTypedOuter<UInvSys_InventoryComponent>();
+	if (InventoryComponent)
 	{
-		if (MyOuter->IsA<UInvSys_InventoryComponent>())
-		{
-			InventoryComponent = Cast<UInvSys_InventoryComponent>(MyOuter);
-			Owner_Private = InventoryComponent->GetOwner();
-			// UE_LOG(LogInventorySystem, Error, TEXT("构建库存物品实例的 Outer[%s]！！！"), *InventoryComponent->GetOwner()->GetName())
-		}
+		Owner_Private = InventoryComponent->GetOwner();
 	}
-	ReplicateState = EInvSys_ReplicateState::PostAdd;
-
 }
 
 void UInvSys_InventoryItemInstance::UseItemInstance()
@@ -42,21 +35,12 @@ void UInvSys_InventoryItemInstance::NativeOnUseItemInstance()
 void UInvSys_InventoryItemInstance::PostDuplicate(bool bDuplicateForPIE)
 {
 	UObject::PostDuplicate(bDuplicateForPIE);
-	UObject* MyOuter = GetOuter();
-	if (MyOuter)
+	InventoryComponent = GetTypedOuter<UInvSys_InventoryComponent>();
+	if (InventoryComponent)
 	{
-		if (MyOuter->IsA<UInvSys_InventoryComponent>())
-		{
-			InventoryComponent = Cast<UInvSys_InventoryComponent>(MyOuter);
-			Owner_Private = InventoryComponent->GetOwner();
-#if WITH_EDITOR
-			UE_LOG(LogInventorySystem, Log, TEXT("%s::PostDuplicate 库存物品实例的 Outer[%s]！！！"), *GPlayInEditorContextString, *InventoryComponent->GetOwner()->GetName())
-#endif
-		}
+		Owner_Private = InventoryComponent->GetOwner();
 	}
-	ReplicateState = EInvSys_ReplicateState::PostAdd;
 }
-
 
 void UInvSys_InventoryItemInstance::PostRepNotifies()
 {
@@ -67,11 +51,9 @@ void UInvSys_InventoryItemInstance::PostRepNotifies()
 	// 	PreReplicatedRemove();
 	// 	break;
 	case EInvSys_ReplicateState::PostAdd:
-		// UE_LOG(LogInventorySystem, Log, TEXT("PostRepNotifies:%s"), *GetName())
 		PostReplicatedAdd();
 		break;
 	case EInvSys_ReplicateState::PostChange:
-		// UE_LOG(LogInventorySystem, Log, TEXT("PostRepNotifies:%s"), *GetName())
 		PostReplicatedChange();
 		break;
 	default: ;
@@ -173,9 +155,13 @@ void UInvSys_InventoryItemInstance::SuperposeItemInstance(UInvSys_InventoryItemI
 
 	// 更新当前物品实例的数量
 	SetItemStackCount(StackCount + DeltaStackCount);
-
-	FromItemStackCount = FromItemStackCount - DeltaStackCount;
 	ItemInstance->SetItemStackCount(FromItemStackCount - DeltaStackCount);
+}
+
+void UInvSys_InventoryItemInstance::PreUpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance,
+	int32 DeltaStackCount)
+{
+	BP_PreUpdateItemStackCount(ItemInstance, DeltaStackCount);
 }
 
 bool UInvSys_InventoryItemInstance::HasAuthority() const
@@ -243,6 +229,7 @@ void UInvSys_InventoryItemInstance::SetIsDraggingItem(bool NewDragState)
 		{
 			OnRep_IsDragging();
 		}
+		MarkItemInstanceDirty();
 	}
 }
 

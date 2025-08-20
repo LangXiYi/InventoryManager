@@ -42,6 +42,7 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 protected:
+	// 不会维护对象到客户端的网络连接，且使用的是弱指针不会阻止对象销毁。
 	UPROPERTY(ReplicatedUsing = OnRep_QuickBarItemReferences)
 	TArray<TWeakObjectPtr<UInvSys_InventoryItemInstance>> QuickBarItemReferences;
 	UFUNCTION()

@@ -183,7 +183,15 @@ public:
 	 * @param ItemInstance 物品来源
 	 * @param DeltaStackCount 来源物品将要减少的数量
 	 */
-	virtual void PreUpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance, int32 DeltaStackCount) {}
+	virtual void PreUpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance, int32 DeltaStackCount);
+
+	/**
+	 * 预处理物品堆叠数量改变
+	 * @param ItemInstance 物品来源
+	 * @param DeltaStackCount 来源物品将要减少的数量
+	 */
+	UFUNCTION(BlueprintImplementableEvent, Category = "Inventory Item Instance", DisplayName = PreUpdateItemStackCount)
+	void BP_PreUpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance, int32 DeltaStackCount);
 	
 	bool HasAuthority() const;
 

@@ -49,9 +49,6 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Pickable Items")
 	void InitPickableItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
 
-	UFUNCTION(BlueprintImplementableEvent, BlueprintAuthorityOnly, Category = "Pickable Items")
-	void PostPickupItem(int32 RemainCount);
-
 	// 每次修改对象属性后都需要调用该函数
 	void MarkItemDirty();
 

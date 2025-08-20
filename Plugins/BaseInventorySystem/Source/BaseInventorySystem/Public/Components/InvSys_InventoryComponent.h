@@ -115,23 +115,8 @@ public:
 	template<class T, class... ArgList>
 	T* SplitItemInstance(UInvSys_InventoryItemInstance* ItemInstance, int32 SplitCount, FGameplayTag InventoryTag, const ArgList&... Args);
 
-	/** 修改物品堆叠数量 */
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
-	void UpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance, int32 NewStackCount);
-
-	/** 修改物品拖拽状态 */
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
-	void UpdateItemDragState(UInvSys_InventoryItemInstance* ItemInstance, const FGameplayTag& InventoryTag, bool NewState);
-
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
 	bool ContainsItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
-
-	/**
-	 * 拖拽并在容器中删除该物品
-	 * 注意：从容器内移除后，需要在其他位置手动同步该物品实例，否则属性修改不会同步值客户端。
-	 */
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
-	bool DragAndRemoveItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
 
 	/**
 	 * 拖拽物品会将背包内的该物品锁住，必须在放下或取消拖拽后取消该锁定！！
@@ -175,7 +160,7 @@ public:
 	FORCEINLINE T* FindInventoryModule(FGameplayTag Tag) const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure = false, meta = (DeterminesOutputType = OutClass))
-	UInvSys_InventoryModule* FindInventoryFragment(FGameplayTag Tag, TSubclassOf<UInvSys_InventoryModule> OutClass) const;
+	UInvSys_InventoryModule* FindInventoryModule(FGameplayTag Tag, TSubclassOf<UInvSys_InventoryModule> OutClass) const;
 
 	void RegisterInventoryComponent(
 		const TSoftClassPtr<UInvSys_InventoryContentMapping>& InInventoryContent,
@@ -327,7 +312,7 @@ T* UInvSys_InventoryComponent::FindInventoryModule(FGameplayTag Tag) const
 {
 	if (InventoryObjectMap.Contains(Tag))
 	{
-		return InventoryObjectMap[Tag]->FindInventoryFragment<T>();
+		return InventoryObjectMap[Tag]->FindInventoryModule<T>();
 	}
 	return nullptr;
 }
