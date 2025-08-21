@@ -44,6 +44,10 @@ void UInvSys_InventoryModule_QuickBar::InitInventoryFragment(UObject* PreEditFra
 void UInvSys_InventoryModule_QuickBar::UpdateQuickBarItemReference(UInvSys_InventoryItemInstance* ItemReference,
                                                                    int32 Index)
 {
+	if (ItemReference->GetInventoryComponent() != GetInventoryComponent())
+	{
+		return;
+	}
 	QuickBarItemReferences[Index] = ItemReference;
 	if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
 	{

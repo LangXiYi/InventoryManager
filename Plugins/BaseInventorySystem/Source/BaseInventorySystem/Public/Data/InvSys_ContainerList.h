@@ -138,9 +138,6 @@ public:
 	UPROPERTY(NotReplicated)
 	TObjectPtr<UInvSys_InventoryModule> InventoryFragment;
 
-	// UPROPERTY(NotReplicated)
-	// TArray<>
-
 public:
 	/**
 	 * 创建物品实例并初始化该物品的属性，添加过程中会广播添加事件。
@@ -293,7 +290,8 @@ T* FInvSys_ContainerList::AddInstance(UInvSys_InventoryItemInstance* ItemInstanc
 		return nullptr;
 	}
 	T* Result = Cast<T>(ItemInstance);
-	if (Result->GetInventoryComponent() != GetInventoryComponent())
+	// Warning:限制复制会导致在同容器下触发客户端的 PreRemove 时，获取的值是最新值而非旧值
+	// if (Result->GetInventoryComponent() != GetInventoryComponent())
 	{
 		// todo::使用对象池获取新对象，能否优化深度拷贝对象带来的消耗？
 		// 子类转父类后通过 DuplicateObject 复制，不会导致子类信息丢失

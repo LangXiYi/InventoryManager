@@ -19,21 +19,18 @@ void UGridInvSys_FoodInstance::PreUpdateItemStackCount(UInvSys_InventoryItemInst
 		auto Food = Cast<UGridInvSys_FoodInstance>(ItemInstance);
 		int32 From = Food->FreshTime * DeltaStackCount;
 
-		FreshTime = (FreshTime * StackCount + From) / (StackCount + DeltaStackCount);
+		float NewFreshTime = (FreshTime * StackCount + From) / (StackCount + DeltaStackCount);
+		SetFoodFreshTime(NewFreshTime);
 	}
 }
 
-void UGridInvSys_FoodInstance::TestFunction(float Time)
+void UGridInvSys_FoodInstance::SetFoodFreshTime(float NewTime)
 {
-	FreshTime = Time;
+	FreshTime = NewTime;
 	GetWorld()->GetTimerManager().SetTimer(FreshTimerHandle, [this]()
 	{
 		// 更新物品剩余新鲜时间
 		FreshTime -= 1.f;
-		// if (HasAnyFlags(RF_BeginDestroyed) == false)
-		// {
-			// UE_LOG(LogInventorySystem, Log, TEXT("Fresh Time = %f"), FreshTime);
-		// }
 		if (FreshTime <= 0.f)
 		{
 			// todo::食物腐烂
@@ -45,7 +42,7 @@ void UGridInvSys_FoodInstance::TestFunction(float Time)
 void UGridInvSys_FoodInstance::InitInventoryItemInstance()
 {
 	Super::InitInventoryItemInstance();
-	TestFunction(FreshTime);
+	SetFoodFreshTime(FreshTime);
 }
 
 void UGridInvSys_FoodInstance::BeginDestroy()
@@ -62,6 +59,7 @@ void UGridInvSys_FoodInstance::NativeOnUseItemInstance()
 {
 	Super::NativeOnUseItemInstance();
 	check(HasAuthority())
+
 	UE_LOG(LogInventorySystem, Log, TEXT("Use Item Food: %f"), FreshTime)
 	SetItemStackCount(StackCount - 1);
 	if (StackCount <= 0)

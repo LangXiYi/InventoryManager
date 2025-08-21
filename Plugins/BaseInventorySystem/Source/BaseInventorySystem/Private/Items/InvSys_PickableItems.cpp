@@ -38,7 +38,6 @@ void AInvSys_PickableItems::OnConstruction(const FTransform& Transform)
 		if (HasAuthority() && GetNetMode() != NM_DedicatedServer)
 		{
 			OnRep_PickableItemInstance();
-			MarkItemDirty();
 		}
 	}
 }
@@ -64,12 +63,6 @@ void AInvSys_PickableItems::InitPickableItemInstance(UInvSys_InventoryItemInstan
 	{
 		OnRep_PickableItemInstance();
 	}
-	MarkItemDirty();
-}
-
-void AInvSys_PickableItems::MarkItemDirty()
-{
-	bIsDirty = true;
 }
 
 TSubclassOf<UInvSys_InventoryItemDefinition> AInvSys_PickableItems::GetItemDefinition()
@@ -87,7 +80,6 @@ void AInvSys_PickableItems::SetItemStackCount(int32 NewStackCount)
 {
 	check(PickableItemInstance)
 	PickableItemInstance->SetItemStackCount(NewStackCount);
-	bIsDirty = true;
 }
 
 const UInvSys_InventoryItemFragment* AInvSys_PickableItems::FindFragmentByClass(
@@ -104,11 +96,7 @@ bool AInvSys_PickableItems::ReplicateSubobjects(UActorChannel* Channel, FOutBunc
 {
 	
 	bool bIsWrote =  Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
-	if (bIsDirty)
-	{
-		bIsDirty = false;
-		bIsWrote |= Channel->ReplicateSubobject(PickableItemInstance, *Bunch, *RepFlags);
-	}
+	bIsWrote |= Channel->ReplicateSubobject(PickableItemInstance, *Bunch, *RepFlags);
 	return bIsWrote;
 }
 
@@ -128,6 +116,5 @@ void AInvSys_PickableItems::OnRep_PickableItemInstance()
 		{
 			ItemMesh->SetStaticMesh(StaticMesh);
 		}
-		// ItemMesh->SetRelativeLocation(DropItemFragment->DropLocationOffset);
 	}
 }

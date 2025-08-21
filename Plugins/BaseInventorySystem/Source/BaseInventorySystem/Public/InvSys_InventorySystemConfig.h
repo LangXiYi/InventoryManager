@@ -23,6 +23,7 @@ public:
 	// UDeveloperSettings Over =====
 	
 public:
+	// 目前并未使用该功能
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Inventory System Config")
 	bool AutoClearInventoryWidget = true;
 

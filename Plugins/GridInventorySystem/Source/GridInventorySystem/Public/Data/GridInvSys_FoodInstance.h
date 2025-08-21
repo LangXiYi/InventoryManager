@@ -19,8 +19,7 @@ public:
 
 	virtual void PreUpdateItemStackCount(UInvSys_InventoryItemInstance* ItemInstance, int32 DeltaStackCount) override;
 
-	UFUNCTION(BlueprintCallable)
-	void TestFunction(float Time);
+	void SetFoodFreshTime(float NewTime);
 
 	virtual void InitInventoryItemInstance() override;
 

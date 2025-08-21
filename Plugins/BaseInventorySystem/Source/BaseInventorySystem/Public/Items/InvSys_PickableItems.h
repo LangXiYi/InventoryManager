@@ -49,9 +49,6 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Pickable Items")
 	void InitPickableItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
 
-	// 每次修改对象属性后都需要调用该函数
-	void MarkItemDirty();
-
 	UFUNCTION(BlueprintPure, Category = "Pickable Items")
 	TSubclassOf<UInvSys_InventoryItemDefinition> GetItemDefinition();
 
@@ -89,7 +86,4 @@ protected:
 	TObjectPtr<UInvSys_InventoryItemInstance> PickableItemInstance;
 	UFUNCTION()
 	void OnRep_PickableItemInstance();
-
-private:
-	bool bIsDirty = false;
 };

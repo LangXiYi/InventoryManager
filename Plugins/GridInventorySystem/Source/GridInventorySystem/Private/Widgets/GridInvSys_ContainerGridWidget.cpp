@@ -153,7 +153,8 @@ void UGridInvSys_ContainerGridWidget::TryDropItemInstance_SizeEqual(
 
 	if (FromItemInstance && ToItemInstance)
 	{
-		if (FromItemInstance->GetItemDefinition() == ToItemInstance->GetItemDefinition())
+		if (FromItemInstance->GetItemDefinition() == ToItemInstance->GetItemDefinition() && 
+			ToItemInstance->GetItemStackCount() < ToItemInstance->GetItemMaxStackCount())
 		{
 			PlayerInvComp->Server_SuperposeItemInstance(FromItemInstance, ToItemInstance);
 		}

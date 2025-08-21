@@ -19,11 +19,7 @@ public:
 	virtual void OnInstanceCreated(UInvSys_InventoryItemInstance* Instance) const {}
 };
 
-
-
-/**
- * UGridInvSys_InventoryItemDefinition
- */
+// Inventory Item Definition
 UCLASS(Blueprintable, Const, Abstract)
 class BASEINVENTORYSYSTEM_API UInvSys_InventoryItemDefinition : public UObject
 {

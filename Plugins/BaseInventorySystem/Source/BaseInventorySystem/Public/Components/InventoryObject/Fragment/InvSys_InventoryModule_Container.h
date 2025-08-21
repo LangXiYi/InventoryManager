@@ -139,10 +139,8 @@ protected:
 	UPROPERTY(Replicated)
 	FInvSys_ContainerList ContainerList;
 
+	/**
+	 * 物品实例脏标记
+	 */
 	TMap<int32, int32> ContainerEntryRepKeyMap;
-
-private:
-	FGameplayMessageListenerHandle OnItemStackChangedHandle;
-	FGameplayMessageListenerHandle OnAddItemInstanceHandle;
-	FGameplayMessageListenerHandle OnRemoveItemInstanceHandle;
 };
