@@ -8,6 +8,8 @@
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/InvSys_InventoryComponent.h"
+#include "Library/InvSys_InventorySystemLibrary.h"
+#include "Widgets/InvSys_InventoryHUD.h"
 
 void UInvSys_InventoryWidget::InitInventoryWidget(UInvSys_BaseInventoryObject* NewInventoryObject)
 {
@@ -18,9 +20,18 @@ void UInvSys_InventoryWidget::InitInventoryWidget(UInvSys_BaseInventoryObject* N
 		InventoryObject = NewInventoryObject;
 		InventoryTag = InventoryObject->GetInventoryObjectTag();
 		InventoryComponent = InventoryObject->GetInventoryComponent();
-
 	}
 	OnRefreshWidget();
+}
+
+void UInvSys_InventoryWidget::RemoveFromParent()
+{
+	UInvSys_InventoryHUD* InventoryHUD = UInvSys_InventorySystemLibrary::GetInventoryHUD(GetWorld());
+	if (InventoryHUD)
+	{
+		InventoryHUD->RemoveWidget(InventoryTag);
+	}
+	Super::RemoveFromParent();
 }
 
 void UInvSys_InventoryWidget::NativeConstruct()

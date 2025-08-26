@@ -36,7 +36,9 @@ public:
 
 	virtual void InitInventoryFragment(UObject* PreEditFragment) override;
 	
-	virtual UInvSys_InventoryItemInstance* EquipItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount = 1);
+	virtual UInvSys_InventoryItemInstance* EquipItemDefinition(
+		TSubclassOf<UInvSys_InventoryItemInstance> ItemClass,
+		TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount = 1);
 
 	virtual UInvSys_InventoryItemInstance* EquipItemInstance(UInvSys_InventoryItemInstance* ItemInstance);
 

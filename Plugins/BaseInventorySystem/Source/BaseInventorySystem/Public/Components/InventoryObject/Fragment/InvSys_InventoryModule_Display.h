@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "InvSys_CommonType.h"
 #include "InvSys_InventoryModule.h"
 #include "Widgets/InvSys_InventoryWidget.h"
 #include "InvSys_InventoryModule_Display.generated.h"
@@ -21,27 +22,37 @@ public:
 
 	virtual void RefreshInventoryFragment() override;
 
-	virtual UInvSys_InventoryWidget* CreateDisplayWidget(APlayerController* PC);
+	// 创建显示控件，创建成功后会自动将该控件添加至HUD管理，若控件已创建则之间返回该控件。
+	UFUNCTION(BlueprintCallable, Category = "Inventory Module|Display")
+	virtual UInvSys_InventoryWidget* TryCreateDisplayWidget(APlayerController* PC);
 
 	TSubclassOf<UUserWidget> GetDisplayWidgetClass() const
 	{
 		return DisplayWidgetClass;
 	}
 
+	UFUNCTION(BlueprintPure, Category = "Inventory Module|Display")
+	UInvSys_InventoryWidget* GetDisplayWidget() const;
+
 	template<class T>
 	T* GetDisplayWidget() const
 	{
-		if (DisplayWidget && DisplayWidget->IsA<T>())
-		{
-			return (T*)DisplayWidget;
-		}
-		return nullptr;
+		return (T*)GetDisplayWidget();
+	}
+
+	UFUNCTION(BlueprintPure, Category = "Inventory Module|Display")
+	FORCEINLINE EInvSys_InventoryWidgetActivity GetInventoryWidgetActivity() const
+	{
+		return WidgetActivity;
 	}
 
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Module|Display")
 	TSubclassOf<UInvSys_InventoryWidget> DisplayWidgetClass;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Module|Display")
-	TObjectPtr<UInvSys_InventoryWidget> DisplayWidget = nullptr;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Module|Display")
+	EInvSys_InventoryWidgetActivity WidgetActivity = EInvSys_InventoryWidgetActivity::Permanent;
+
+	UPROPERTY()
+	TWeakObjectPtr<UInvSys_InventoryWidget> DisplayWidget = nullptr;
 };

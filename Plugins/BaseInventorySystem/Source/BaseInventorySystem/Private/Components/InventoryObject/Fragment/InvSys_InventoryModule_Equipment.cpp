@@ -36,7 +36,8 @@ void UInvSys_InventoryModule_Equipment::InitInventoryFragment(UObject* PreEditFr
 }
 
 UInvSys_InventoryItemInstance* UInvSys_InventoryModule_Equipment::EquipItemDefinition(
-	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount)
+	TSubclassOf<UInvSys_InventoryItemInstance> ItemClass, TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
+	int32 StackCount)
 {
 	check(HasAuthority())
 	if (HasEquipmentItems())
@@ -71,7 +72,7 @@ UInvSys_InventoryItemInstance* UInvSys_InventoryModule_Equipment::EquipItemDefin
 		return nullptr;
 	}
 
-	UInvSys_InventoryItemInstance* TempItemInstance = NewObject<UInvSys_InventoryItemInstance>(GetInventoryComponent());
+	UInvSys_InventoryItemInstance* TempItemInstance = NewObject<UInvSys_InventoryItemInstance>(GetInventoryComponent(), ItemClass);
 	if (TempItemInstance == nullptr)
 	{
 		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, ItemInstance is nullptr, %s is not valid."), __FUNCTION__, *ItemDef->GetName())

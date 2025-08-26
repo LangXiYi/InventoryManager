@@ -27,11 +27,30 @@ UInvSys_InventoryComponent::UInvSys_InventoryComponent(const FObjectInitializer&
 	SetIsReplicatedByDefault(true);
 
 	bReplicateUsingRegisteredSubObjectList = false;
+	bWantsInitializeComponent = true;
 	//bReplicateUsingRegisteredSubObjectList = true; // 不推荐使用，否则可能会出现子对象与FastArray的属性同步失序的问题。
 }
 
-void UInvSys_InventoryComponent::ConstructInventoryObjects()
+void UInvSys_InventoryComponent::InitializeComponent()
 {
+	Super::InitializeComponent();
+}
+
+void UInvSys_InventoryComponent::BeginPlay()
+{
+	if (HasAuthority())
+	{
+		InitializeInventoryObjects();
+	}
+	Super::BeginPlay();
+}
+
+void UInvSys_InventoryComponent::InitializeInventoryObjects()
+{
+	if (bIsInitializeInventoryObjects == true)
+	{
+		return;
+	}
 	// 权威服务器更新库存对象列表与映射关系
 	if (InventoryObjectContent.IsNull() == true)
 	{
@@ -79,11 +98,10 @@ void UInvSys_InventoryComponent::ConstructInventoryObjects()
 }
 
 void UInvSys_InventoryComponent::RegisterInventoryComponent(
-	const TSoftClassPtr<UInvSys_InventoryContentMapping>& InInventoryContent,
-	const TSubclassOf<UInvSys_InventoryLayoutWidget>& InLayoutWidgetClass)
+	const TSoftClassPtr<UInvSys_InventoryContentMapping>& InInventoryContent)
 {
 	InventoryObjectContent = InInventoryContent;
-	LayoutWidgetClass = InLayoutWidgetClass;
+	// LayoutWidgetClass = InLayoutWidgetClass;
 	RegisterComponent();
 }
 
@@ -96,62 +114,51 @@ bool UInvSys_InventoryComponent::IsValidInventoryTag(const FGameplayTag& Invento
 	return false;
 }
 
-UInvSys_InventoryLayoutWidget* UInvSys_InventoryComponent::CreateDisplayWidget(APlayerController* NewPlayerController)
+void UInvSys_InventoryComponent::CreateAllDisplayWidgets(APlayerController* NewController)
 {
-	if (LayoutWidget && IsValid(LayoutWidget))
+	if (NewController && NewController->IsLocalController())
 	{
-		return LayoutWidget;
-	}
-	if (NewPlayerController == nullptr || NewPlayerController->IsLocalController() == false)
-	{
-		return nullptr;
-	}
-	if (LayoutWidgetClass == nullptr)
-	{
-		return nullptr;
-	}
-
-	UInvSys_InventoryControllerComponent* PlayerInvComp = UInvSys_InventorySystemLibrary::GetPlayerInventoryComponent(GetWorld());
-	if (PlayerInvComp == nullptr)
-	{
-		UE_LOG(LogInventorySystem, Error, TEXT("%hs Falied, Player Inventory Component is nullptr."), __FUNCTION__);
-		return nullptr;
-	}
-	UInvSys_InventoryHUD* InventoryHUD = PlayerInvComp->GetInventoryHUD();
-	check(InventoryHUD)
-
-	// 创建布局控件后，收集所有的 TagSlot 供后续控件插入正确位置。
-	LayoutWidget = CreateWidget<UInvSys_InventoryLayoutWidget>(NewPlayerController, LayoutWidgetClass);
-	check(LayoutWidget)
-	// 将库存布局加入HUD
-	InventoryHUD->AddWidget(LayoutWidget, InventoryLayoutTag);
-	
-	for (int Index = 0; Index < InventoryObjectList.Num(); ++Index)
-	{
-		UInvSys_BaseInventoryObject* InvObj = InventoryObjectList[Index];
-		if (InvObj == nullptr)
+		for (int Index = 0; Index < InventoryObjectList.Num(); ++Index)
 		{
-			checkNoEntry();
-			continue;
-		}
-		auto DisplayWidgetFragment = InvObj->FindInventoryModule<UInvSys_InventoryModule_Display>();
-		if (DisplayWidgetFragment)
-		{
-			// 将库存对象的控件插入对应位置的插槽。
-			UUserWidget* DisplayWidget = DisplayWidgetFragment->CreateDisplayWidget(NewPlayerController);
-			// LayoutWidget->AddWidget(DisplayWidget, InvObj->GetInventoryObjectTag());
-			InventoryHUD->AddWidget(DisplayWidget, InvObj->GetInventoryObjectTag());
+			UInvSys_BaseInventoryObject* InvObj = InventoryObjectList[Index];
+			if (InvObj == nullptr)
+			{
+				checkNoEntry();
+				continue;
+			}
+			auto DisplayModule = InvObj->FindInventoryModule<UInvSys_InventoryModule_Display>();
+			if (DisplayModule)
+			{
+				DisplayModule->TryCreateDisplayWidget(NewController);
+			}
 		}
 	}
-	// 自动清除隐藏的控件，todo::提取到DisplayWidget模块中？
-	// if (const UInvSys_InventorySystemConfig* InventorySystemConfig = GetDefault<UInvSys_InventorySystemConfig>())
-	// {
-	// 	if (InventorySystemConfig->AutoClearInventoryWidget)
-	// 	{
-	// 		LayoutWidget->OnVisibilityChanged.AddDynamic(this, &UInvSys_InventoryComponent::OnInventoryVisibilityChanged);
-	// 	}
-	// }
-	return LayoutWidget;
+}
+
+UUserWidget* UInvSys_InventoryComponent::CreateDisplayWidgets(APlayerController* NewController,
+	FGameplayTag InventoryTag)
+{
+	if (NewController && NewController->IsLocalController())
+	{
+		for (int Index = 0; Index < InventoryObjectList.Num(); ++Index)
+		{
+			UInvSys_BaseInventoryObject* InvObj = InventoryObjectList[Index];
+			if (InvObj == nullptr)
+			{
+				checkNoEntry();
+				continue;
+			}
+			if (InvObj->GetInventoryObjectTag() == InventoryTag)
+			{
+				auto DisplayModule = InvObj->FindInventoryModule<UInvSys_InventoryModule_Display>();
+				if (DisplayModule)
+				{
+					return DisplayModule->TryCreateDisplayWidget(NewController);
+				}
+			}
+		}
+	}
+	return nullptr;
 }
 
 bool UInvSys_InventoryComponent::ContainsItemInstance(UInvSys_InventoryItemInstance* ItemInstance)
@@ -236,7 +243,8 @@ AInvSys_PickableItems* UInvSys_InventoryComponent::DiscardItemInstance(
 }
 
 UInvSys_InventoryItemInstance* UInvSys_InventoryComponent::EquipItemDefinition(
-	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, FGameplayTag SlotTag, int32 StackCount)
+	TSubclassOf<UInvSys_InventoryItemInstance> ItemClass, TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
+	FGameplayTag SlotTag, int32 StackCount)
 {
 	auto EquipmentFragment = FindInventoryModule<UInvSys_InventoryModule_Equipment>(SlotTag);
 	if (EquipmentFragment == nullptr)
@@ -245,7 +253,7 @@ UInvSys_InventoryItemInstance* UInvSys_InventoryComponent::EquipItemDefinition(
 		return nullptr;
 	}
 
-	UInvSys_InventoryItemInstance* TargetItemInstance = EquipmentFragment->EquipItemDefinition(ItemDef);
+	UInvSys_InventoryItemInstance* TargetItemInstance = EquipmentFragment->EquipItemDefinition(ItemClass, ItemDef, StackCount);
 	if (TargetItemInstance == nullptr)
 	{
 		return nullptr;
@@ -407,10 +415,10 @@ void UInvSys_InventoryComponent::OnInventoryVisibilityChanged(ESlateVisibility I
 		{
 			UInvSys_InventoryHUD* InventoryHUD = UInvSys_InventorySystemLibrary::GetInventoryHUD(GetWorld());
 			checkf(InventoryHUD, TEXT("Inventory HUD is nullptr."))
-			InventoryHUD->RemoveWidget(InventoryLayoutTag);
-			LayoutWidget->ConditionalBeginDestroy();
-			LayoutWidget = nullptr;
-			checkf(LayoutWidget == nullptr, TEXT("LayoutWidget is not nullptr."))
+			InventoryHUD->RemoveWidget(InventoryLayoutTag_DEPRECATED);
+			LayoutWidget_DEPRECATED->ConditionalBeginDestroy();
+			LayoutWidget_DEPRECATED = nullptr;
+			checkf(LayoutWidget_DEPRECATED == nullptr, TEXT("LayoutWidget is not nullptr."))
 		}, InRate, false);
 		break;
 	}
@@ -472,6 +480,7 @@ void UInvSys_InventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProp
 
 void UInvSys_InventoryComponent::OnRep_InventoryObjectList()
 {
+	bIsInitializeInventoryObjects = true;
 	if (InventoryObjectContent.IsValid() == false)
 	{
 		FStreamableManager& StreamableManager = UAssetManager::GetStreamableManager();

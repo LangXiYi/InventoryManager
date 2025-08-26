@@ -85,6 +85,36 @@ void UInvSys_InventoryItemInstance::RemoveAndDestroyFromInventory()
 	}
 }
 
+UGameplayTasksComponent* UInvSys_InventoryItemInstance::GetGameplayTasksComponent(const UGameplayTask& Task) const
+{
+	return IGameplayTaskOwnerInterface::GetGameplayTasksComponent(Task);
+}
+
+AActor* UInvSys_InventoryItemInstance::GetGameplayTaskOwner(const UGameplayTask* Task) const
+{
+	return IGameplayTaskOwnerInterface::GetGameplayTaskOwner(Task);
+}
+
+AActor* UInvSys_InventoryItemInstance::GetGameplayTaskAvatar(const UGameplayTask* Task) const
+{
+	return IGameplayTaskOwnerInterface::GetGameplayTaskAvatar(Task);
+}
+
+void UInvSys_InventoryItemInstance::OnGameplayTaskInitialized(UGameplayTask& Task)
+{
+	IGameplayTaskOwnerInterface::OnGameplayTaskInitialized(Task);
+}
+
+void UInvSys_InventoryItemInstance::OnGameplayTaskActivated(UGameplayTask& Task)
+{
+	IGameplayTaskOwnerInterface::OnGameplayTaskActivated(Task);
+}
+
+void UInvSys_InventoryItemInstance::OnGameplayTaskDeactivated(UGameplayTask& Task)
+{
+	IGameplayTaskOwnerInterface::OnGameplayTaskDeactivated(Task);
+}
+
 void UInvSys_InventoryItemInstance::PreReplicatedRemove()
 {
 	ReplicateState = EInvSys_ReplicateState::None;

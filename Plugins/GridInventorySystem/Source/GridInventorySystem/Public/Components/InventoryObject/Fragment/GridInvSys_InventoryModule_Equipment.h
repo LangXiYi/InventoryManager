@@ -14,6 +14,4 @@ class GRIDINVENTORYSYSTEM_API UGridInvSys_InventoryModule_Equipment : public UIn
 {
 	GENERATED_BODY()
 
-public:
-	virtual UInvSys_InventoryItemInstance* EquipItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, int32 StackCount = 1) override;
 };

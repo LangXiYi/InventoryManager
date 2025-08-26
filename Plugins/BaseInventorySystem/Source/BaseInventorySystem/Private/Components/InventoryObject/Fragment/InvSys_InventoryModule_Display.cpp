@@ -4,41 +4,57 @@
 #include "Components/InventoryObject/Fragment/InvSys_InventoryModule_Display.h"
 
 #include "BaseInventorySystem.h"
+#include "Library/InvSys_InventorySystemLibrary.h"
+#include "Widgets/InvSys_InventoryHUD.h"
 #include "Widgets/InvSys_InventoryWidget.h"
 
 UInvSys_InventoryModule_Display::UInvSys_InventoryModule_Display()
 {
+	
 }
 
 void UInvSys_InventoryModule_Display::InitInventoryFragment(UObject* PreEditFragment)
 {
 	Super::InitInventoryFragment(PreEditFragment);
 	COPY_INVENTORY_FRAGMENT_PROPERTY(UInvSys_InventoryModule_Display, DisplayWidgetClass);
+	COPY_INVENTORY_FRAGMENT_PROPERTY(UInvSys_InventoryModule_Display, WidgetActivity);
 }
 
 void UInvSys_InventoryModule_Display::RefreshInventoryFragment()
 {
 	Super::RefreshInventoryFragment();
-	check(DisplayWidget)
 	// DisplayWidget->RefreshWidget();
-	if (DisplayWidget)
+	if (DisplayWidget.IsValid())
 	{
 		DisplayWidget->InitInventoryWidget(InventoryObject);
 	}
 }
 
-UInvSys_InventoryWidget* UInvSys_InventoryModule_Display::CreateDisplayWidget(APlayerController* PC)
+UInvSys_InventoryWidget* UInvSys_InventoryModule_Display::TryCreateDisplayWidget(APlayerController* PC)
 {
-	if (DisplayWidget && DisplayWidget->HasAnyFlags(EObjectFlags::RF_BeginDestroyed) == false)
+	if (DisplayWidget.IsValid() && DisplayWidget->HasAnyFlags(EObjectFlags::RF_BeginDestroyed) == false)
 	{
-		return DisplayWidget;
+		return DisplayWidget.Get();
 	}
 
-	if (PC != nullptr && PC->IsLocalController())
+	if (PC && PC->IsLocalController())
 	{
-		DisplayWidget = CreateWidget<UInvSys_InventoryWidget>(PC, DisplayWidgetClass);
-		DisplayWidget->InitInventoryWidget(InventoryObject);
-		// todo::Default Visibility
+		UInvSys_InventoryHUD* InventoryHUD = UInvSys_InventorySystemLibrary::GetInventoryHUD(GetWorld());
+		if (InventoryHUD)
+		{
+			DisplayWidget = CreateWidget<UInvSys_InventoryWidget>(PC, DisplayWidgetClass);
+			DisplayWidget->InitInventoryWidget(InventoryObject);
+			InventoryHUD->AddWidget(DisplayWidget.Get(), GetInventoryTag());
+		}
 	}
-	return DisplayWidget;
+	return DisplayWidget.Get();
+}
+
+UInvSys_InventoryWidget* UInvSys_InventoryModule_Display::GetDisplayWidget() const
+{
+	if (DisplayWidget.IsValid())
+	{
+		return DisplayWidget.Get();
+	}
+	return nullptr;
 }

@@ -4,35 +4,48 @@
 #include "Widgets/InvSys_InventoryHUD.h"
 
 #include "BaseInventorySystem.h"
+#include "InvSys_InventorySystemConfig.h"
+#include "Blueprint/WidgetBlueprintGeneratedClass.h"
 #include "Blueprint/WidgetTree.h"
 #include "Widgets/InvSys_InventoryLayoutWidget.h"
 #include "Widgets/Components/InvSys_InventoryItemActionPanel.h"
-#include "Widgets/Components/InvSys_InventorySlot.h"
+#include "Widgets/Components/InvSys_InventoryWidgetSlot.h"
 
-void UInvSys_InventoryHUD::NativeOnInitialized()
+UInvSys_InventoryHUD::UInvSys_InventoryHUD(const FObjectInitializer& ObjectInitializer)
+	:Super(ObjectInitializer)
 {
-	Super::NativeOnInitialized();
+	// UWidgetBlueprintGeneratedClass* BGClass = Cast<UWidgetBlueprintGeneratedClass>(GetClass());
+	// BGClass->bCanCallInitializedWithoutPlayerContext = true;
+}
+
+TSharedRef<SWidget> UInvSys_InventoryHUD::RebuildWidget()
+{
 	if (WidgetTree)
 	{
 		WidgetTree->ForEachWidget([&] (UWidget* Widget) {
-			if (Widget->IsA<UInvSys_InventorySlot>())
+			if (Widget->IsA<UInvSys_InventoryWidgetSlot>())
 			{
-				UInvSys_InventorySlot* InventorySlot = Cast<UInvSys_InventorySlot>(Widget);
+				UInvSys_InventoryWidgetSlot* InventorySlot = Cast<UInvSys_InventoryWidgetSlot>(Widget);
 				DefaultInventoryWidgets.Add(InventorySlot->GetInventoryTag());
 				InventoryWidgetMapping.Add(InventorySlot->GetInventoryTag(), InventorySlot);
 			}
 		});
 	}
+	return Super::RebuildWidget();
 }
 
-void UInvSys_InventoryHUD::AddWidget(UUserWidget* NewWidget, FGameplayTag InventoryTag)
+bool UInvSys_InventoryHUD::AddWidget(UUserWidget* NewWidget, FGameplayTag InventoryTag)
 {
+	// todo::根据生命周期更新控件
 	// 完全匹配标签的控件，直接加入插槽即可
 	if (InventoryWidgetMapping.Contains(InventoryTag))
 	{
-		check(InventoryWidgetMapping[InventoryTag]->HasAnyChildren() == false)
+		if (InventoryWidgetMapping[InventoryTag]->HasAnyChildren())
+		{
+			return false;
+		}
 		InventoryWidgetMapping[InventoryTag]->AddInventorySlotChild(NewWidget);
-		return;
+		return true;
 	}
 
 	// 不完全匹配标签的控件，需要遍历父级
@@ -44,34 +57,29 @@ void UInvSys_InventoryHUD::AddWidget(UUserWidget* NewWidget, FGameplayTag Invent
 			auto LayoutWidget = InventoryWidgetMapping[ParentInventoryTag]->GetInventorySlotChild<UInvSys_InventoryLayoutWidget>();
 			if (LayoutWidget)
 			{
-				UPanelSlot* PanelSlot = LayoutWidget->AddWidget(NewWidget, InventoryTag);
-				if (PanelSlot && PanelSlot->Parent->IsA<UInvSys_InventorySlot>())
+				UInvSys_InventoryWidgetSlot* InventorySlot = LayoutWidget->AddWidget(NewWidget, InventoryTag);
+				if (InventorySlot)
 				{
-					UInvSys_InventorySlot* InventorySlot = Cast<UInvSys_InventorySlot>(PanelSlot->Parent);
 					InventoryWidgetMapping.Add(InventoryTag, InventorySlot);
+					return true;
 				}
+				// 及时退出，不再继续向后查找
 				break;
 			}
 		}
 		ParentInventoryTag = ParentInventoryTag.RequestDirectParent();
 	}
+	return false;
 }
 
-void UInvSys_InventoryHUD::RemoveWidget(const FGameplayTag& InventoryTag)
+void UInvSys_InventoryHUD::RemoveWidget(FGameplayTag InventoryTag)
 {
 	if (InventoryWidgetMapping.Contains(InventoryTag))
 	{
 		UE_LOG(LogInventorySystem, Log, TEXT("Begine Remove Inventory Widget From HUD ==============="))
-		UInvSys_InventorySlot* InventorySlot = InventoryWidgetMapping[InventoryTag];
-		InventorySlot->ClearChildren();
 		TArray<FGameplayTag> RemoveTags;
 		for (auto WidgetMapping : InventoryWidgetMapping)
 		{
-			if (WidgetMapping.Key == InventoryTag)
-			{
-				// 不会移除自身插槽，仅移除所有子集
-				continue;
-			}
 			if (WidgetMapping.Key.MatchesTag(InventoryTag))
 			{
 				RemoveTags.Add(WidgetMapping.Key);
@@ -79,20 +87,54 @@ void UInvSys_InventoryHUD::RemoveWidget(const FGameplayTag& InventoryTag)
 		}
 		for (const FGameplayTag& RemoveTag : RemoveTags)
 		{
-			UWidget* InventoryWidget = FindInventoryWidget<UWidget>(RemoveTag);
-			if (InventoryWidget)
+			UInvSys_InventoryWidgetSlot* InventorySlot = FindInventorySlot(RemoveTag);
+			if (InventorySlot)
 			{
-				InventoryWidget->RemoveFromParent();
-				InventoryWidget->ConditionalBeginDestroy();
-				InventoryWidget->ConditionalBeginDestroy();
+				UUserWidget* SlotChild = InventorySlot->GetInventorySlotChild();
+				if (SlotChild)
+				{
+					if (SlotChild->IsA<UInvSys_InventoryLayoutWidget>())
+					{
+						// 不移除控件布局
+						continue;
+					}
+					InventorySlot->ClearChildren();
+					SlotChild->ConditionalBeginDestroy();
+				}
 			}
-			InventoryWidgetMapping.Remove(RemoveTag);
+			// 不会移除自身插槽，仅移除所有子集及其插槽
+			if (RemoveTag != InventoryTag)
+			{
+				InventoryWidgetMapping.Remove(RemoveTag);
+			}
 			UE_LOG(LogInventorySystem, Log, TEXT("\tRemove Inventory Widget %s"), *RemoveTag.ToString())
 		}
 	}
 }
 
-UInvSys_InventorySlot* UInvSys_InventoryHUD::FindInventorySlot(FGameplayTag InventoryTag) const
+void UInvSys_InventoryHUD::SetInventoryWidgetVisibility(FGameplayTag InventoryTag, ESlateVisibility InVisibility)
+{
+	UInvSys_InventoryWidgetSlot* InventorySlot = FindInventorySlot(InventoryTag);
+	if (InventorySlot && InventorySlot->HasAnyChildren())
+	{
+		UUserWidget* ChildWidget = InventorySlot->GetInventorySlotChild();
+		if (ChildWidget)
+		{
+			ChildWidget->SetVisibility(InVisibility);
+		}
+	}
+}
+
+void UInvSys_InventoryHUD::SetInventorySlotVisibility(FGameplayTag InventoryTag, ESlateVisibility InVisibility)
+{
+	UInvSys_InventoryWidgetSlot* InventorySlot = FindInventorySlot(InventoryTag);
+	if (InventorySlot)
+	{
+		InventorySlot->SetVisibility(InVisibility);
+	}
+}
+
+UInvSys_InventoryWidgetSlot* UInvSys_InventoryHUD::FindInventorySlot(FGameplayTag InventoryTag) const
 {
 	if (InventoryTag.IsValid() == false)
 	{

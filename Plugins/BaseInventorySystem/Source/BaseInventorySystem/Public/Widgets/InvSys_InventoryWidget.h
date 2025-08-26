@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "GameplayTagContainer.h"
+#include "InvSys_CommonType.h"
 #include "InvSys_InventoryWidget.generated.h"
 
 class UInvSys_BaseInventoryObject;
@@ -18,9 +19,13 @@ class BASEINVENTORYSYSTEM_API UInvSys_InventoryWidget : public UUserWidget
 {
 	GENERATED_BODY()
 
+	friend class UInvSys_InventoryModule_Display;
+
 public:
 	UFUNCTION(BlueprintCallable, Category = "Inventory Widget")
 	virtual void InitInventoryWidget(UInvSys_BaseInventoryObject* NewInventoryObject);
+
+	virtual void RemoveFromParent() override;
 
 protected:
 	virtual void NativeConstruct() override;

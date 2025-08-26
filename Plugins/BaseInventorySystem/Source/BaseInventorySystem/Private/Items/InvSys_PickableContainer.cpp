@@ -24,12 +24,12 @@ void AInvSys_PickableContainer::SetupInventoryComponent()
 		if (InventoryComponentClass == nullptr)
 		{
 			InventoryComponent = NewObject<UInvSys_InventoryComponent>(this, UInvSys_InventoryComponent::StaticClass(), TEXT("InventoryComponent0"));
-			InventoryComponent->RegisterInventoryComponent(InventoryObjectContent, LayoutWidgetClass);
+			InventoryComponent->RegisterInventoryComponent(InventoryObjectContent);
 		}
 		else
 		{
 			InventoryComponent = NewObject<UInvSys_InventoryComponent>(this, InventoryComponentClass, TEXT("InventoryComponent0"));
-			InventoryComponent->RegisterInventoryComponent(InventoryObjectContent, LayoutWidgetClass);
+			InventoryComponent->RegisterInventoryComponent(InventoryObjectContent);
 		}
 	}
 }

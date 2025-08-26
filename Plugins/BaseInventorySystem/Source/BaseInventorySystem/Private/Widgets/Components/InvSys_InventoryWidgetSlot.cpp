@@ -1,16 +1,16 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Widgets/Components/InvSys_InventorySlot.h"
+#include "Widgets/Components/InvSys_InventoryWidgetSlot.h"
 
 
-void UInvSys_InventorySlot::AddInventorySlotChild(UWidget* Widget)
+void UInvSys_InventoryWidgetSlot::AddInventorySlotChild(UWidget* Widget)
 {
 	// todo::
 	AddChild(Widget);
 }
 
-TSharedRef<SWidget> UInvSys_InventorySlot::RebuildWidget()
+TSharedRef<SWidget> UInvSys_InventoryWidgetSlot::RebuildWidget()
 {
 	MyBox = SNew(SBox);
 

@@ -25,10 +25,10 @@ public:
 	UFUNCTION(BlueprintPure, Category="Inventory System Library", meta=(WorldContext="WorldContextObject", UnsafeDuringActorConstruction="true"))
 	static UInvSys_InventoryControllerComponent* GetPlayerInventoryComponent(const UObject* WorldContextObject);
 
-	UFUNCTION(BlueprintPure, Category="Inventory System Library", meta=(WorldContext="WorldContextObject", UnsafeDuringActorConstruction="true"))
+	UFUNCTION(BlueprintPure, BlueprintCosmetic, Category="Inventory System Library", meta=(WorldContext="WorldContextObject", UnsafeDuringActorConstruction="true"))
 	static UInvSys_InventoryHUD* GetInventoryHUD(const UObject* WorldContextObject);
 
-	UFUNCTION(BlueprintPure, Category="Inventory System Library", meta=(WorldContext="WorldContextObject", DeterminesOutputType = OutClass, UnsafeDuringActorConstruction="true"))
+	UFUNCTION(BlueprintPure, BlueprintCosmetic, Category="Inventory System Library", meta=(WorldContext="WorldContextObject", DeterminesOutputType = OutClass, UnsafeDuringActorConstruction="true"))
 	static UInvSys_InventoryHUD* GetCustomInventoryHUD(const UObject* WorldContextObject, TSubclassOf<UInvSys_InventoryHUD> OutClass);
 
 	template<class T = UInvSys_InventoryControllerComponent>

@@ -5,13 +5,13 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "Components/NamedSlot.h"
-#include "InvSys_InventorySlot.generated.h"
+#include "InvSys_InventoryWidgetSlot.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class BASEINVENTORYSYSTEM_API UInvSys_InventorySlot : public UNamedSlot
+class BASEINVENTORYSYSTEM_API UInvSys_InventoryWidgetSlot : public UNamedSlot
 {
 	GENERATED_BODY()
 
@@ -20,7 +20,7 @@ public:
 
 	void AddInventorySlotChild(UWidget* Widget);
 
-	template<class T>
+	template<class T = UUserWidget>
 	T* GetInventorySlotChild() const;
 	
 protected:
@@ -32,7 +32,7 @@ public:
 };
 
 template <class T>
-T* UInvSys_InventorySlot::GetInventorySlotChild() const
+T* UInvSys_InventoryWidgetSlot::GetInventorySlotChild() const
 {
 	return (T*)GetChildAt(0);
 }

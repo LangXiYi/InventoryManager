@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "BaseInventorySystem.h"
+#include "InvSys_CommonType.h"
 #include "GameplayTagContainer.h"
 #include "Components/ActorComponent.h"
 #include "InventoryObject/InvSys_BaseInventoryObject.h"
@@ -29,23 +30,34 @@ class BASEINVENTORYSYSTEM_API UInvSys_InventoryComponent : public UActorComponen
 public:
 	UInvSys_InventoryComponent(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
+	virtual void InitializeComponent() override;
+	virtual void BeginPlay() override;
+
 	/**
 	 * 构建库存对象列表，推荐在 BeginPlay 阶段就调用该函数
 	 */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
-	virtual void ConstructInventoryObjects();
+	virtual void InitializeInventoryObjects();
 
 	/**
-	 * 创建库存显示控件
+	 * 尝试创建库存显示控件，仅当控件在 HUD 中不存在时创建控件。
 	 */
 	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "Inventory Component")
-	virtual UInvSys_InventoryLayoutWidget* CreateDisplayWidget(APlayerController* NewPlayerController);
+	virtual void CreateAllDisplayWidgets(APlayerController* NewController);
+
+	/**
+	 * 尝试创建库存显示控件，仅当控件在 HUD 中不存在时创建控件。
+	 */
+	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "Inventory Component")
+	virtual UUserWidget* CreateDisplayWidgets(APlayerController* NewController, FGameplayTag InventoryTag);
 
 	/**
 	 * 根据物品定义信息装备物品
 	 */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Inventory Component")
-	UInvSys_InventoryItemInstance* EquipItemDefinition(TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
+	UInvSys_InventoryItemInstance* EquipItemDefinition(
+		TSubclassOf<UInvSys_InventoryItemInstance> ItemClass,
+		TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
 		FGameplayTag SlotTag, int32 StackCount = 1);
 
 	/**
@@ -162,9 +174,7 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure = false, meta = (DeterminesOutputType = OutClass))
 	UInvSys_InventoryModule* FindInventoryModule(FGameplayTag Tag, TSubclassOf<UInvSys_InventoryModule> OutClass) const;
 
-	void RegisterInventoryComponent(
-		const TSoftClassPtr<UInvSys_InventoryContentMapping>& InInventoryContent,
-		const TSubclassOf<UInvSys_InventoryLayoutWidget>& InLayoutWidget);
+	void RegisterInventoryComponent(const TSoftClassPtr<UInvSys_InventoryContentMapping>& InInventoryContent);
 
 	bool IsValidInventoryTag(const FGameplayTag& InventoryTag) const;
 
@@ -199,18 +209,16 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Component")
 	TSoftClassPtr<class UInvSys_InventoryContentMapping> InventoryObjectContent;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Component")
-	FGameplayTag InventoryLayoutTag;
-
-	/** 库存组件的展示菜单 */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory Component")
-	TSubclassOf<UInvSys_InventoryLayoutWidget> LayoutWidgetClass;
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory Component")
+	FGameplayTag InventoryLayoutTag_DEPRECATED;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Component")
-	TObjectPtr<UInvSys_InventoryLayoutWidget> LayoutWidget;
+	TObjectPtr<UInvSys_InventoryLayoutWidget> LayoutWidget_DEPRECATED;
 
 private:
 	FTimerHandle ClearInventoryWidgetTimerHandle;
+
+	bool bIsInitializeInventoryObjects = false;;
 };
 
 template <class T, class ... ArgList>

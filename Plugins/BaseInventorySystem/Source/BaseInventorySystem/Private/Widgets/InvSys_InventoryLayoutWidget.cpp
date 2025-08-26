@@ -5,10 +5,10 @@
 
 #include "BaseInventorySystem.h"
 #include "Blueprint/WidgetTree.h"
-#include "Widgets/Components/InvSys_InventorySlot.h"
+#include "Widgets/Components/InvSys_InventoryWidgetSlot.h"
 
 
-UInvSys_InventorySlot* UInvSys_InventoryLayoutWidget::FindTagSlot(FGameplayTag InSlotTag)
+UInvSys_InventoryWidgetSlot* UInvSys_InventoryLayoutWidget::FindTagSlot(FGameplayTag InSlotTag)
 {
 	if (InventoryWidgetMapping.Contains(InSlotTag))
 	{
@@ -17,28 +17,29 @@ UInvSys_InventorySlot* UInvSys_InventoryLayoutWidget::FindTagSlot(FGameplayTag I
 	return nullptr;
 }
 
-void UInvSys_InventoryLayoutWidget::NativeOnInitialized()
+TSharedRef<SWidget> UInvSys_InventoryLayoutWidget::RebuildWidget()
 {
-	Super::NativeOnInitialized();
 	if (WidgetTree)
 	{
 		WidgetTree->ForEachWidget([&] (UWidget* Widget) {
-			if (Widget->IsA(UInvSys_InventorySlot::StaticClass()))
+			if (Widget->IsA(UInvSys_InventoryWidgetSlot::StaticClass()))
 			{
-				UInvSys_InventorySlot* TagSlot = Cast<UInvSys_InventorySlot>(Widget);
+				UInvSys_InventoryWidgetSlot* TagSlot = Cast<UInvSys_InventoryWidgetSlot>(Widget);
 				check(TagSlot)
 				InventoryWidgetMapping.Emplace(TagSlot->GetInventoryTag(), TagSlot);
 			}
 		});
 	}
+	return Super::RebuildWidget();
 }
 
-UPanelSlot* UInvSys_InventoryLayoutWidget::AddWidget(UUserWidget* Widget, const FGameplayTag& Tag)
+UInvSys_InventoryWidgetSlot* UInvSys_InventoryLayoutWidget::AddWidget(UUserWidget* Widget, const FGameplayTag& Tag)
 {
 	// 根据库存对象的标签查询对应的槽位，然后将需要显示的控件添加到目标槽位下。
-	if (UInvSys_InventorySlot* TagSlot = FindTagSlot(Tag))
+	if (UInvSys_InventoryWidgetSlot* TagSlot = FindTagSlot(Tag))
 	{
-		return TagSlot->AddChild(Widget);
+		TagSlot->AddChild(Widget);
+		return TagSlot;
 	}
 	else
 	{

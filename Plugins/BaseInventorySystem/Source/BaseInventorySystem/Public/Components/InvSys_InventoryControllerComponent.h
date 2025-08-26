@@ -18,12 +18,14 @@ class BASEINVENTORYSYSTEM_API UInvSys_InventoryControllerComponent : public UAct
 public:
 	UInvSys_InventoryControllerComponent(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
+	// 这里在 Initialize 阶段创建 HUD 确保其他对象在 BeginPlay 之后能获取到有效的 HUD 属性。
 	virtual void InitializeComponent() override;
 
 	// todo::如果自定义 HUD，请重载该函数并添加自己的处理逻辑
 	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "Player Inventory Component")
 	virtual UInvSys_InventoryHUD* ConstructInventoryHUD();
 
+	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "Player Inventory Component", meta = (UnsafeDuringActorConstruction))
 	UInvSys_InventoryHUD* GetInventoryHUD() const;
 
 	void CancelDragItemInstance();
@@ -34,7 +36,11 @@ public:
 	 **/
 
 	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
-	void Server_EquipItemDefinition(UInvSys_InventoryComponent* InvComp,TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, FGameplayTag SlotTag);
+	void Server_EquipItemDefinition(UInvSys_InventoryComponent* InvComp,
+		TSubclassOf<UInvSys_InventoryItemInstance> ItemClass,
+		TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef,
+		FGameplayTag SlotTag,
+		int32 StackCount = 1);
 	
 	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Player Inventory Component")
 	void Server_EquipItemInstance(UInvSys_InventoryComponent* InvComp,UInvSys_InventoryItemInstance* ItemInstance, FGameplayTag InventoryTag);
@@ -95,9 +101,9 @@ protected:
 	TSubclassOf<UInvSys_InventoryHUD> InventoryHUDClass;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Player Inventory Component")
-	UInvSys_InventoryHUD* InventoryHUD = nullptr;
+	TObjectPtr<UInvSys_InventoryHUD> InventoryHUD = nullptr;
 
 private:
 	UPROPERTY(BlueprintReadOnly, Category = "Player Inventory Component", meta = (AllowPrivateAccess))
-	TObjectPtr<APlayerController> Controller;
+	TObjectPtr<APlayerController> PlayerController;
 };

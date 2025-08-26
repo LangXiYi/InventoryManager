@@ -21,16 +21,19 @@ UInvSys_InventoryControllerComponent::UInvSys_InventoryControllerComponent(const
 
 UInvSys_InventoryHUD* UInvSys_InventoryControllerComponent::ConstructInventoryHUD()
 {
-	check(InventoryHUDClass)
+	if (InventoryHUD && IsValid(InventoryHUD))
+	{
+		return InventoryHUD;
+	}
+	UInvSys_InventoryHUD* NewInventoryHUD = nullptr;
 	if (InventoryHUDClass)
 	{
-		if (InventoryHUD == nullptr)
-		{
-			InventoryHUD = CreateWidget<UInvSys_InventoryHUD>(GetOwner<APlayerController>(), InventoryHUDClass);
-			// InventoryHUD->SetVisibility(ESlateVisibility::Hidden);
-		}
+		// 这里不使用 PlayerController 的原因是在 Init 阶段 PlayerController.Player 未被初始化，此时创建控件会失败！！！
+		// NOTE: 使用 World 创建控件会导致 NativeOnInitialized 函数不执行
+		NewInventoryHUD = CreateWidget<UInvSys_InventoryHUD>(GetWorld(), InventoryHUDClass);
 	}
-	return InventoryHUD;
+	check(NewInventoryHUD);
+	return NewInventoryHUD;
 }
 
 UInvSys_InventoryHUD* UInvSys_InventoryControllerComponent::GetInventoryHUD() const
@@ -43,8 +46,12 @@ void UInvSys_InventoryControllerComponent::InitializeComponent()
 {
 	Super::InitializeComponent();
 
-	Controller = GetOwner<APlayerController>();
-	check(Controller)
+	PlayerController = GetOwner<APlayerController>();
+	check(PlayerController)
+	if (PlayerController && PlayerController->IsLocalController())
+	{
+		InventoryHUD = ConstructInventoryHUD();
+	}
 }
 
 void UInvSys_InventoryControllerComponent::CancelDragItemInstance()
@@ -57,6 +64,38 @@ void UInvSys_InventoryControllerComponent::CancelDragItemInstance()
 		}
 	}
 	SetDraggingItemInstance(nullptr);
+}
+
+void UInvSys_InventoryControllerComponent::Server_EquipItemDefinition_Implementation(
+	UInvSys_InventoryComponent* InvComp, TSubclassOf<UInvSys_InventoryItemInstance> ItemClass,
+	TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, FGameplayTag SlotTag, int32 StackCount)
+{
+	check(InvComp);
+	if (InvComp == nullptr)
+	{
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("传入的库存组件不存在。"))
+		return;
+	}
+	if (ItemDef == nullptr)
+	{
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("传入的物品定义不存在。"))
+		return;
+	}
+	auto DefaultItemDefinition = GetDefault<UInvSys_InventoryItemDefinition>(ItemDef);
+	auto EquipItemFragment = DefaultItemDefinition->FindFragmentByClass<UInvSys_ItemFragment_EquipItem>();
+	if (EquipItemFragment == nullptr)
+	{
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("物品[%s]未添加装备片段。"),
+			*DefaultItemDefinition->GetItemDisplayName().ToString())
+		return;
+	}
+	if (EquipItemFragment->SupportEquipSlot.HasTagExact(SlotTag) == false)
+	{
+		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("物品[%s]不支持装备到目标槽位[%s]"),
+			*DefaultItemDefinition->GetItemDisplayName().ToString(), *SlotTag.ToString())
+		return;
+	} 
+	InvComp->EquipItemDefinition(ItemClass, ItemDef, SlotTag, StackCount);
 }
 
 void UInvSys_InventoryControllerComponent::Server_SplitItemInstance_Implementation(
@@ -137,37 +176,6 @@ void UInvSys_InventoryControllerComponent::Server_CancelDragItemInstance_Impleme
 {
 	check(DraggingItemInstance == nullptr || DraggingItemInstance == InItemInstance)
 	CancelDragItemInstance();
-}
-
-void UInvSys_InventoryControllerComponent::Server_EquipItemDefinition_Implementation(
-	UInvSys_InventoryComponent* InvComp, TSubclassOf<UInvSys_InventoryItemDefinition> ItemDef, FGameplayTag SlotTag)
-{
-	check(InvComp);
-	if (InvComp == nullptr)
-	{
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("传入的库存组件不存在。"))
-		return;
-	}
-	if (ItemDef == nullptr)
-	{
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("传入的物品定义不存在。"))
-		return;
-	}
-	auto DefaultItemDefinition = GetDefault<UInvSys_InventoryItemDefinition>(ItemDef);
-	auto EquipItemFragment = DefaultItemDefinition->FindFragmentByClass<UInvSys_ItemFragment_EquipItem>();
-	if (EquipItemFragment == nullptr)
-	{
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("物品[%s]未添加装备片段。"),
-			*DefaultItemDefinition->GetItemDisplayName().ToString())
-		return;
-	}
-	if (EquipItemFragment->SupportEquipSlot.HasTagExact(SlotTag) == false)
-	{
-		UE_CLOG(PRINT_INVENTORY_SYSTEM_LOG, LogInventorySystem, Warning, TEXT("物品[%s]不支持装备到目标槽位[%s]"),
-			*DefaultItemDefinition->GetItemDisplayName().ToString(), *SlotTag.ToString())
-		return;
-	} 
-	InvComp->EquipItemDefinition(ItemDef, SlotTag);
 }
 
 void UInvSys_InventoryControllerComponent::Server_EquipItemInstance_Implementation(UInvSys_InventoryComponent* InvComp,
@@ -269,8 +277,8 @@ void UInvSys_InventoryControllerComponent::Server_DropItemInstanceToWorld_Implem
 		UInvSys_InventoryComponent* InvComp = InItemInstance->GetInventoryComponent();
 		if (InvComp)
 		{
-			check(Controller)
-			if (APawn* Pawn = Controller->GetPawn())
+			check(PlayerController)
+			if (APawn* Pawn = PlayerController->GetPawn())
 			{
 				FTransform Transform = Pawn->GetTransform();
 				InvComp->DiscardItemInstance(InItemInstance, Transform);
@@ -359,7 +367,7 @@ bool UInvSys_InventoryControllerComponent::HasAuthority() const
 
 APlayerController* UInvSys_InventoryControllerComponent::GetPlayerController() const
 {
-	return Controller;
+	return PlayerController;
 }
 
 void UInvSys_InventoryControllerComponent::SetDraggingItemInstance(UInvSys_InventoryItemInstance* NewDragItemInstance)

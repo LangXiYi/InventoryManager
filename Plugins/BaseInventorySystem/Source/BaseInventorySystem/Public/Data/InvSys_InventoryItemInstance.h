@@ -39,6 +39,7 @@ DECLARE_DYNAMIC_DELEGATE_OneParam(FOnDragItemInstance, bool, bIsDragging);
 /**
  * 库存内容项
  * 注意：修改类成员属性后需要调用 MarkItemInstanceDirty 标记修改！！！
+ * todo::扩展支持异步节点
  */
 UCLASS(Abstract, BlueprintType, Blueprintable)
 class BASEINVENTORYSYSTEM_API UInvSys_InventoryItemInstance : public UObject
